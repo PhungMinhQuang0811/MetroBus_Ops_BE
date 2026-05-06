@@ -3,10 +3,12 @@ package com.vdt.authservice.mapper;
 import com.vdt.authservice.dto.response.user.UserResponse;
 import com.vdt.authservice.entity.Account;
 import com.vdt.authservice.entity.Role;
+import org.springframework.stereotype.Component;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Component
 public class UserMapper {
     public UserResponse toUserResponse(Account account) {
         if (account == null) return null;
