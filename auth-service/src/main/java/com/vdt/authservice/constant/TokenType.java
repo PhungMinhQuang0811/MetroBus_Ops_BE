@@ -1,4 +1,4 @@
-﻿package com.vdt.authservice.constant;
+package com.vdt.authservice.constant;
 
 public class TokenType {
     public static final String ACCESS_TOKEN = "ACCESS_TOKEN";

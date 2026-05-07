@@ -67,6 +67,14 @@ public class AuthService {
         Account account = accountRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
+        if (!account.isEmailVerified()) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
+        if (!account.isActive()) {
+            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
+
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
@@ -96,14 +104,20 @@ public class AuthService {
         
         accountTokenService.deleteActivationToken(token);
     }
-
     public void forgotPassword(String email) {
         Account account = accountRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_USED_BY_ANY_ACCOUNT));
 
+        if (!account.isEmailVerified()) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
+        if (!account.isActive()) {
+            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
+
         String token = accountTokenService.generateResetPasswordToken(account.getId());
-        emailService.sendEmail(account.getEmail(), "Reset Password", 
-                "Click here to reset: http://localhost:8081/api/v1/auth/reset-password?token=" + token);
+        emailService.sendResetPasswordEmail(account.getEmail(), token);
     }
 
     @Transactional
@@ -115,6 +129,14 @@ public class AuthService {
 
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
+
+        if (!account.isEmailVerified()) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
+        if (!account.isActive()) {
+            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
 
         account.setPassword(passwordEncoder.encode(request.getNewPassword()));
         accountRepository.save(account);

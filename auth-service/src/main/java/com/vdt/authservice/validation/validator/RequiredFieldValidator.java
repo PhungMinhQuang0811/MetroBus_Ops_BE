@@ -4,14 +4,26 @@ import com.vdt.authservice.validation.RequiredField;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-public class RequiredFieldValidator implements ConstraintValidator<RequiredField, String> {
+import java.util.Collection;
+
+public class RequiredFieldValidator implements ConstraintValidator<RequiredField, Object> {
     @Override
     public void initialize(RequiredField constraintAnnotation) {
         ConstraintValidator.super.initialize(constraintAnnotation);
     }
 
     @Override
-    public boolean isValid(String value, ConstraintValidatorContext context) {
-        return value != null && !value.trim().isEmpty();
+    public boolean isValid(Object value, ConstraintValidatorContext context) {
+        if (value == null) return false;
+        
+        if (value instanceof String s) {
+            return !s.trim().isEmpty();
+        }
+        
+        if (value instanceof Collection<?> c) {
+            return !c.isEmpty();
+        }
+        
+        return true;
     }
 }

@@ -1,10 +1,13 @@
 package com.vdt.authservice.dto.request.user;
 
+import com.vdt.authservice.validation.ExternalRolesConstraint;
 import com.vdt.authservice.validation.PasswordConstraint;
 import com.vdt.authservice.validation.RequiredField;
 import jakarta.validation.constraints.Email;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -22,4 +25,8 @@ public class RegisterRequest {
     @RequiredField(fieldName = "Password")
     @PasswordConstraint
     String password;
+
+    @RequiredField(fieldName = "Roles")
+    @ExternalRolesConstraint
+    Set<String> roles;
 }
