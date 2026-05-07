@@ -8,7 +8,7 @@ import com.vdt.authservice.exception.ErrorCode;
 import com.vdt.authservice.external.notification.email.EmailService;
 import com.vdt.authservice.mapper.UserMapper;
 import com.vdt.authservice.repository.AccountRepository;
-import com.vdt.authservice.security.service.VerificationTokenService;
+import com.vdt.authservice.security.service.AccountTokenService;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ public class UserService {
     AccountRepository accountRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
-    VerificationTokenService verificationTokenService;
+    AccountTokenService accountTokenService;
     EmailService emailService;
 
     @Transactional
@@ -43,7 +43,7 @@ public class UserService {
 
         account = accountRepository.save(account);
 
-        String token = verificationTokenService.generateActivationToken(account.getId());
+        String token = accountTokenService.generateActivationToken(account.getId());
         emailService.sendEmail(account.getEmail(), "Account Activation",
                 "Click here to activate: http://localhost:8081/api/v1/auth/activate?token=" + token);
 

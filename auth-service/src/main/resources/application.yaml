@@ -32,8 +32,13 @@ app:
       /api/v1/auth/forgot-password, 
       /api/v1/auth/reset-password, 
       /api/v1/auth/refresh-token"
+    cors-allowed-origins: "http://localhost:3000"
     jwt:
       access-token-secret-key: ${JWT_ACCESS_SECRET_KEY}
       refresh-token-secret-key: ${JWT_REFRESH_SECRET_KEY}
-      access-token-expiration: 3600 # 1 hour
-      refresh-token-expiration: 2592000 # 30 days
+#      access-token-expiration: 3600000 # 1 hour
+#      refresh-token-expiration: 604800000 # 7 days
+      access-token-expiration: 15000 #milisecond ~ 15s
+      refresh-token-expiration: 60000 #~1 minute
+      access-token-cookie-name: accessToken
+      refresh-token-cookie-name: refreshToken

@@ -1,5 +1,8 @@
 package com.vdt.authservice.dto.request.user;
 
+import com.vdt.authservice.validation.PasswordConstraint;
+import com.vdt.authservice.validation.RequiredField;
+import jakarta.validation.constraints.Email;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -9,7 +12,14 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class RegisterRequest {
+    @RequiredField(fieldName = "Email")
+    @Email(message = "INVALID_EMAIL")
     String email;
+
+    @RequiredField(fieldName = "Username")
     String username;
+
+    @RequiredField(fieldName = "Password")
+    @PasswordConstraint
     String password;
 }

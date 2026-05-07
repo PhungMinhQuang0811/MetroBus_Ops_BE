@@ -5,7 +5,11 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.vdt.authservice.constant.TokenType;
 import com.vdt.authservice.entity.Account;
+import com.vdt.authservice.exception.AppException;
+import com.vdt.authservice.exception.ErrorCode;
+import io.jsonwebtoken.security.Keys;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -14,7 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import io.jsonwebtoken.*;
+import javax.crypto.SecretKey;
 
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -43,6 +50,9 @@ public class JwtUtil {
     @Value("${app.security.jwt.refresh-token-expiration}")
     long refreshTokenExpiration;
 
+    private SecretKey getSecretKey(String secretKey) {
+        return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    }
     public String generateToken(Account account) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
@@ -51,10 +61,11 @@ public class JwtUtil {
                 .issuer("vdt.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(
-                        Instant.now().plus(accessTokenExpiration, ChronoUnit.SECONDS).toEpochMilli()
+                    Instant.now().plus(accessTokenExpiration, ChronoUnit.MILLIS).toEpochMilli()
                 ))
                 .jwtID(java.util.UUID.randomUUID().toString())
                 .claim("scope", buildScope(account))
+                .claim("tokenType", TokenType.ACCESS_TOKEN)
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -66,7 +77,7 @@ public class JwtUtil {
             return jwsObject.serialize();
         } catch (JOSEException e) {
             log.error("Cannot create token", e);
-            throw new RuntimeException(e);
+            throw new AppException(ErrorCode.TOKEN_GENERATION_FAILED);
         }
     }
 
@@ -78,9 +89,10 @@ public class JwtUtil {
                 .issuer("vdt.com")
                 .issueTime(new Date())
                 .expirationTime(new Date(
-                        Instant.now().plus(refreshTokenExpiration, ChronoUnit.SECONDS).toEpochMilli()
+                    Instant.now().plus(refreshTokenExpiration, ChronoUnit.MILLIS).toEpochMilli()
                 ))
                 .jwtID(java.util.UUID.randomUUID().toString())
+                .claim("tokenType", TokenType.REFRESH_TOKEN)
                 .build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
@@ -91,7 +103,7 @@ public class JwtUtil {
             return jwsObject.serialize();
         } catch (JOSEException e) {
             log.error("Cannot create refresh token", e);
-            throw new RuntimeException(e);
+            throw new AppException(ErrorCode.TOKEN_GENERATION_FAILED);
         }
     }
 
@@ -110,19 +122,52 @@ public class JwtUtil {
         return stringJoiner.toString();
     }
     
-    public SignedJWT verifyToken(String token, boolean isRefresh) throws JOSEException, ParseException {
-        String secretKey = isRefresh ? refreshTokenSecretKey : accessTokenSecretKey;
-        JWSVerifier verifier = new MACVerifier(secretKey.getBytes());
-        SignedJWT signedJWT = SignedJWT.parse(token);
-
-        Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
-
-        boolean verified = signedJWT.verify(verifier);
-
-        if (!(verified && expiryTime.after(new Date()))) {
-            throw new JOSEException("Invalid token");
-        }
-
-        return signedJWT;
+    public SignedJWT verifyAccessToken(String token) {
+        return verifyToken(token, accessTokenSecretKey);
     }
+
+    public SignedJWT verifyRefreshToken(String token) {
+        return verifyToken(token, refreshTokenSecretKey);
+    }
+
+    private SignedJWT verifyToken(String token, String secretKey) {
+        try {
+            JWSVerifier verifier = new MACVerifier(secretKey.getBytes());
+            SignedJWT signedJWT = SignedJWT.parse(token);
+
+            Date expiryTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+            boolean verified = signedJWT.verify(verifier);
+
+            if (!(verified && expiryTime.after(new Date()))) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            return signedJWT;
+        } catch (JOSEException | ParseException e) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+    public Instant getExpirationAtFromAccessToken(String token) {
+        return getExpiration(token, accessTokenSecretKey);
+    }
+
+    public Instant getExpirationAtFromRefreshToken(String token) {
+        return getExpiration(token, refreshTokenSecretKey);
+    }
+
+    private Instant getExpiration(String token, String secretKey) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSecretKey(secretKey))
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload()
+                    .getExpiration()
+                    .toInstant();
+        } catch (Exception e) {
+            log.error("Failed to get expiration from token", e);
+            throw new AppException(ErrorCode.INVALID_TOKEN_FORMAT);
+        }
+    }
+
 }

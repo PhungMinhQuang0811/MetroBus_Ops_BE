@@ -13,7 +13,7 @@ import com.vdt.authservice.util.RedisUtil;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class VerificationTokenService {
+public class AccountTokenService {
     RedisUtil redisUtil;
     
     static final String ACTIVATION_PREFIX = "activation:";

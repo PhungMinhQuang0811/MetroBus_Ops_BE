@@ -19,14 +19,19 @@ public enum ErrorCode {
     /**
      * Range 2xxx: Validation errors
      */
-    // Define validation error codes here when needed (e.g., INVALID_PASSWORD, INVALID_EMAIL)
+    FIELD_REQUIRED(2000, "{fieldName} is required", HttpStatus.BAD_REQUEST),
+    INVALID_EMAIL(2001, "Invalid email format", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD(2002, "Password must be at least 9 characters and contain both letters and numbers", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
      */
-    ACCOUNT_NOT_FOUND_IN_DB(3000, "The account is not exist in the system.", HttpStatus.BAD_REQUEST),
+    INVALID_CREDENTIALS(3000, "Invalid email or password. Please try again.", HttpStatus.BAD_REQUEST),
     EMAIL_NOT_USED_BY_ANY_ACCOUNT(3001, "The email address you’ve entered does not exist. Please try again.", HttpStatus.BAD_REQUEST),
     USER_EXISTED(3002, "The user was existed", HttpStatus.BAD_REQUEST),
+    TOKEN_BLACKLIST_FAILED(3003, "Failed to blacklist token", HttpStatus.INTERNAL_SERVER_ERROR),
+    TOKEN_GENERATION_FAILED(3004, "Failed to generate token", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_TOKEN_FORMAT(3005, "Invalid token format", HttpStatus.BAD_REQUEST),
 
 
     /**

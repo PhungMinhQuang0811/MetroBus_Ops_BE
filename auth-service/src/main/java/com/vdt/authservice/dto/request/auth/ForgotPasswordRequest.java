@@ -1,5 +1,6 @@
 package com.vdt.authservice.dto.request.auth;
 
+import com.vdt.authservice.validation.RequiredField;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -9,5 +10,6 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ForgotPasswordRequest {
+    @RequiredField(fieldName = "Email")
     String email;
 }
