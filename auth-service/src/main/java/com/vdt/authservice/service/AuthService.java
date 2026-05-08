@@ -61,27 +61,29 @@ public class AuthService {
     @Value("${app.security.jwt.refresh-token-cookie-name}")
     String refreshTokenCookieName;
 
+    @NonFinal
+    @Value("${server.servlet.context-path:/}")
+    String contextPath;
+
+    @NonFinal
+    @Value("${app.security.refresh-path}")
+    String refreshPath;
+
+    @NonFinal
+    @Value("${app.security.logout-path}")
+    String logoutPath;
+
     public AuthResponse login(LoginRequest request, HttpServletResponse response) {
         Account account = accountRepository.findByIdentifier(request.getIdentifier())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
-        if (!account.isEmailVerified()) {
-            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
-        }
-
-        if (!account.isActive()) {
-            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
-        }
+        validateAccountStatus(account);
 
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getIdentifier(), request.getPassword())
         );
 
-        String token = jwtUtil.generateToken(account);
-        String refreshToken = jwtUtil.generateRefreshToken(account);
-        
-        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(accessTokenCookieName, token, "/", accessTokenExpiration, true).toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, refreshToken, "/", refreshTokenExpiration, true).toString());
+        setTokenCookies(response, account);
 
         return authMapper.toAuthResponse(account);
     }
@@ -90,13 +92,7 @@ public class AuthService {
         Account account = accountRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_USED_BY_ANY_ACCOUNT));
 
-        if (!account.isEmailVerified()) {
-            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
-        }
-
-        if (!account.isActive()) {
-            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
-        }
+        validateAccountStatus(account);
 
         String token = accountTokenService.generateResetPasswordToken(account.getId());
         emailService.sendResetPasswordEmail(account.getEmail(), token);
@@ -104,21 +100,7 @@ public class AuthService {
 
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        String accountId = accountTokenService.getAccountIdByResetPasswordToken(request.getToken());
-        if (accountId == null) {
-            throw new AppException(ErrorCode.INVALID_ONETIME_TOKEN);
-        }
-
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
-
-        if (!account.isEmailVerified()) {
-            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
-        }
-
-        if (!account.isActive()) {
-            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
-        }
+        Account account = verifyResetPasswordTokenAndGetAccount(request.getToken());
 
         account.setPassword(passwordEncoder.encode(request.getNewPassword()));
         accountRepository.save(account);
@@ -128,9 +110,7 @@ public class AuthService {
 
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         invalidateTokens(request);
-
-        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(accessTokenCookieName, "", "/", 0, true).toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, "", "/", 0, true).toString());
+        clearTokenCookies(response);
     }
 
     private void invalidateTokens(HttpServletRequest request) {
@@ -142,7 +122,7 @@ public class AuthService {
                 jwtUtil.verifyAccessToken(accessToken);
                 tokenManagementService.invalidateAccessToken(accessToken, jwtUtil.getExpirationAtFromAccessToken(accessToken));
             } catch (Exception e) {
-                log.info("Invalid access token, user cannot be authenticated with this access token");
+                throw new AppException(ErrorCode.TOKEN_EXPIRED_OR_INVALID);
             }
         }
 
@@ -151,7 +131,7 @@ public class AuthService {
                 jwtUtil.verifyRefreshToken(refreshToken);
                 tokenManagementService.invalidateRefreshToken(refreshToken, jwtUtil.getExpirationAtFromRefreshToken(refreshToken));
             } catch (Exception e) {
-                log.info("Invalid refresh token, user cannot refresh access token with this refresh token");
+                throw new AppException(ErrorCode.INVALID_REFRESH_TOKEN);
             }
         }
         
@@ -173,28 +153,69 @@ public class AuthService {
         if (refreshToken == null || tokenManagementService.isRefreshTokenInvalidated(refreshToken)) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
+        SignedJWT signedJWT;
         try {
-            SignedJWT signedJWT = jwtUtil.verifyRefreshToken(refreshToken);
-            String accountId = signedJWT.getJWTClaimsSet().getSubject();
-            
-            Account account = accountRepository.findById(accountId)
-                    .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
-                    
-            String newAccessToken = jwtUtil.generateToken(account);
-            String newRefreshToken = jwtUtil.generateRefreshToken(account);
-            
-            response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(accessTokenCookieName, newAccessToken, "/", accessTokenExpiration, true).toString());
-            response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, newRefreshToken, "/", refreshTokenExpiration, true).toString());
-            
+            signedJWT = jwtUtil.verifyRefreshToken(refreshToken);
         } catch (Exception e) {
             throw new AppException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
+
+        String accountId;
+        try {
+            accountId = signedJWT.getJWTClaimsSet().getSubject();
+        } catch (Exception e) {
+            throw new AppException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
+
+        validateAccountStatus(account);
+
+        setTokenCookies(response, account);
     }
+    private void validateAccountStatus(Account account) {
+        if (!account.isEmailVerified()) {
+            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
+        if (!account.isActive()) {
+            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
+    }
+
+    private void setTokenCookies(HttpServletResponse response, Account account) {
+        String accessToken = jwtUtil.generateToken(account);
+        String refreshToken = jwtUtil.generateRefreshToken(account);
+
+        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(accessTokenCookieName, accessToken, contextPath, accessTokenExpiration, true).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, refreshToken, refreshPath, refreshTokenExpiration, true).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, refreshToken, logoutPath, refreshTokenExpiration, true).toString());
+    }
+
+    private void clearTokenCookies(HttpServletResponse response) {
+        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(accessTokenCookieName, "", contextPath, 0, true).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, "", refreshPath, 0, true).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, "", logoutPath, 0, true).toString());
+    }
+
+    private Account verifyResetPasswordTokenAndGetAccount(String token) {
+        String accountId = accountTokenService.getAccountIdByResetPasswordToken(token);
+        if (accountId == null) {
+            throw new AppException(ErrorCode.INVALID_ONETIME_TOKEN);
+        }
+
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
+
+        validateAccountStatus(account);
+        return account;
+    }
+
     private ResponseCookie generateCookie(String cookieName, String cookieValue, String path, long maxAgeMiliseconds, boolean isHttpOnly) {
         return ResponseCookie
                 .from(cookieName, cookieValue)
                 .path(path)
-//                .path("/")
 //                .domain(domain)
                 .maxAge(maxAgeMiliseconds / 1000) // seconds ~ 1days
                 .httpOnly(isHttpOnly)

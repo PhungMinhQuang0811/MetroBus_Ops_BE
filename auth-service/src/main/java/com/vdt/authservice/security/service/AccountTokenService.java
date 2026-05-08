@@ -16,32 +16,32 @@ import com.vdt.authservice.util.RedisUtil;
 public class AccountTokenService {
     RedisUtil redisUtil;
     
-    static final String ACTIVATION_PREFIX = "activation:";
-    static final String ACTIVATION_USER_PREFIX = "activation_user:";
+    static final String VERIFICATION_PREFIX = "verification:";
+    static final String VERIFICATION_USER_PREFIX = "verification_user:";
     static final String RESET_PASSWORD_PREFIX = "reset-password:";
     static final long TOKEN_TTL_DAYS = 1;
 
-    public String generateActivationToken(String accountId) {
+    public String generateVerificationToken(String accountId) {
         String token = UUID.randomUUID().toString();
-        redisUtil.set(ACTIVATION_PREFIX + token, accountId, TOKEN_TTL_DAYS, TimeUnit.DAYS);
-        redisUtil.set(ACTIVATION_USER_PREFIX + accountId, token, TOKEN_TTL_DAYS, TimeUnit.DAYS);
+        redisUtil.set(VERIFICATION_PREFIX + token, accountId, TOKEN_TTL_DAYS, TimeUnit.DAYS);
+        redisUtil.set(VERIFICATION_USER_PREFIX + accountId, token, TOKEN_TTL_DAYS, TimeUnit.DAYS);
         return token;
     }
 
-    public String getExistingActivationToken(String accountId) {
-        return redisUtil.get(ACTIVATION_USER_PREFIX + accountId);
+    public String getExistingVerificationToken(String accountId) {
+        return redisUtil.get(VERIFICATION_USER_PREFIX + accountId);
     }
 
-    public String getAccountIdByActivationToken(String token) {
-        return redisUtil.get(ACTIVATION_PREFIX + token);
+    public String getAccountIdByVerificationToken(String token) {
+        return redisUtil.get(VERIFICATION_PREFIX + token);
     }
 
-    public void deleteActivationToken(String token) {
-        String accountId = getAccountIdByActivationToken(token);
+    public void deleteVerificationToken(String token) {
+        String accountId = getAccountIdByVerificationToken(token);
         if (accountId != null) {
-            redisUtil.delete(ACTIVATION_USER_PREFIX + accountId);
+            redisUtil.delete(VERIFICATION_USER_PREFIX + accountId);
         }
-        redisUtil.delete(ACTIVATION_PREFIX + token);
+        redisUtil.delete(VERIFICATION_PREFIX + token);
     }
 
     public String generateResetPasswordToken(String accountId) {

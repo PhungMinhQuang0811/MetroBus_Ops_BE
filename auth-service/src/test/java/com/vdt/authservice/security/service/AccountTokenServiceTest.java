@@ -26,38 +26,38 @@ class AccountTokenServiceTest {
     private final String token = "uuid-token";
 
     @Test
-    void generateActivationToken_Success() {
-        String result = accountTokenService.generateActivationToken(accountId);
+    void generateVerificationToken_Success() {
+        String result = accountTokenService.generateVerificationToken(accountId);
         assertNotNull(result);
         verify(redisUtil, times(2)).set(anyString(), anyString(), anyLong(), any(TimeUnit.class));
     }
 
     @Test
-    void getExistingActivationToken_Success() {
-        when(redisUtil.get("activation_user:" + accountId)).thenReturn(token);
-        assertEquals(token, accountTokenService.getExistingActivationToken(accountId));
+    void getExistingVerificationToken_Success() {
+        when(redisUtil.get("verification_user:" + accountId)).thenReturn(token);
+        assertEquals(token, accountTokenService.getExistingVerificationToken(accountId));
     }
 
     @Test
-    void getAccountIdByActivationToken_Success() {
-        when(redisUtil.get("activation:" + token)).thenReturn(accountId);
-        assertEquals(accountId, accountTokenService.getAccountIdByActivationToken(token));
+    void getAccountIdByVerificationToken_Success() {
+        when(redisUtil.get("verification:" + token)).thenReturn(accountId);
+        assertEquals(accountId, accountTokenService.getAccountIdByVerificationToken(token));
     }
 
     @Test
-    void deleteActivationToken_Success() {
-        when(redisUtil.get("activation:" + token)).thenReturn(accountId);
-        accountTokenService.deleteActivationToken(token);
-        verify(redisUtil).delete("activation_user:" + accountId);
-        verify(redisUtil).delete("activation:" + token);
+    void deleteVerificationToken_Success() {
+        when(redisUtil.get("verification:" + token)).thenReturn(accountId);
+        accountTokenService.deleteVerificationToken(token);
+        verify(redisUtil).delete("verification_user:" + accountId);
+        verify(redisUtil).delete("verification:" + token);
     }
 
     @Test
-    void deleteActivationToken_NotFound_StillDeletesToken() {
-        when(redisUtil.get("activation:" + token)).thenReturn(null);
-        accountTokenService.deleteActivationToken(token);
-        verify(redisUtil, never()).delete(startsWith("activation_user:"));
-        verify(redisUtil).delete("activation:" + token);
+    void deleteVerificationToken_NotFound_StillDeletesToken() {
+        when(redisUtil.get("verification:" + token)).thenReturn(null);
+        accountTokenService.deleteVerificationToken(token);
+        verify(redisUtil, never()).delete(startsWith("verification_user:"));
+        verify(redisUtil).delete("verification:" + token);
     }
 
     @Test

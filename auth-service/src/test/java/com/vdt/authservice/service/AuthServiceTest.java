@@ -106,7 +106,7 @@ class AuthServiceTest {
     void logout_EmptyCookies_StillWorks() {
         when(request.getCookies()).thenReturn(null);
         authService.logout(request, response);
-        verify(response, times(2)).addHeader(eq("Set-Cookie"), anyString());
+        verify(response, times(3)).addHeader(eq("Set-Cookie"), anyString());
     }
 
     @Test
@@ -240,5 +240,39 @@ class AuthServiceTest {
         when(accountRepository.findById("acc-id")).thenReturn(Optional.of(mockAccount));
         AppException ex = assertThrows(AppException.class, () -> authService.resetPassword(ResetPasswordRequest.builder().token("token").build()));
         assertEquals(ErrorCode.ACCOUNT_DISABLED, ex.getErrorCode());
+    }
+
+    @Test
+    void refreshToken_AccountDisabled_ThrowsException() throws Exception {
+        Cookie rtCookie = new Cookie("refresh-token", "rt-value");
+        when(request.getCookies()).thenReturn(new Cookie[]{rtCookie});
+        when(tokenManagementService.isRefreshTokenInvalidated("rt-value")).thenReturn(false);
+
+        SignedJWT signedJWT = mock(SignedJWT.class);
+        when(signedJWT.getJWTClaimsSet()).thenReturn(new JWTClaimsSet.Builder().subject(mockAccount.getId()).build());
+        when(jwtUtil.verifyRefreshToken("rt-value")).thenReturn(signedJWT);
+
+        mockAccount.setActive(false);
+        when(accountRepository.findById(mockAccount.getId())).thenReturn(Optional.of(mockAccount));
+
+        AppException ex = assertThrows(AppException.class, () -> authService.refreshToken(request, response));
+        assertEquals(ErrorCode.ACCOUNT_DISABLED, ex.getErrorCode());
+    }
+
+    @Test
+    void refreshToken_EmailNotVerified_ThrowsException() throws Exception {
+        Cookie rtCookie = new Cookie("refresh-token", "rt-value");
+        when(request.getCookies()).thenReturn(new Cookie[]{rtCookie});
+        when(tokenManagementService.isRefreshTokenInvalidated("rt-value")).thenReturn(false);
+
+        SignedJWT signedJWT = mock(SignedJWT.class);
+        when(signedJWT.getJWTClaimsSet()).thenReturn(new JWTClaimsSet.Builder().subject(mockAccount.getId()).build());
+        when(jwtUtil.verifyRefreshToken("rt-value")).thenReturn(signedJWT);
+
+        mockAccount.setEmailVerified(false);
+        when(accountRepository.findById(mockAccount.getId())).thenReturn(Optional.of(mockAccount));
+
+        AppException ex = assertThrows(AppException.class, () -> authService.refreshToken(request, response));
+        assertEquals(ErrorCode.EMAIL_NOT_VERIFIED, ex.getErrorCode());
     }
 }

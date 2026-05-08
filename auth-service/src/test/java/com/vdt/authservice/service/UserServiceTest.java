@@ -59,28 +59,28 @@ class UserServiceTest {
         when(accountRepository.existsByUsername(any())).thenReturn(false);
         when(accountRepository.save(any())).thenReturn(mockAccount);
         // Dùng any() thay cho anyString() để tránh lỗi nếu getId() bị null trong lúc mock
-        when(accountTokenService.generateActivationToken(any())).thenReturn("token-123");
+        when(accountTokenService.generateVerificationToken(any())).thenReturn("token-123");
         when(userMapper.toUserResponse(any())).thenReturn(new UserResponse());
 
         assertNotNull(userService.register(req));
-        verify(emailService).sendActivationEmail(eq("test@example.com"), eq("token-123"));
+        verify(emailService).sendVerificationEmail(eq("test@example.com"), eq("token-123"));
     }
 
     @Test
-    void activateAccount_InvalidToken_ThrowsException() {
-        when(accountTokenService.getAccountIdByActivationToken("invalid")).thenReturn(null);
-        AppException ex = assertThrows(AppException.class, () -> userService.activateAccount("invalid"));
+    void verifyRegistration_InvalidToken_ThrowsException() {
+        when(accountTokenService.getAccountIdByVerificationToken("invalid")).thenReturn(null);
+        AppException ex = assertThrows(AppException.class, () -> userService.verifyRegistration("invalid"));
         assertEquals(ErrorCode.INVALID_ONETIME_TOKEN, ex.getErrorCode());
     }
 
     @Test
-    void resendActivationEmail_Success() {
+    void resendVerificationEmail_Success() {
         when(accountRepository.findByEmail("test@example.com")).thenReturn(Optional.of(mockAccount));
-        when(accountTokenService.getExistingActivationToken(mockAccount.getId())).thenReturn("old-token");
+        when(accountTokenService.getExistingVerificationToken(mockAccount.getId())).thenReturn("old-token");
 
-        userService.resendActivationEmail("test@example.com");
+        userService.resendVerificationEmail("test@example.com");
 
-        verify(emailService).sendActivationEmail(eq("test@example.com"), eq("old-token"));
+        verify(emailService).sendVerificationEmail(eq("test@example.com"), eq("old-token"));
     }
 
     @Test
@@ -98,7 +98,7 @@ class UserServiceTest {
     }
 
     @Test
-    void activateAccount_Success() {
+    void verifyRegistration_Success() {
         // Given
         String token = "valid-token";
         String accountId = "acc-123";
@@ -107,52 +107,52 @@ class UserServiceTest {
         mockAccount.setActive(false);
         mockAccount.setEmailVerified(false);
         
-        when(accountTokenService.getAccountIdByActivationToken(token)).thenReturn(accountId);
+        when(accountTokenService.getAccountIdByVerificationToken(token)).thenReturn(accountId);
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(mockAccount));
         when(accountRepository.save(any())).thenReturn(mockAccount);
 
         // When
-        userService.activateAccount(token);
+        userService.verifyRegistration(token);
 
         // Then
         verify(accountRepository, times(1)).findById(accountId);
         verify(accountRepository, times(1)).save(mockAccount);
-        verify(accountTokenService, times(1)).deleteActivationToken(token);
+        verify(accountTokenService, times(1)).deleteVerificationToken(token);
         
         assertTrue(mockAccount.isActive(), "Account should be active");
         assertTrue(mockAccount.isEmailVerified(), "Email should be verified");
     }
 
     @Test
-    void activateAccount_AccountNotFound_ThrowsException() {
-        when(accountTokenService.getAccountIdByActivationToken("token")).thenReturn("acc-id");
+    void verifyRegistration_AccountNotFound_ThrowsException() {
+        when(accountTokenService.getAccountIdByVerificationToken("token")).thenReturn("acc-id");
         when(accountRepository.findById("acc-id")).thenReturn(Optional.empty());
-        assertThrows(AppException.class, () -> userService.activateAccount("token"));
+        assertThrows(AppException.class, () -> userService.verifyRegistration("token"));
     }
 
     @Test
-    void resendActivationEmail_UserNotFound_ThrowsException() {
+    void resendVerificationEmail_UserNotFound_ThrowsException() {
         when(accountRepository.findByEmail("no@example.com")).thenReturn(Optional.empty());
-        assertThrows(AppException.class, () -> userService.resendActivationEmail("no@example.com"));
+        assertThrows(AppException.class, () -> userService.resendVerificationEmail("no@example.com"));
     }
 
     @Test
-    void resendActivationEmail_TokenExpired_GeneratesNewToken() {
+    void resendVerificationEmail_TokenExpired_GeneratesNewToken() {
         when(accountRepository.findByEmail("test@example.com")).thenReturn(Optional.of(mockAccount));
-        when(accountTokenService.getExistingActivationToken(mockAccount.getId())).thenReturn(null);
-        when(accountTokenService.generateActivationToken(mockAccount.getId())).thenReturn("new-token");
+        when(accountTokenService.getExistingVerificationToken(mockAccount.getId())).thenReturn(null);
+        when(accountTokenService.generateVerificationToken(mockAccount.getId())).thenReturn("new-token");
 
-        userService.resendActivationEmail("test@example.com");
+        userService.resendVerificationEmail("test@example.com");
 
-        verify(accountTokenService).generateActivationToken(mockAccount.getId());
-        verify(emailService).sendActivationEmail(eq("test@example.com"), eq("new-token"));
+        verify(accountTokenService).generateVerificationToken(mockAccount.getId());
+        verify(emailService).sendVerificationEmail(eq("test@example.com"), eq("new-token"));
     }
     @Test
-    void resendActivationEmail_AlreadyVerified_ThrowsException() {
+    void resendVerificationEmail_AlreadyVerified_ThrowsException() {
         mockAccount.setEmailVerified(true);
         when(accountRepository.findByEmail("test@example.com")).thenReturn(Optional.of(mockAccount));
 
-        AppException ex = assertThrows(AppException.class, () -> userService.resendActivationEmail("test@example.com"));
+        AppException ex = assertThrows(AppException.class, () -> userService.resendVerificationEmail("test@example.com"));
         assertEquals(ErrorCode.USER_ALREADY_VERIFIED, ex.getErrorCode());
     }
 

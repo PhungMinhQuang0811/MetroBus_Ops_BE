@@ -26,6 +26,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -37,10 +38,6 @@ public class SecurityConfig {
     JwtAuthenticationFilter jwtAuthenticationFilter;
     CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     CustomAccessDeniedHandler customAccessDeniedHandler;
-
-    @NonFinal
-    @Value("${app.security.authenticated-endpoints}")
-    String[] authenticatedEndpoints;
 
     @NonFinal
     @Value("${app.security.public-endpoints}")
@@ -55,17 +52,25 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder(10);
     }
 
+
+    private static final Map<String, String> ENDPOINT_PERMISSIONS = Map.of(
+            "/users", PredefinedPermission.ACCOUNT_READ
+    );
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(authenticatedEndpoints).authenticated()
-                        .requestMatchers(publicEndpoints).permitAll()
-                        .requestMatchers("/users").hasAuthority(PredefinedPermission.ACCOUNT_READ)
-                        .anyRequest().authenticated()
-                );
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(publicEndpoints).permitAll();
+                    
+                    ENDPOINT_PERMISSIONS.forEach((endpoint, permission) ->
+                            auth.requestMatchers(endpoint).hasAuthority(permission)
+                    );
+                    
+                    auth.anyRequest().authenticated();
+                });
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

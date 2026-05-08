@@ -49,7 +49,6 @@ public class AuthController {
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(request, response);
         return ApiResponse.<Void>builder()
-                .message(ErrorCode.SUCCESS.getMessage())
                 .build();
     }
 

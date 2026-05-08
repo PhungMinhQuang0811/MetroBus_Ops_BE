@@ -42,12 +42,12 @@ public class EmailService implements IEmailService {
 
     @Async
     @Override
-    public void sendActivationEmail(String to, String token) {
-        String subject = "Account Activation";
-        String link = frontendBaseUrl + "/activate?token=" + token;
+    public void sendVerificationEmail(String to, String token) {
+        String subject = "Registration Verification";
+        String link = frontendBaseUrl + "/verify-registration?token=" + token;
         String body = "<h1>Welcome to VDT!</h1>" +
-                      "<p>Click the link below to activate your account:</p>" +
-                      "<a href=\"" + link + "\" style=\"display: inline-block; padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px;\">Activate Account</a>" +
+                      "<p>Click the link below to verify your registration:</p>" +
+                      "<a href=\"" + link + "\" style=\"display: inline-block; padding: 10px 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px;\">Verify Account</a>" +
                       "<p>If you can't click the button, copy this link: " + link + "</p>";
         sendEmail(to, subject, body);
     }

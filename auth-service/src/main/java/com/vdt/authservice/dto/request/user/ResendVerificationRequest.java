@@ -11,7 +11,7 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ResendActivationRequest {
+public class ResendVerificationRequest {
     @RequiredField(fieldName = "Email")
     @Email(message = "INVALID_EMAIL")
     String email;

@@ -1,7 +1,7 @@
 package com.vdt.authservice.controller;
 
 import com.vdt.authservice.dto.request.user.RegisterRequest;
-import com.vdt.authservice.dto.request.user.ResendActivationRequest;
+import com.vdt.authservice.dto.request.user.ResendVerificationRequest;
 import com.vdt.authservice.dto.response.ApiResponse;
 import com.vdt.authservice.dto.response.user.UserResponse;
 import com.vdt.authservice.service.UserService;
@@ -27,16 +27,16 @@ public class UserController {
                 .build();
     }
 
-    @GetMapping("/activate")
-    public ApiResponse<Void> activate(@RequestParam String token) {
-        userService.activateAccount(token);
+    @GetMapping("/verify-registration")
+    public ApiResponse<Void> verifyRegistration(@RequestParam String token) {
+        userService.verifyRegistration(token);
         return ApiResponse.<Void>builder()
                 .build();
     }
 
-    @PostMapping("/resend-activation")
-    public ApiResponse<Void> resendActivation(@Valid @RequestBody ResendActivationRequest request) {
-        userService.resendActivationEmail(request.getEmail());
+    @PostMapping("/resend-verification")
+    public ApiResponse<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        userService.resendVerificationEmail(request.getEmail());
         return ApiResponse.<Void>builder()
                 .build();
     }

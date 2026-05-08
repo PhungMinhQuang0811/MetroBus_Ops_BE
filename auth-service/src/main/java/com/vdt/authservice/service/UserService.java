@@ -55,28 +55,20 @@ public class UserService {
                 .build();
 
         account = accountRepository.save(account);
-
-        String token = accountTokenService.generateActivationToken(account.getId());
-        emailService.sendActivationEmail(account.getEmail(), token);
+        sendVerificationEmail(account);
 
         return userMapper.toUserResponse(account);
     }
 
     @Transactional
-    public void activateAccount(String token) {
-        String accountId = accountTokenService.getAccountIdByActivationToken(token);
-        if (accountId == null) {
-            throw new AppException(ErrorCode.INVALID_ONETIME_TOKEN);
-        }
-
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
+    public void verifyRegistration(String token) {
+        Account account = verifyRegistrationTokenAndGetAccount(token);
 
         account.setActive(true);
         account.setEmailVerified(true);
         accountRepository.save(account);
         
-        accountTokenService.deleteActivationToken(token);
+        accountTokenService.deleteVerificationToken(token);
     }
 
     public java.util.List<UserResponse> getAllUsers() {
@@ -85,7 +77,7 @@ public class UserService {
                 .toList();
     }
 
-    public void resendActivationEmail(String email) {
+    public void resendVerificationEmail(String email) {
         Account account = accountRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_USED_BY_ANY_ACCOUNT));
 
@@ -93,11 +85,24 @@ public class UserService {
             throw new AppException(ErrorCode.USER_ALREADY_VERIFIED);
         }
 
-        String token = accountTokenService.getExistingActivationToken(account.getId());
+        sendVerificationEmail(account);
+    }
+
+    private void sendVerificationEmail(Account account) {
+        String token = accountTokenService.getExistingVerificationToken(account.getId());
         if (token == null) {
-            token = accountTokenService.generateActivationToken(account.getId());
+            token = accountTokenService.generateVerificationToken(account.getId());
+        }
+        emailService.sendVerificationEmail(account.getEmail(), token);
+    }
+
+    private Account verifyRegistrationTokenAndGetAccount(String token) {
+        String accountId = accountTokenService.getAccountIdByVerificationToken(token);
+        if (accountId == null) {
+            throw new AppException(ErrorCode.INVALID_ONETIME_TOKEN);
         }
 
-        emailService.sendActivationEmail(account.getEmail(), token);
+        return accountRepository.findById(accountId)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
     }
 }

@@ -1,6 +1,7 @@
 package com.vdt.authservice.security.service;
 
 import com.vdt.authservice.entity.Account;
+import com.vdt.authservice.entity.Permission;
 import com.vdt.authservice.entity.Role;
 import com.vdt.authservice.exception.AppException;
 import com.vdt.authservice.exception.ErrorCode;
@@ -55,15 +56,23 @@ public class UserPermissionService {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        List<String> perms = new ArrayList<>();
-        if (!CollectionUtils.isEmpty(account.getRoles())) {
-            for (Role role : account.getRoles()) {
-                if (!CollectionUtils.isEmpty(role.getPermissions())) {
-                    role.getPermissions().forEach(p -> perms.add(p.getName()));
+        Set<String> permissions = new HashSet<>();
+
+        if (CollectionUtils.isEmpty(account.getRoles())) {
+            return permissions;
+        }
+
+        //fetch roles
+        for (Role role : account.getRoles()) {
+            //check role has permission
+            if (!CollectionUtils.isEmpty(role.getPermissions())) {
+                for (Permission p : role.getPermissions()) {
+                    permissions.add(p.getName());
                 }
             }
         }
-        return new HashSet<>(perms);
+
+        return permissions;
     }
 
     public void invalidateCache(String accountId) {

@@ -35,6 +35,7 @@ public enum ErrorCode {
     INVALID_TOKEN_FORMAT(3005, "Invalid token format", HttpStatus.BAD_REQUEST),
     USER_ALREADY_VERIFIED(3006, "This account was already verified before", HttpStatus.BAD_REQUEST),
     USER_NOT_FOUND(3007, "User not found", HttpStatus.NOT_FOUND),
+    LOGOUT_FAILED(3008, "Failed to log out. Please try again.", HttpStatus.INTERNAL_SERVER_ERROR),
 
     /**
      * Range 4xxx: Security, Authentication & System errors
@@ -47,6 +48,7 @@ public enum ErrorCode {
     EMAIL_NOT_VERIFIED(4005, "Your email has not been verified. Please check your inbox.", HttpStatus.FORBIDDEN),
     ACCOUNT_DISABLED(4006, "Your account is currently disabled or inactive.", HttpStatus.FORBIDDEN),
     ACCESS_DENIED(4007, "You do not have permission to access this resource", HttpStatus.FORBIDDEN),
+    TOKEN_EXPIRED_OR_INVALID(4008, "Token is already expired or invalid", HttpStatus.BAD_REQUEST),
     ;
 
     int code;
