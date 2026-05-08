@@ -33,6 +33,7 @@ import java.util.StringJoiner;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class JwtUtil {
+    public static final String ROLE_PREFIX = "ROLE_";
 
     @NonFinal
     @Value("${app.security.jwt.access-token-secret-key}")
@@ -114,7 +115,7 @@ public class JwtUtil {
 
         if (!CollectionUtils.isEmpty(account.getRoles())) {
             account.getRoles().forEach(role -> {
-                stringJoiner.add("ROLE_" + role.getName());
+                stringJoiner.add(ROLE_PREFIX + role.getName());
                 if (!CollectionUtils.isEmpty(role.getPermissions())) {
                     role.getPermissions().forEach(permission -> stringJoiner.add(permission.getName()));
                 }

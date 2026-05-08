@@ -13,7 +13,6 @@ import com.vdt.authservice.exception.ErrorCode;
 import com.vdt.authservice.security.service.TokenManagementService;
 import com.vdt.authservice.security.service.AccountTokenService;
 import com.vdt.authservice.security.util.JwtUtil;
-import com.vdt.authservice.util.RedisUtil;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -44,7 +43,6 @@ public class AuthService {
     JwtUtil jwtUtil;
     AccountTokenService accountTokenService;
     EmailService emailService;
-    RedisUtil redisUtil;
     TokenManagementService tokenManagementService;
 
     @NonFinal
@@ -195,8 +193,8 @@ public class AuthService {
     private ResponseCookie generateCookie(String cookieName, String cookieValue, String path, long maxAgeMiliseconds, boolean isHttpOnly) {
         return ResponseCookie
                 .from(cookieName, cookieValue)
-//                .path(path)
-                .path("/")
+                .path(path)
+//                .path("/")
 //                .domain(domain)
                 .maxAge(maxAgeMiliseconds / 1000) // seconds ~ 1days
                 .httpOnly(isHttpOnly)

@@ -1,0 +1,7 @@
+app:
+  security:
+    jwt:
+      access-token-cookie-name: access-token
+      refresh-token-cookie-name: refresh-token
+      access-token-expiration: 3600000
+      refresh-token-expiration: 86400000
