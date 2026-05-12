@@ -27,8 +27,12 @@ public class UserPermissionService {
     AccountRepository accountRepository;
     RedisUtil redisUtil;
 
-    static final String PERM_CACHE_PREFIX = "user_perms:";
+    public static final String PERM_CACHE_PREFIX = "user_perms:";
     static final long PERM_CACHE_TTL = 1; // 1 day
+
+    public void clearAllPermissionCache() {
+        redisUtil.deleteByPrefix(PERM_CACHE_PREFIX);
+    }
 
     @Transactional(readOnly = true)
     public Collection<? extends GrantedAuthority> getUserPermissions(String accountId) {

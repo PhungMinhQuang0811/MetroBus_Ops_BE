@@ -40,11 +40,4 @@ public class UserController {
         return ApiResponse.<Void>builder()
                 .build();
     }
-
-    @GetMapping
-    public ApiResponse<List<UserResponse>> getAllUsers() {
-        return ApiResponse.<List<UserResponse>>builder()
-                .result(userService.getAllUsers())
-                .build();
-    }
 }

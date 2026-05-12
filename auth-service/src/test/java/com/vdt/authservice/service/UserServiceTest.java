@@ -156,12 +156,4 @@ class UserServiceTest {
         assertEquals(ErrorCode.USER_ALREADY_VERIFIED, ex.getErrorCode());
     }
 
-    @Test
-    void getAllUsers_Success() {
-        when(accountRepository.findAll()).thenReturn(java.util.List.of(mockAccount));
-        when(userMapper.toUserResponse(any())).thenReturn(new UserResponse());
-
-        java.util.List<UserResponse> result = userService.getAllUsers();
-        assertEquals(1, result.size());
-    }
 }

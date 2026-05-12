@@ -38,6 +38,8 @@ app:
     admin:
       email: ${ADMIN_EMAIL}
       password: ${ADMIN_PASSWORD}
+  domain-name: localhost
+  email: ${APPLICATION_EMAIL}
   security:
     public-endpoints:
       "/auth/login,
@@ -47,6 +49,8 @@ app:
       /users/register, 
       /users/verify-registration,
       /users/resend-verification"
+    csrf-header-name: X-CSRF-TOKEN
+    csrf-cookie-name: XSRF-TOKEN
     refresh-path: /vdt/auth/refresh-token
     logout-path: /vdt/auth/logout
     cors-allowed-origins: "http://localhost:3000"

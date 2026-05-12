@@ -20,6 +20,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,21 +47,24 @@ public class ApplicationInitConfig {
                                          PermissionRepository permissionRepository,
                                          PasswordEncoder passwordEncoder) {
         return args -> {
-            if (roleRepository.count() == 0 && accountRepository.count() == 0) {
-                log.info("Initializing default permissions, roles and admin account...");
+            log.info("Checking and initializing missing permissions...");
+            Field[] fields = PredefinedPermission.class.getDeclaredFields();
+            for (Field field : fields) {
+                if (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers()) && field.getType() == String.class) {
+                    try {
+                        String permissionName = (String) field.get(null);
+                        createPermission(permissionRepository, permissionName, "Auto-generated permission: " + permissionName);
+                    } catch (IllegalAccessException e) {
+                        log.error("Failed to read permission constant", e);
+                    }
+                }
+            }
 
-                // 1. Create Permissions
-                Set<Permission> allPermissions = Set.of(
-                        createPermission(permissionRepository, PredefinedPermission.ACCOUNT_READ, "Grants permission to view account lists"),
-                        createPermission(permissionRepository, PredefinedPermission.ACCOUNT_DEACTIVATE, "Allows deactivating user accounts"),
-                        createPermission(permissionRepository, PredefinedPermission.ACCOUNT_ASSIGN_ROLE, "Enables assigning or revoking roles"),
-                        createPermission(permissionRepository, PredefinedPermission.ROLE_READ, "Grants access to view the list of available roles"),
-                        createPermission(permissionRepository, PredefinedPermission.ROLE_WRITE, "Allows creating new roles or modifying existing ones"),
-                        createPermission(permissionRepository, PredefinedPermission.ROLE_DELETE, "Marks a role as deleted"),
-                        createPermission(permissionRepository, PredefinedPermission.PERMISSION_READ, "Enables viewing the complete list of system permissions"),
-                        createPermission(permissionRepository, PredefinedPermission.PERMISSION_WRITE, "Allows defining and adding new functional permissions"),
-                        createPermission(permissionRepository, PredefinedPermission.PERMISSION_DELETE, "Marks a permission as deleted")
-                );
+            if (roleRepository.count() == 0 && accountRepository.count() == 0) {
+                log.info("Initializing default roles and admin account...");
+
+                // 1. Get all Permissions to assign to Admin
+                Set<Permission> allPermissions = new HashSet<>(permissionRepository.findAll());
 
                 // 2. Create Roles
                 Role adminRole = Role.builder()

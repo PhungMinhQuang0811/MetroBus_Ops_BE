@@ -36,6 +36,8 @@ public enum ErrorCode {
     USER_ALREADY_VERIFIED(3006, "This account was already verified before", HttpStatus.BAD_REQUEST),
     USER_NOT_FOUND(3007, "User not found", HttpStatus.NOT_FOUND),
     LOGOUT_FAILED(3008, "Failed to log out. Please try again.", HttpStatus.INTERNAL_SERVER_ERROR),
+    ROLE_NOT_FOUND(3009, "Role not found", HttpStatus.NOT_FOUND),
+    PERMISSION_NOT_FOUND(3010, "Permission not found", HttpStatus.NOT_FOUND),
 
     /**
      * Range 4xxx: Security, Authentication & System errors
@@ -49,6 +51,7 @@ public enum ErrorCode {
     ACCOUNT_DISABLED(4006, "Your account is currently disabled or inactive.", HttpStatus.FORBIDDEN),
     ACCESS_DENIED(4007, "You do not have permission to access this resource", HttpStatus.FORBIDDEN),
     TOKEN_EXPIRED_OR_INVALID(4008, "Token is already expired or invalid", HttpStatus.BAD_REQUEST),
+    INVALID_CSRF_TOKEN(4009, "Missing or invalid CSRF token", HttpStatus.FORBIDDEN),
     ;
 
     int code;

@@ -71,12 +71,6 @@ public class UserService {
         accountTokenService.deleteVerificationToken(token);
     }
 
-    public java.util.List<UserResponse> getAllUsers() {
-        return accountRepository.findAll().stream()
-                .map(userMapper::toUserResponse)
-                .toList();
-    }
-
     public void resendVerificationEmail(String email) {
         Account account = accountRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_USED_BY_ANY_ACCOUNT));

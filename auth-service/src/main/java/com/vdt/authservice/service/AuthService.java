@@ -27,6 +27,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,8 +73,16 @@ public class AuthService {
     @NonFinal
     @Value("${app.security.logout-path}")
     String logoutPath;
+    
+    @NonFinal
+    @Value("${app.security.csrf-cookie-name}")
+    String csrfCookieName;
 
-    public AuthResponse login(LoginRequest request, HttpServletResponse response) {
+    @Value("${app.domain-name}")
+    @NonFinal
+    String domain;
+
+    public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
         Account account = accountRepository.findByIdentifier(request.getIdentifier())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
@@ -82,6 +91,11 @@ public class AuthService {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getIdentifier(), request.getPassword())
         );
+
+        CsrfToken csrfToken = (CsrfToken) httpRequest.getAttribute(CsrfToken.class.getName());
+        if (csrfToken != null) {
+            csrfToken.getToken();
+        }
 
         setTokenCookies(response, account);
 
@@ -134,8 +148,6 @@ public class AuthService {
                 throw new AppException(ErrorCode.INVALID_REFRESH_TOKEN);
             }
         }
-        
-        // TODO: Handle CSRF token invalidation when implemented
     }
 
     private String getCookieValueByName(HttpServletRequest request, String name) {
@@ -197,6 +209,7 @@ public class AuthService {
         response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(accessTokenCookieName, "", contextPath, 0, true).toString());
         response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, "", refreshPath, 0, true).toString());
         response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(refreshTokenCookieName, "", logoutPath, 0, true).toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, generateCookie(csrfCookieName, "", contextPath, 0, false).toString());
     }
 
     private Account verifyResetPasswordTokenAndGetAccount(String token) {
@@ -216,13 +229,11 @@ public class AuthService {
         return ResponseCookie
                 .from(cookieName, cookieValue)
                 .path(path)
-//                .domain(domain)
+                .domain(domain)
                 .maxAge(maxAgeMiliseconds / 1000) // seconds ~ 1days
                 .httpOnly(isHttpOnly)
-//                .secure(true)
-                .secure(false)
-//                .sameSite("None")
-                .sameSite("Lax")
+                .secure(true)
+                .sameSite("None")
                 .build();
     }
 }
