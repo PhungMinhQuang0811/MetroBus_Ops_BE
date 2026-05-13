@@ -57,8 +57,13 @@ class AuthServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(authService, "accessTokenCookieName", "access-token");
         ReflectionTestUtils.setField(authService, "refreshTokenCookieName", "refresh-token");
+        ReflectionTestUtils.setField(authService, "csrfCookieName", "XSRF-TOKEN");
         ReflectionTestUtils.setField(authService, "accessTokenExpiration", 3600000L);
         ReflectionTestUtils.setField(authService, "refreshTokenExpiration", 86400000L);
+        ReflectionTestUtils.setField(authService, "domain", "localhost");
+        ReflectionTestUtils.setField(authService, "contextPath", "/");
+        ReflectionTestUtils.setField(authService, "refreshPath", "/auth/refresh");
+        ReflectionTestUtils.setField(authService, "logoutPath", "/auth/logout");
 
         mockAccount = Account.builder()
                 .id("acc-123")
@@ -70,31 +75,35 @@ class AuthServiceTest {
     }
 
     @Test
-    void login_Success(HttpServletRequest httpRequest) {
+    void login_Success() {
         LoginRequest req = new LoginRequest("testuser", "password");
         when(accountRepository.findByIdentifier("testuser")).thenReturn(Optional.of(mockAccount));
         when(jwtUtil.generateToken(mockAccount)).thenReturn("at");
         when(jwtUtil.generateRefreshToken(mockAccount)).thenReturn("rt");
         when(authMapper.toAuthResponse(mockAccount)).thenReturn(new AuthResponse());
 
-        AuthResponse res = authService.login(req,httpRequest, response);
+        AuthResponse res = authService.login(req, request, response);
         assertNotNull(res);
         verify(authenticationManager).authenticate(any());
     }
 
     @Test
-    void login_UserNotFound_ThrowsException(HttpServletRequest httpRequest) {
+    void login_UserNotFound_ThrowsException() {
         when(accountRepository.findByIdentifier(anyString())).thenReturn(Optional.empty());
-        assertThrows(AppException.class, () -> authService.login(new LoginRequest("no", "pwd"),httpRequest, response));
+        assertThrows(AppException.class, () -> authService.login(new LoginRequest("no", "pwd"), request, response));
     }
 
     @Test
-    void logout_Success() {
+    void logout_Success() throws Exception {
         Cookie atCookie = new Cookie("access-token", "at-value");
         Cookie rtCookie = new Cookie("refresh-token", "rt-value");
         when(request.getCookies()).thenReturn(new Cookie[]{atCookie, rtCookie});
+        
         when(jwtUtil.getExpirationAtFromAccessToken("at-value")).thenReturn(Instant.now().plusSeconds(60));
         when(jwtUtil.getExpirationAtFromRefreshToken("rt-value")).thenReturn(Instant.now().plusSeconds(60));
+        
+        SignedJWT signedJWT = mock(SignedJWT.class);
+        when(jwtUtil.verifyRefreshToken("rt-value")).thenReturn(signedJWT);
 
         authService.logout(request, response);
 
@@ -106,7 +115,7 @@ class AuthServiceTest {
     void logout_EmptyCookies_StillWorks() {
         when(request.getCookies()).thenReturn(null);
         authService.logout(request, response);
-        verify(response, times(3)).addHeader(eq("Set-Cookie"), anyString());
+        verify(response, times(4)).addHeader(eq("Set-Cookie"), anyString());
     }
 
     @Test

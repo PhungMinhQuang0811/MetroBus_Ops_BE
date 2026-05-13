@@ -90,4 +90,35 @@ class RedisUtilTest {
         redisUtil.addSet(key, java.util.Collections.emptyList(), 1, TimeUnit.HOURS);
         verify(redisTemplate, never()).opsForSet();
     }
+
+    @Test
+    void deleteByPrefix_Success() {
+        String prefix = "user_perms:";
+        Set<String> keys = Set.of("user_perms:1", "user_perms:2");
+        when(redisTemplate.keys(prefix + "*")).thenReturn(keys);
+
+        redisUtil.deleteByPrefix(prefix);
+
+        verify(redisTemplate).delete(keys);
+    }
+
+    @Test
+    void deleteByPrefix_KeysNull_ShouldNotDelete() {
+        String prefix = "empty:";
+        when(redisTemplate.keys(prefix + "*")).thenReturn(null);
+
+        redisUtil.deleteByPrefix(prefix);
+
+        verify(redisTemplate, never()).delete(anyCollection());
+    }
+
+    @Test
+    void deleteByPrefix_KeysEmpty_ShouldNotDelete() {
+        String prefix = "empty:";
+        when(redisTemplate.keys(prefix + "*")).thenReturn(java.util.Collections.emptySet());
+
+        redisUtil.deleteByPrefix(prefix);
+
+        verify(redisTemplate, never()).delete(anyCollection());
+    }
 }

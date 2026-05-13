@@ -99,4 +99,13 @@ class UserPermissionServiceTest {
         // Then
         verify(redisUtil, times(1)).delete(cacheKey);
     }
+
+    @Test
+    void clearAllPermissionCache_Success() {
+        // When
+        userPermissionService.clearAllPermissionCache();
+
+        // Then
+        verify(redisUtil, times(1)).deleteByPrefix(UserPermissionService.PERM_CACHE_PREFIX);
+    }
 }
