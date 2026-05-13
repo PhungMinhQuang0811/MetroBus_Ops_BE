@@ -70,22 +70,22 @@ class AuthServiceTest {
     }
 
     @Test
-    void login_Success() {
+    void login_Success(HttpServletRequest httpRequest) {
         LoginRequest req = new LoginRequest("testuser", "password");
         when(accountRepository.findByIdentifier("testuser")).thenReturn(Optional.of(mockAccount));
         when(jwtUtil.generateToken(mockAccount)).thenReturn("at");
         when(jwtUtil.generateRefreshToken(mockAccount)).thenReturn("rt");
         when(authMapper.toAuthResponse(mockAccount)).thenReturn(new AuthResponse());
 
-        AuthResponse res = authService.login(req, response);
+        AuthResponse res = authService.login(req,httpRequest, response);
         assertNotNull(res);
         verify(authenticationManager).authenticate(any());
     }
 
     @Test
-    void login_UserNotFound_ThrowsException() {
+    void login_UserNotFound_ThrowsException(HttpServletRequest httpRequest) {
         when(accountRepository.findByIdentifier(anyString())).thenReturn(Optional.empty());
-        assertThrows(AppException.class, () -> authService.login(new LoginRequest("no", "pwd"), response));
+        assertThrows(AppException.class, () -> authService.login(new LoginRequest("no", "pwd"),httpRequest, response));
     }
 
     @Test
