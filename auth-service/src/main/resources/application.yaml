@@ -26,7 +26,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false # true for debug
   data:
     redis:
       host: ${REDIS_HOST}

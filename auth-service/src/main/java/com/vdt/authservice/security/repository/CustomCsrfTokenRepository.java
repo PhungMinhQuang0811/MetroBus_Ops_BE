@@ -24,7 +24,6 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
     long maxAge;
     String domain;
     String contextPath;
-    String logoutPath;
 
     @Override
     public CsrfToken generateToken(HttpServletRequest request) {

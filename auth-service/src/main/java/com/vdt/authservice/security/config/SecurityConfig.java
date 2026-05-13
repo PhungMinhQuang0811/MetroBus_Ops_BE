@@ -71,10 +71,6 @@ public class SecurityConfig {
     @Value("${server.servlet.context-path:/}")
     String contextPath;
 
-    @NonFinal
-    @Value("${app.security.logout-path}")
-    String logoutPath;
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(10);
@@ -147,8 +143,7 @@ public class SecurityConfig {
                         csrfHeaderName,
                         refreshTokenExpiration / 1000,
                         domain,
-                        contextPath,
-                        logoutPath
+                        contextPath
                 ))
                 .csrfTokenRequestHandler(requestHandler)
                 .ignoringRequestMatchers(publicEndpoints)
