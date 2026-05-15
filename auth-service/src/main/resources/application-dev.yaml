@@ -1,0 +1,23 @@
+springdoc:
+  swagger-ui:
+    enabled: true
+    operations-sorter: alpha
+    tags-sorter: alpha
+  show-actuator: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  security:
+    public-endpoints:
+      "/v3/api-docs/**,
+      /swagger-ui/**,
+      /swagger-ui.html,
+      /actuator/**"

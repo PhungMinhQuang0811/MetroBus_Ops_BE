@@ -6,6 +6,8 @@ server:
 spring:
   application:
     name: auth-service
+  profiles:
+    active: dev
   mail:
     host: sandbox.smtp.mailtrap.io
     port: 2525
@@ -31,6 +33,15 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health, info, metrics"
+  endpoint:
+    health:
+      show-details: when_authorized
 
 app:
   init:

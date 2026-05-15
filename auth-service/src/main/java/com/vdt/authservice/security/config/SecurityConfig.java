@@ -1,6 +1,7 @@
 package com.vdt.authservice.security.config;
 
 import com.vdt.authservice.constant.PredefinedPermission;
+import com.vdt.authservice.constant.SecurityConstants;
 import com.vdt.authservice.security.auth.JwtAuthenticationFilter;
 import com.vdt.authservice.security.repository.CustomCsrfTokenRepository;
 import lombok.AccessLevel;
@@ -77,23 +78,6 @@ public class SecurityConfig {
     }
 
 
-    private static final Map<String, String> ENDPOINT_PERMISSIONS = Map.of(
-            "/test/permissions", PredefinedPermission.PERMISSION_READ,
-            "/test/create-account", PredefinedPermission.ACCOUNT_CREATE,
-            "/test/change-password", PredefinedPermission.ACCOUNT_UPDATE,
-            "/test/deactivate-account", PredefinedPermission.ACCOUNT_DEACTIVATE,
-            "/test/activate-account", PredefinedPermission.ACCOUNT_ACTIVATE,
-            "/test/add-permission", PredefinedPermission.PERMISSION_WRITE,
-            "/test/update-permission/**", PredefinedPermission.PERMISSION_WRITE,
-            "/test/add-permission-to-role", PredefinedPermission.PERMISSION_WRITE,
-            "/test/add-role-to-user", PredefinedPermission.PERMISSION_WRITE
-//            "/test/add-permission-to-mee", PredefinedPermission.PERMISSION_WRITE
-    );
-
-    private static final String[] thirdPartyEndpoints = {
-
-    };
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -125,7 +109,8 @@ public class SecurityConfig {
 
     private void configureAuthorization(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
         auth.requestMatchers(publicEndpoints).permitAll();
-        ENDPOINT_PERMISSIONS.forEach((endpoint, permission) ->
+
+        SecurityConstants.ENDPOINT_PERMISSIONS.forEach((endpoint, permission) ->
                 auth.requestMatchers(endpoint).hasAuthority(permission)
         );
         auth.anyRequest().authenticated();
@@ -147,7 +132,7 @@ public class SecurityConfig {
                 ))
                 .csrfTokenRequestHandler(requestHandler)
                 .ignoringRequestMatchers(publicEndpoints)
-                .ignoringRequestMatchers(thirdPartyEndpoints);
+                .ignoringRequestMatchers(SecurityConstants.ENDPOINT_THIRD_PARTY);
     }
 
 }
