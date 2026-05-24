@@ -57,4 +57,5 @@ public enum ErrorCode {
     int code;
     String message;
     HttpStatusCode httpStatusCode;
+
 }
