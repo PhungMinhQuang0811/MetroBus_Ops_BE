@@ -7,8 +7,7 @@ import java.util.Set;
 
 public class ExternalRolesValidator implements ConstraintValidator<ExternalRolesConstraint, Set<String>> {
     private static final Set<String> ALLOWED_ROLES = Set.of(
-            PredefinedRole.USER_1,
-            PredefinedRole.USER_2
+            PredefinedRole.PASSENGER
     );
 
     @Override

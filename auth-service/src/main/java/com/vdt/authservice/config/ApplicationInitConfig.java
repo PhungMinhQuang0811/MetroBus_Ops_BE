@@ -24,7 +24,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Configuration
 @ConditionalOnProperty(prefix = "app.init", name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -41,11 +40,13 @@ public class ApplicationInitConfig {
     @Value("${app.init.admin.password}")
     String adminPassword;
 
+    String adminUsername = "admin";
+
     @Bean
-    ApplicationRunner applicationRunner(AccountRepository accountRepository, 
-                                         RoleRepository roleRepository, 
-                                         PermissionRepository permissionRepository,
-                                         PasswordEncoder passwordEncoder) {
+    ApplicationRunner applicationRunner(AccountRepository accountRepository,
+                                        RoleRepository roleRepository,
+                                        PermissionRepository permissionRepository,
+                                        PasswordEncoder passwordEncoder) {
         return args -> {
             log.info("Checking and initializing missing permissions...");
             Field[] fields = PredefinedPermission.class.getDeclaredFields();
@@ -53,7 +54,19 @@ public class ApplicationInitConfig {
                 if (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers()) && field.getType() == String.class) {
                     try {
                         String permissionName = (String) field.get(null);
-                        createPermission(permissionRepository, permissionName, "Auto-generated permission: " + permissionName);
+
+                        String description = null;
+                        for (PredefinedPermission.Definition permissionDefinition : PredefinedPermission.Definition.values()) {
+                            if (permissionDefinition.getName().equals(permissionName)) {
+                                description = permissionDefinition.getDescription();
+                            }
+                        }
+
+                        if (description == null) {
+                            description = "Auto-generated permission: " + permissionName;
+                        }
+
+                        createPermission(permissionRepository, permissionName, description);
                     } catch (IllegalAccessException e) {
                         log.error("Failed to read permission constant", e);
                     }
@@ -63,37 +76,66 @@ public class ApplicationInitConfig {
             if (roleRepository.count() == 0 && accountRepository.count() == 0) {
                 log.info("Initializing default roles and admin account...");
 
-                // 1. Get all Permissions to assign to Admin
-                Set<Permission> allPermissions = new HashSet<>(permissionRepository.findAll());
+                // --- ĐOẠN SỬA ĐỔI CHÍNH XÁC: CHỈ LẤY ĐÚNG CÁC QUYỀN ĐÃ ĐỊNH NGHĨA TRONG ENUM ---
+                Set<Permission> adminPermissions = new HashSet<>();
 
-                // 2. Create Roles
-                Role adminRole = Role.builder()
-                        .name(PredefinedRole.ADMIN)
-                        .description("Administrator Role")
-                        .permissions(allPermissions)
-                        .build();
+                for (PredefinedPermission.Definition permissionDefinition : PredefinedPermission.Definition.values()) {
+                    // Chủ động tìm kiếm thực thể Permission dưới DB bằng chính xác chuỗi định danh (Name)
+                    Permission savedPerm = permissionRepository.findByName(permissionDefinition.getName()).orElse(null);
+                    if (savedPerm != null) {
+                        adminPermissions.add(savedPerm);
+                    }
+                }
+                // -----------------------------------------------------------------------------
 
-                roleRepository.save(adminRole);
+                // Khởi tạo danh mục các Role nền tảng cho hệ thống
+                Role adminRole = null;
 
-                // 3. Create Admin Account
-                Account adminAccount = Account.builder()
-                        .email(adminEmail)
-                        .username("admin")
-                        .password(passwordEncoder.encode(adminPassword))
-                        .isActive(true)
-                        .isEmailVerified(true)
-                        .roles(Set.of(adminRole))
-                        .build();
-                
-                accountRepository.save(adminAccount);
+                for (PredefinedRole.Definition roleDefinition : PredefinedRole.Definition.values()) {
+                    Set<Permission> rolePermissions;
 
-                log.info("Initialization completed successfully.");
+                    // Nếu đúng là vai trò ADMIN thì mới đắp bộ quyền Identity tối giản vừa lọc ở trên vào
+                    if (roleDefinition.getName().equals(PredefinedRole.ADMIN)) {
+                        rolePermissions = adminPermissions; // <--- Chỉ gán đúng các quyền Auth cơ bản, tuyệt đối không gán All bừa bãi
+                    } else {
+                        rolePermissions = new HashSet<>(); // Các role khác để trống quyền để cấu hình động sau
+                    }
+
+                    Role role = Role.builder()
+                            .name(roleDefinition.getName())
+                            .description(roleDefinition.getDescription())
+                            .permissions(rolePermissions)
+                            .build();
+
+                    Role savedRole = roleRepository.save(role);
+
+                    if (roleDefinition.getName().equals(PredefinedRole.ADMIN)) {
+                        adminRole = savedRole;
+                    }
+                }
+
+                // Khởi tạo DUY NHẤT 1 tài khoản Admin tối cao của hệ thống
+                if (adminRole != null) {
+                    Account adminAccount = Account.builder()
+                            .email(adminEmail)
+                            .username(adminUsername)
+                            .password(passwordEncoder.encode(adminPassword))
+                            .isActive(true)
+                            .isEmailVerified(true)
+                            .roles(Set.of(adminRole))
+                            .build();
+
+                    accountRepository.save(adminAccount);
+                    log.info("Initialization completed successfully. Admin account created.");
+                } else {
+                    log.error("Failed to initialize system: Admin role could not be found.");
+                }
             }
         };
     }
 
-    private Permission createPermission(PermissionRepository repository, String name, String description) {
-        return repository.findByName(name).orElseGet(() -> {
+    private void createPermission(PermissionRepository repository, String name, String description) {
+        repository.findByName(name).orElseGet(() -> {
             Permission p = Permission.builder().name(name).description(description).build();
             return repository.save(p);
         });

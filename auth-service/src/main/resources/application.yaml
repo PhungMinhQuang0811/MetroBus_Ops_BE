@@ -45,7 +45,7 @@ management:
 
 app:
   init:
-    enabled: false
+    enabled: true
     admin:
       email: ${ADMIN_EMAIL}
       password: ${ADMIN_PASSWORD}
