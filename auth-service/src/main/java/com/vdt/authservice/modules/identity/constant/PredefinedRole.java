@@ -29,13 +29,13 @@ public class PredefinedRole {
     @Getter
     @RequiredArgsConstructor
     public enum Definition {
-        SUPER_ADMIN(ADMIN, "Quản trị viên hệ thống - Quản lý cấu hình hệ thống, biểu giá và đối soát tổng"),
-        PLATFORM_MNG(PLATFORM_MANAGER, "Quản lý nền tảng - Khởi tạo không gian làm việc (Workspace) cho đơn vị mới, cấu hình biểu giá trần và giám sát đối soát vĩ mô"),
-        COMP_MANAGER(COMPANY_MANAGER, "Quản lý đơn vị vận hành - Quản lý nhân sự, ca trực và báo cáo doanh thu nội bộ đơn vị"),
-        STF(STAFF, "Nhân viên vận hành - Trực ca kíp tại quầy, hỗ trợ hành khách xử lý sự cố thẻ lỗi"),
-        PSG(PASSENGER, "Hành khách - Người tham gia giao thông sử dụng dịch vụ thẻ vé liên tuyến");
+        ADMIN("Quản trị viên hệ thống - Quản lý cấu hình hệ thống, biểu giá và đối soát tổng"),
+        PLATFORM_MANAGER("Quản lý nền tảng - Khởi tạo không gian làm việc (Workspace) cho đơn vị mới, cấu hình biểu giá trần và giám sát đối soát"),
+        COMPANY_MANAGER("Quản lý đơn vị vận hành - Quản lý nhân sự, ca trực và báo cáo doanh thu nội bộ đơn vị"),
+        STAFF("Nhân viên vận hành - Trực ca kíp tại quầy, hỗ trợ hành khách xử lý sự cố thẻ lỗi"),
+        PASSENGER("Hành khách - Người tham gia giao thông sử dụng dịch vụ thẻ vé liên tuyến");
 
-        private final String name;
+        // Chỉ cần lưu mỗi Description, bỏ trường "name" đi vì bản thân tên Enum đã là Name rồi
         private final String description;
     }
 

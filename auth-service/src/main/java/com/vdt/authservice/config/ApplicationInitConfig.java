@@ -95,14 +95,14 @@ public class ApplicationInitConfig {
                 Set<Permission> rolePermissions;
 
                 // Nếu đúng là vai trò ADMIN kỹ thuật thì gán danh mục quyền tối giản cốt lõi vào
-                if (roleDefinition.getName().equals(PredefinedRole.ADMIN)) {
+                if (roleDefinition.name().equals(PredefinedRole.ADMIN)) {
                     rolePermissions = adminPermissions;
                 } else {
                     rolePermissions = new HashSet<>(); // Các role khác để trống quyền để gán động sau
                 }
 
                 // Gọi hàm bọc kiểm tra: Chưa có dưới DB thì mới tạo mới
-                createRole(roleRepository, roleDefinition.getName(), roleDefinition.getDescription(), rolePermissions);
+                createRole(roleRepository, roleDefinition.name(), roleDefinition.getDescription(), rolePermissions);
             }
 
             // =========================================================================

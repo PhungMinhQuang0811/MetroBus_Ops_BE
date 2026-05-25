@@ -51,6 +51,7 @@ app:
       password: ${ADMIN_PASSWORD}
   domain-name: localhost
   email: ${APPLICATION_EMAIL}
+  timezone: ${APP_TIMEZONE}
   security:
     public-endpoints:
       "/auth/login,

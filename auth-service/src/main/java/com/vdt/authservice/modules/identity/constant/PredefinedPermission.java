@@ -23,14 +23,15 @@ public class PredefinedPermission {
     @Getter
     @RequiredArgsConstructor
     public enum Definition {
-        ACT_READ(ACCOUNT_READ, "Admin: Xem danh sách và thông tin chi tiết toàn bộ tài khoản"),
-        ACT_ACT(ACCOUNT_ACTIVATE, "Mở khóa hoặc kích hoạt lại trạng thái hoạt động của tài khoản"),
-        ACT_DEA(ACCOUNT_DEACTIVATE, "Vô hiệu hóa hoặc tạm khóa (Ban) trạng thái tài khoản người dùng"),
+        ACCOUNT_READ("account:read", "Admin: Xem danh sách và thông tin chi tiết toàn bộ tài khoản"),
+        ACCOUNT_ACTIVATE("activate:account", "Mở khóa hoặc kích hoạt lại trạng thái hoạt động của tài khoản"),
+        ACCOUNT_DEACTIVATE("account:deactivate", "Vô hiệu hóa hoặc tạm khóa (Ban) trạng thái tài khoản người dùng"),
 
-        SYS_LOG(SYSTEM_LOG_READ, "Tra cứu hệ thống nhật ký vết (Audit Logs) để thanh tra vận hành"),
-        ROL_MNG(ROLE_MANAGE, "Quản trị danh mục cấu hình các Vai trò (Roles)"),
-        PRM_MNG(PERMISSION_MANAGE, "Quản trị danh mục cấu hình các Quyền hạn chi tiết (Permissions)");
+        SYSTEM_LOG_READ("system:log:read", "Tra cứu hệ thống nhật ký vết (Audit Logs) để thanh tra vận hành"),
+        ROLE_MANAGE("role:manage", "Quản trị danh mục cấu hình các Vai trò (Roles)"),
+        PERMISSION_MANAGE("permission:manage", "Quản trị danh mục cấu hình các Quyền hạn chi tiết (Permissions)");
 
+        // Bạn giữ lại trường "name" để lưu chuỗi có dấu ":" phục vụ việc lưu xuống DB và check quyền
         private final String name;
         private final String description;
     }
