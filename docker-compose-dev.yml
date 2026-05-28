@@ -1,4 +1,4 @@
-name: metro-ticket
+name: metro-bus
 version: '3.8'
 
 services:
