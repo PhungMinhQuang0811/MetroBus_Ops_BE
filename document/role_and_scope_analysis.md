@@ -1,16 +1,16 @@
 # TÀI LIỆU ĐẶC TẢ VAI TRÒ & PHẠM VI HỆ THỐNG (ROLES & SCOPES SPECIFICATION)
 
-Tài liệu này đặc tả chi tiết mối quan hệ giữa **5 Vai trò hệ thống** (định nghĩa đồng bộ với `PredefinedRole.java`) và **Ranh giới Kiểm soát dữ liệu** (Scopes) trong kiến trúc đa đơn vị vận hành (Multi-tenant) thuộc hệ thống thẻ vé giao thông công cộng tự động (AFC).
+Tài liệu này đặc tả chi tiết mối quan hệ giữa **6 actor/scope hệ thống** (5 vai trò đăng nhập đồng bộ với `PredefinedRole.java` và 1 scope ẩn danh `GUEST`) và **Ranh giới Kiểm soát dữ liệu** (Scopes) trong kiến trúc đa đơn vị vận hành (Multi-tenant) thuộc hệ thống thẻ vé giao thông công cộng tự động (AFC).
 
 > [!NOTE]
 > Tài liệu Đặc tả Yêu cầu Phần mềm chính thức chứa thiết kế cơ sở dữ liệu vật lý, các thuật toán tính toán và quy trình soát vé nằm tại:  
-> 👉 **[SRS_MetroTicket.md](file:///C:/Users/phung/.gemini/antigravity-ide/brain/cf8ddd6d-86fd-4151-8d8d-518f848b70b3/SRS_MetroTicket.md)**
+> 👉 **[SRS_MetroBusTicket.md](SRS_MetroBusTicket.md)**
 
 ---
 
 ## 1. BẢN ĐỒ PHÂN LỚP VAI TRÒ (HIERARCHICAL ROLE MAP)
 
-Hệ thống được tổ chức thành 5 tầng phân quyền từ vĩ mô đến vi mô, đảm bảo tính bảo mật và độc lập dữ liệu tuyệt đối giữa các đơn vị vận hành khác nhau.
+Hệ thống được tổ chức thành 5 tầng phân quyền đăng nhập từ vĩ mô đến vi mô, kèm scope `GUEST` cho luồng Web Portal công khai chưa đăng nhập. Cấu trúc này đảm bảo tính bảo mật và độc lập dữ liệu tuyệt đối giữa các đơn vị vận hành khác nhau.
 
 ```mermaid
 graph TD
@@ -18,6 +18,7 @@ graph TD
     PLATFORM_MNG --> COMP_MNG[COMPANY_MANAGER - Quản lý đơn vị]
     COMP_MNG --> STAFF[STAFF - Nhân viên quầy/ca trực]
     ADMIN -.-> PASSENGER[PASSENGER - Hành khách]
+    GUEST[GUEST - Khách vãng lai Web Portal]
 ```
 
 ---
@@ -34,14 +35,14 @@ graph TD
 ### 2.2. `PLATFORM_MANAGER` (Quản lý nền tảng - Sở Giao Thông / Viettel VTS)
 *   **Định nghĩa:** Đơn vị cung cấp, vận hành và quản lý tài chính liên thông của toàn bộ mạng lưới (SaaS Platform Operator).
 *   **Ranh giới kiểm soát (Scope Boundary):** **Multi-tenant Platform Scope (Phạm vi Vận hành Nền tảng & Đối soát).**
-    *   Quản lý không gian làm việc của các đơn vị vận hành (Tenants/Workspaces), thiết lập khung giá trần toàn mạng lưới.
+    *   Quản lý không gian làm việc của các đơn vị vận hành (Tenants/Workspaces). Trong backend MVP, tenant được ánh xạ bằng `operators.operator_id`; danh mục `tenants/companies` đọc nhanh nếu cần sẽ nằm trong backend resource `tenants.json`.
     *   **Thực thi đối soát tổng hợp (Clearing & Settlement):** Thực hiện tiến trình đối soát phân chia doanh thu liên thông và giải quyết các dòng tiền kết chuyển giữa hệ thống trung tâm và các công ty con.
 *   **Ý nghĩa nghiệp vụ:** Đóng vai trò là "Nhà cái/Trọng tài kinh tế" trực tiếp làm việc, thanh quyết toán dòng tiền với các quản lý đơn vị vận hành (`COMPANY_MANAGER`).
 
 ### 2.3. `COMPANY_MANAGER` (Quản lý đơn vị vận hành - e.g., Manager VinBus / Cát Linh)
 *   **Định nghĩa:** Quản trị viên cấp cao nhất của riêng một đơn vị vận hành cụ thể (Tenant Admin).
 *   **Ranh giới kiểm soát (Scope Boundary):** **Tenant/Company Scope - Isolated (Phạm vi Cô lập Đơn vị).**
-    *   Dữ liệu hoàn toàn bị cô lập trong ranh giới đơn vị (`company_id` hoặc `tenant_id`).
+    *   Dữ liệu hoàn toàn bị cô lập trong ranh giới đơn vị (`operator_id`, tương đương tenant/company vận hành trong `ticket-service`).
     *   Tuyệt đối không thể xem, sửa hoặc tương tác với dữ liệu (nhân sự, doanh thu, ca trực, trạm ga) của các đơn vị khác.
 *   **Ý nghĩa nghiệp vụ:** Đảm bảo tính bảo mật thương mại và an toàn thông tin nội bộ giữa các doanh nghiệp vận hành độc lập cạnh tranh nhau.
 
@@ -65,12 +66,13 @@ graph TD
 *   **Ranh giới kiểm soát (Scope Boundary):** **Self-Service Scope (Phạm vi Tự phục vụ Cá nhân).**
     *   Chỉ truy cập và tương tác với dữ liệu của chính mình (thông tin tài khoản, danh sách thẻ cá nhân, lịch sử đi lại, số dư ví).
     *   Tuyệt đối không thể truy xuất dữ liệu của bất kỳ hành khách nào khác.
+    *   Trên PWA, Passenger chỉ phát hành thẻ ảo, gia hạn/mua vé và số hóa thẻ cứng đã mua sang thẻ ảo; không tham gia luồng mua thẻ cứng UC07.
 *   **Ý nghĩa nghiệp vụ:** Bảo vệ quyền riêng tư dữ liệu cá nhân theo quy định pháp luật.
 
 ### 2.6. `GUEST` (Khách vãng lai / Người dùng ẩn danh)
 *   **Định nghĩa:** Người dùng chưa đăng nhập tài khoản hệ thống, truy cập công khai vào Cổng mua vé công cộng (Web Desktop Portal).
 *   **Ranh giới kiểm soát (Scope Boundary):** **Anonymous Web Scope (Phạm vi Trình duyệt Ẩn danh).**
-    *   Chỉ được phép thực hiện điền biểu mẫu mua/đăng ký thẻ cứng vật lý và mua vé chặng lẻ dùng 1 lần, thực hiện thanh toán trực tuyến qua OnePay.
+    *   Chỉ được phép thực hiện điền biểu mẫu mua/đăng ký thẻ cứng vật lý theo luồng UC07 Guest Checkout và mua vé chặng lẻ dùng 1 lần, thực hiện thanh toán trực tuyến qua VNPay Sandbox ở môi trường dev hoặc Sepay/VietQR ở production.
     *   Tuyệt đối không có tài khoản ví điện tử nội bộ, không có lịch sử đi lại cá nhân, và không có quyền truy xuất bất kỳ thông tin nào khác trên hệ thống.
 *   **Ý nghĩa nghiệp vụ:** Triệt tiêu hoàn toàn rào cản đăng nhập, tối ưu doanh thu bán vé công cộng cho mạng lưới.
 
@@ -95,7 +97,7 @@ Dưới đây là ma trận ánh xạ chi tiết giữa các Vai trò và các h
 | **Quản lý Thẻ vé** | Khởi tạo phôi thẻ mới vào DB | | | | **X** | | |
 | | In thẻ cứng & Cập nhật đơn hàng | | | | **X** | | |
 | | Thu hồi, khóa thẻ lỗi/thẻ hết hạn | | | | **X** | | |
-| | **Đăng ký mua thẻ cứng trực tuyến (Guest Checkout)** | | | | | **X** | **X** |
+| | **Đăng ký mua thẻ cứng trực tuyến (Guest Checkout)** | | | | | | **X** |
 | | **Số hóa thẻ cứng vật lý thành thẻ ảo trên PWA** | | | | | **X** | |
 | | **Mua vé lượt chặng lẻ trực tuyến (Guest Checkout)** | | | | | **X** | **X** |
 | | Đăng ký thẻ ảo trực tiếp (QR Code định danh) | | | | | **X** | |
@@ -161,8 +163,8 @@ Nhờ mối quan hệ N-N giữa `ROLES` và `PERMISSIONS` thông qua bảng tru
 ## 5. CÁC RÀNG BUỘC PHẠM VI VẬN HÀNH KỸ THUẬT (SYSTEM BOUNDARIES)
 
 ### 5.1. Cơ chế Cô lập Đa đơn vị (Multi-tenant Isolation)
-*   Mọi bảng dữ liệu liên quan đến nghiệp vụ nội bộ (ví dụ: `trips`, `stations`, `routes`, `users` là nhân viên) bắt buộc phải có cột `company_id`.
-*   Trên Backend Spring Boot, sử dụng **Hibernate Filter** hoặc viết **Aspect (AOP)** để tự động chèn thêm điều kiện `WHERE company_id = CURRENT_USER_COMPANY_ID` vào tất cả các câu lệnh truy vấn phát sinh từ vai trò `COMPANY_MANAGER` hoặc `STAFF`.
+*   Mọi bảng dữ liệu liên quan đến nghiệp vụ nội bộ (ví dụ: `stations`, `routes`, `staff_shifts`, `transactions`) phải có `operator_id` trực tiếp hoặc có đường suy ra `operator_id` bắt buộc qua quan hệ tuyến/trạm.
+*   Trên Backend Spring Boot, sử dụng **Hibernate Filter** hoặc viết **Aspect (AOP)** để tự động chèn thêm điều kiện scope theo `operator_id = CURRENT_USER_OPERATOR_ID` vào tất cả các câu lệnh truy vấn phát sinh từ vai trò `COMPANY_MANAGER` hoặc `STAFF`.
 
 ### 5.2. Ràng buộc toàn vẹn của Ca trực (Shift Integrity)
 *   Mọi hành động phát hành thẻ, thu hồi thẻ hoặc sửa lỗi thẻ của nhân viên `STAFF` bắt buộc phải truyền kèm `shift_id`.
@@ -208,7 +210,7 @@ Khi xảy ra các ca lỗi này, chuyến đi của khách sẽ bị treo ở tr
     * `amount = 10000` (10,000 VNĐ)
     * `payment_method = 'CASH'` (Tiền mặt)
     * `status = 'SUCCESS'`
-    * `wallet_id = NULL` (Không liên quan đến ví điện tử cá nhân của khách do nộp tiền mặt trực tiếp tại quầy)
+    * `wallet_id = NULL` (Không liên quan đến ví nội bộ cá nhân của khách do nộp tiền mặt trực tiếp tại quầy)
     * `shift_id = current_staff_shift_id` (Ghi nhận trực tiếp vào doanh thu tiền mặt ca trực hiện tại của nhân viên đó phục vụ cho việc đối chiếu kết ca trực sau này).
 
 ### 5.6. Cơ chế phân biệt tự động và kiểm soát chống lạm dụng (Oversight & Fraud Prevention)
@@ -232,7 +234,7 @@ flowchart TD
 ```
 
 #### 1. Tự động đối chiếu với Nhật ký sự cố hệ thống (Incident Logs Integration)
-* **Cơ chế hoạt động:** Hệ thống duy trì bảng cơ sở dữ liệu `incident_logs` ghi nhận các sự cố toàn ga (mất điện, sơ tán khẩn cấp, nghẽn mạng) hoặc lỗi chẩn đoán của từng cổng soát vé (`gate_malfunction_events`) theo khoảng thời gian thực tế.
+* **Cơ chế hoạt động:** Hệ thống duy trì collection MongoDB `incident_logs` ghi nhận các sự cố toàn ga (mất điện, sơ tán khẩn cấp, nghẽn mạng) hoặc lỗi chẩn đoán của từng cổng soát vé theo khoảng thời gian thực tế. Không tạo thêm bảng riêng `gate_malfunction_events` trong MVP; các sự kiện lỗi cổng được lưu như một loại `incident_type` trong `incident_logs`.
 * **Xử lý tự động:** Khi quét thẻ bị lỗi, hệ thống đối soát thời gian check-in của chuyến đi bị treo với nhật ký sự cố của ga vào/ga ra. Nếu trùng khớp thời gian xảy ra sự cố, hệ thống **tự động khóa nút "Giải khóa có phạt"** và chỉ cho phép nhân viên ga nhấn **"Giải khóa miễn phí"**, loại bỏ hoàn toàn yếu tố cảm tính của con người.
 
 #### 2. Luật miễn trừ tự động cho Hành khách dùng Vé tháng (Subscription Exemption)
