@@ -1,4 +1,4 @@
-# TIÊU CHÍ NGHIỆM THU USE CASE (ACCEPTANCE CRITERIA)
+﻿# TIÊU CHÍ NGHIỆM THU USE CASE (ACCEPTANCE CRITERIA)
 
 **Dự án:** Hệ thống Quản lý Vé tháng Giao thông Công cộng tự động (PFC/AFC MVP)  
 **Phạm vi:** 27 Use Case trong `use_case_specifications.md`  
@@ -12,7 +12,7 @@
 - Webcam Gate Simulator chỉ xác thực Dynamic QR của thẻ/vé điện tử đã mua trước và ghi nhận hành trình. Validator không nạp tiền hoặc trừ tiền ví tại thời điểm quét.
 - Dữ liệu của `COMPANY_MANAGER` và `STAFF` phải bị giới hạn theo `operator_id`. Người dùng không được đọc hoặc sửa dữ liệu của đơn vị vận hành khác.
 - Mọi giao dịch tài chính phải chống xử lý trùng, lưu được lịch sử và có trạng thái rõ ràng.
-- Các thao tác tiền mặt tại quầy phải gắn với `staff_id`, `shift_id` đang hoạt động và lý do nghiệp vụ nếu có.
+- Các thao tác tại quầy phải gắn với `staff_id`, `shift_id` đang hoạt động và lý do nghiệp vụ nếu có.
 - Các tiêu chí được đánh dấu `[P0]` là bắt buộc để nghiệm thu MVP. `[P1]` là tiêu chí hoàn thiện trong phạm vi đã định nghĩa, có thể được triển khai sau khi luồng chính ổn định.
 
 ---
@@ -24,7 +24,7 @@
 - [ ] **AC-UC01-01 [P0]** Given hành khách nhập số điện thoại hợp lệ chưa có tài khoản, when nhấn "Tiếp tục", then hệ thống sinh OTP 6 chữ số, gửi SMS và ghi nhận thời hạn hiệu lực 2 phút.
 - [ ] **AC-UC01-02 [P0]** Given số điện thoại đã có tài khoản đang hoạt động, when nhấn "Tiếp tục", then hệ thống không gửi OTP và trả trạng thái để PWA chuyển sang màn hình nhập mật khẩu.
 - [ ] **AC-UC01-03 [P0]** Given OTP đăng ký hợp lệ và còn hạn, when hành khách xác nhận, then hệ thống cho phép chuyển sang bước đặt mật khẩu, chưa đăng nhập nếu chưa có mật khẩu.
-- [ ] **AC-UC01-04 [P0]** Given hành khách đặt mật khẩu thành công sau khi xác minh OTP đăng ký, then hệ thống tạo `accounts` với role `PASSENGER`, tạo ví `PASSENGER` có số dư `0`, cấp JWT và đăng nhập thành công.
+- [ ] **AC-UC01-04 [P0]** Given hành khách đặt mật khẩu thành công sau khi xác minh OTP đăng ký, then hệ thống tạo `accounts` với role `PASSENGER`, không tạo ví `PASSENGER`, cấp JWT và đăng nhập thành công.
 - [ ] **AC-UC01-05 [P0]** Given tài khoản đã tồn tại và mật khẩu đúng, when hành khách đăng nhập, then hệ thống cấp JWT và đăng nhập thành công.
 - [ ] **AC-UC01-06 [P0]** Given OTP đăng ký sai hoặc hết hạn, when hành khách xác nhận, then hệ thống từ chối xác minh và không tạo tài khoản.
 - [ ] **AC-UC01-07 [P0]** Given cùng số điện thoại và `purpose = REGISTER`, when yêu cầu OTP lần thứ 6 trong ngày hoặc yêu cầu lại trước 60 giây, then hệ thống không gửi SMS và trả HTTP `429`.
@@ -45,9 +45,9 @@
 - [ ] **AC-UC03-02 [P0]** Given JWT đã bị blacklist, when gọi API bảo vệ, then backend từ chối token.
 - [ ] **AC-UC03-03 [P0]** Given đăng xuất thành công, when frontend nhận phản hồi, then token cục bộ bị xóa và người dùng được chuyển về trang đăng nhập.
 
-### UC04: Thay đổi mật khẩu nội bộ
+### UC04: Thay đổi mật khẩu
 
-- [ ] **AC-UC04-01 [P0]** Given người dùng nội bộ nhập đúng mật khẩu cũ và mật khẩu mới đạt chính sách bảo mật, when xác nhận, then mật khẩu mới được lưu dưới dạng BCrypt.
+- [ ] **AC-UC04-01 [P0]** Given Passenger hoặc người dùng nội bộ đã đăng nhập nhập đúng mật khẩu cũ và mật khẩu mới đạt chính sách bảo mật, when xác nhận, then mật khẩu mới được lưu dưới dạng BCrypt.
 - [ ] **AC-UC04-02 [P0]** Given mật khẩu cũ sai, when xác nhận, then hệ thống từ chối cập nhật.
 - [ ] **AC-UC04-03 [P0]** Given mật khẩu mới không đạt chính sách hoặc xác nhận không khớp, when gửi yêu cầu, then hệ thống trả lỗi validation.
 - [ ] **AC-UC04-04 [P1]** Given đổi mật khẩu thành công, when thao tác hoàn tất, then phiên cũ bị vô hiệu hóa và người dùng phải đăng nhập lại.
@@ -79,9 +79,10 @@
 ### UC07: Đăng ký mua Thẻ cứng trực tuyến
 
 - [ ] **AC-UC07-01 [P0]** Given guest nhập đủ hồ sơ giao nhận hợp lệ, when tạo đơn, then hệ thống tạo order chờ thanh toán mà không yêu cầu đăng nhập.
-- [ ] **AC-UC07-02 [P0]** Given thanh toán online thành công, when callback hợp lệ được xử lý, then order chuyển `PRINTING`, thẻ vật lý được tạo với `card_medium = 'PHYSICAL'`, `owner_id = NULL`, và mã `card_uid` được gửi cho khách.
+- [ ] **AC-UC07-02 [P0]** Given thanh toán online thành công qua `VNPAY_SANDBOX` ở dev hoặc `SEPAY`/VietQR ở production, when callback/webhook hợp lệ được xử lý, then order chuyển `PRINTING`, thẻ vật lý được tạo với `card_medium = 'PHYSICAL'`, `owner_id = NULL`, transaction `PAY_SUBSCRIPTION` chuyển `SUCCESS`, và mã `card_uid` được gửi cho khách.
 - [ ] **AC-UC07-03 [P0]** Given thanh toán bị hủy hoặc quá hạn 15 phút, when hệ thống xử lý trạng thái thanh toán, then order chuyển `CANCELLED` và không ghi nhận thanh toán thành công.
 - [ ] **AC-UC07-04 [P0]** Given callback thanh toán bị gửi lặp, when backend xử lý, then không tạo trùng order, card hoặc transaction.
+- [ ] **AC-UC07-05 [P1]** Given webhook Sepay không đối chiếu được mã đơn/giao dịch hoặc số tiền, when backend xử lý, then transaction chuyển `MANUAL_REVIEW` và không tạo thẻ vật lý.
 
 ### UC08: Đăng ký và Phát hành Thẻ ảo trực tiếp
 
@@ -89,7 +90,7 @@
 - [ ] **AC-UC08-02 [P0]** Given phát hành thành công, when kiểm tra dữ liệu, then subscription tương ứng được tạo ở trạng thái `ACTIVE` và hiển thị thời hạn trên PWA.
 - [ ] **AC-UC08-03 [P0]** Given tài khoản chưa KYC hoặc chưa xác thực email, when đăng ký, then backend từ chối phát hành.
 - [ ] **AC-UC08-04 [P0]** Given passenger đã có thẻ ảo hoạt động, when đăng ký thêm ngoài giới hạn cho phép, then backend từ chối.
-- [ ] **AC-UC08-05 [P0]** Given số dư ví không đủ, when thanh toán bằng ví, then không tạo card/subscription dở dang và số dư không thay đổi.
+- [ ] **AC-UC08-05 [P0]** Given thanh toán trực tiếp thất bại hoặc hết hạn, when callback được xử lý, then không tạo card/subscription dở dang và transaction chuyển `FAILED` hoặc `EXPIRED`.
 
 ### UC09: Số hóa Thẻ cứng thành Thẻ điện tử ảo
 
@@ -100,11 +101,12 @@
 
 ### UC10: Gia hạn gói vé chu kỳ
 
-- [ ] **AC-UC10-01 [P0]** Given passenger đăng nhập và đủ số dư ví, when gia hạn subscription, then ví bị trừ đúng số tiền và ghi nhận transaction `SUCCESS`.
-- [ ] **AC-UC10-02 [P0]** Given guest tra cứu card hợp lệ và thanh toán online thành công, when callback được xử lý, then subscription được gia hạn và transaction được ghi nhận.
+- [ ] **AC-UC10-01 [P0]** Given passenger đăng nhập và thanh toán trực tiếp thành công qua `VNPAY_SANDBOX` ở dev hoặc `SEPAY`/VietQR ở production, when callback/webhook hợp lệ được xử lý, then subscription được gia hạn và transaction `PAY_SUBSCRIPTION` chuyển `SUCCESS`.
+- [ ] **AC-UC10-02 [P0]** Given guest tra cứu card hợp lệ và thanh toán trực tiếp thành công qua `VNPAY_SANDBOX` ở dev hoặc `SEPAY`/VietQR ở production, when callback/webhook hợp lệ được xử lý, then subscription được gia hạn và transaction được ghi nhận.
 - [ ] **AC-UC10-03 [P0]** Given subscription còn hạn, when gia hạn, then `end_date` mới được tính tiếp từ hạn cũ; nếu đã hết hạn thì tính từ thời điểm hiện tại.
-- [ ] **AC-UC10-04 [P0]** Given card không tồn tại, không hợp lệ hoặc ví không đủ tiền, when gia hạn, then backend từ chối và không thay đổi subscription.
+- [ ] **AC-UC10-04 [P0]** Given card không tồn tại, không hợp lệ hoặc thanh toán thất bại/hết hạn, when gia hạn, then backend từ chối và không thay đổi subscription.
 - [ ] **AC-UC10-05 [P0]** Given callback thanh toán bị gửi lặp, when xử lý, then subscription chỉ được gia hạn một lần.
+- [ ] **AC-UC10-06 [P1]** Given webhook Sepay không đối chiếu được transaction hoặc số tiền, when backend xử lý, then transaction chuyển `MANUAL_REVIEW` và subscription không đổi.
 
 ### UC11: Khởi tạo lô phôi Thẻ cứng vật lý
 
@@ -126,20 +128,19 @@
 
 ### UC13: Quét soát vé tự động qua Gate Validator
 
-- [ ] **AC-UC13-01 [P0]** Given Dynamic QR hợp lệ của card/vé điện tử đang hoạt động, when quét check-in, then hệ thống tạo journey `IN_PROGRESS` với ga vào và mở cổng giả lập.
+- [ ] **AC-UC13-01 [P0]** Given Dynamic QR hợp lệ của thẻ ảo đang hoạt động và có subscription còn hạn, when quét check-in, then hệ thống tạo journey `IN_PROGRESS` với ga vào và mở cổng giả lập.
 - [ ] **AC-UC13-02 [P0]** Given journey `IN_PROGRESS` hợp lệ, when quét check-out, then hệ thống ghi ga ra, tính cự ly/giá trị liên quan, chuyển journey `COMPLETED` và mở cổng giả lập.
-- [ ] **AC-UC13-03 [P0]** Given QR sai, hết cửa sổ thời gian hoặc card/vé không hợp lệ, when quét, then validator từ chối mở cổng và không tạo journey sai.
+- [ ] **AC-UC13-03 [P0]** Given QR sai, hết cửa sổ thời gian, card không hợp lệ hoặc subscription hết hạn, when quét, then validator từ chối mở cổng và không tạo journey sai.
 - [ ] **AC-UC13-04 [P0]** Given cùng card quét lại tại cùng trạm trong vòng 60 giây, when validator nhận yêu cầu, then anti-passback từ chối.
-- [ ] **AC-UC13-05 [P0]** Given vé lượt đi quá ga đã mua hoặc card bị `LOCKED`, when check-out/check-in, then validator từ chối và hướng dẫn đến PSC.
+- [ ] **AC-UC13-05 [P0]** Given card bị `LOCKED`, when check-out/check-in, then validator từ chối và hướng dẫn đến PSC.
 - [ ] **AC-UC13-06 [P0]** Given validator xử lý quét, when kiểm tra transaction ví, then không có thao tác nạp hoặc trừ ví tại cổng.
 
 ### UC14: PSC Xử lý sự cố và Giải khóa Thẻ kẹt ga
 
-- [ ] **AC-UC14-01 [P0]** Given staff có ca `ACTIVE`, when tra cứu card/vé lỗi, then Portal hiển thị journey bị treo và lý do cần xử lý.
-- [ ] **AC-UC14-02 [P0]** Given vé lượt đi quá chặng, when staff thu bù chênh lệch, then hệ thống tạo giao dịch `CASH_FARE_ADJUSTMENT` gắn `shift_id`, hoàn tất journey và cho phép khách ra ga.
-- [ ] **AC-UC14-03 [P0]** Given lỗi quên check-out do vi phạm, when staff giải khóa có thu phạt, then hệ thống tạo `CASH_PENALTY`, hoàn tất journey cũ và chuyển card về `ACTIVE`.
-- [ ] **AC-UC14-04 [P0]** Given lỗi khách quan được xác nhận, when staff giải khóa miễn phí, then hệ thống hoàn tất journey, chuyển card về `ACTIVE` và lưu audit lý do với số tiền `0`.
-- [ ] **AC-UC14-05 [P0]** Given ca trực đã `CLOSED`, when staff xử lý giao dịch tài chính, then backend từ chối.
+- [ ] **AC-UC14-01 [P0]** Given staff có ca `ACTIVE`, when tra cứu card lỗi, then Portal hiển thị journey bị treo và lý do cần xử lý.
+- [ ] **AC-UC14-02 [P0]** Given thẻ bị khóa do quên check-out, when staff giải khóa, then hệ thống hoàn tất journey cũ, chuyển card về `ACTIVE` và lưu audit xử lý.
+- [ ] **AC-UC14-03 [P0]** Given lỗi khách quan được xác nhận, when staff giải khóa miễn phí, then hệ thống hoàn tất journey, chuyển card về `ACTIVE` và lưu audit lý do với số tiền `0`.
+- [ ] **AC-UC14-04 [P0]** Given ca trực đã `CLOSED`, when staff xử lý unlock tại PSC, then backend từ chối.
 
 ### UC15: In Thẻ cứng và Cập nhật trạng thái đơn hàng
 
@@ -148,117 +149,108 @@
 - [ ] **AC-UC15-03 [P0]** Given thẻ in lỗi trước khi bàn giao, when staff yêu cầu in lại, then order quay về `PRINTING` và chưa được đánh dấu `COMPLETED`.
 - [ ] **AC-UC15-04 [P0]** Given chuyển trạng thái sai thứ tự hoặc staff khác tenant, when cập nhật, then backend từ chối.
 
-### UC16: Vận hành ca trực và Đối chiếu két tiền mặt
+### UC16: Check-in/Check-out ca trực
 
 - [ ] **AC-UC16-01 [P0]** Given staff chưa có ca mở, when bắt đầu làm việc tại quầy, then hệ thống cho phép mở một ca `ACTIVE` gắn staff và trạm.
 - [ ] **AC-UC16-02 [P0]** Given staff đã có ca `ACTIVE`, when cố mở thêm ca chồng lấn, then backend từ chối.
-- [ ] **AC-UC16-03 [P0]** Given ca có các giao dịch tiền mặt, when kết ca, then hệ thống tổng hợp đúng doanh thu theo `shift_id`, lưu báo cáo và chuyển ca sang `CLOSED`.
-- [ ] **AC-UC16-04 [P0]** Given tiền đếm thực tế lệch báo cáo, when kết ca, then staff phải nhập `actual_cash_counted` và `discrepancy_reason`; hệ thống lưu vết chênh lệch.
-- [ ] **AC-UC16-05 [P0]** Given ca đã `CLOSED`, when phát sinh thao tác tiền mặt mới, then backend từ chối.
+- [ ] **AC-UC16-03 [P0]** Given staff có ca `ACTIVE`, when kết ca, then hệ thống ghi `ended_at` và chuyển ca sang `CLOSED`.
+- [ ] **AC-UC16-04 [P0]** Given ca đã `CLOSED`, when staff cố đóng lại hoặc dùng ca đó cho thao tác audit mới, then backend từ chối.
 
 ---
 
-## 5. Module 4: Tài chính & Ví điện tử
+## 5. Module 4: Tài chính & Thanh toán
 
-### UC17: Quản lý ví điện tử và Nạp tiền
+### UC17: Gửi và Duyệt yêu cầu giải ngân Ví doanh nghiệp
 
-- [ ] **AC-UC17-01 [P0]** Given callback `VNPAY_SANDBOX` hợp lệ ở dev hoặc webhook Sepay hợp lệ ở production, when xử lý nạp tiền, then ví passenger được cộng đúng số tiền và tạo transaction `TOP_UP`, `SUCCESS`.
-- [ ] **AC-UC17-02 [P0]** Given `provider_transaction_id` đã xử lý, when nhận callback lặp, then backend không cộng tiền lần hai.
-- [ ] **AC-UC17-03 [P0]** Given thanh toán thất bại hoặc hết hạn, when cập nhật trạng thái, then transaction chuyển `FAILED` hoặc `EXPIRED` và số dư không đổi.
-- [ ] **AC-UC17-04 [P1]** Given webhook Sepay không bóc tách được `account_id`, when xử lý, then transaction chuyển `MANUAL_REVIEW`, lưu log và cảnh báo Platform Manager.
-- [ ] **AC-UC17-05 [P0]** Given passenger gọi chức năng rút tiền, when backend nhận yêu cầu, then từ chối vì passenger wallet không hỗ trợ withdrawal.
+- [ ] **AC-UC17-01 [P0]** Given operator wallet `ACTIVE` và đủ số dư, when Company Manager gửi yêu cầu, then tạo `withdrawal_requests` trạng thái `PENDING`.
+- [ ] **AC-UC17-02 [P0]** Given yêu cầu `PENDING` và số dư vẫn đủ, when Platform Manager duyệt, then yêu cầu chuyển `APPROVED`, ví doanh nghiệp bị trừ đúng số tiền và tạo transaction `OPERATOR_PAYOUT`.
+- [ ] **AC-UC17-03 [P0]** Given yêu cầu `PENDING`, when Platform Manager từ chối, then yêu cầu chuyển `REJECTED` và số dư ví không đổi.
+- [ ] **AC-UC17-04 [P0]** Given số dư không đủ hoặc wallet không `ACTIVE`, when gửi hoặc duyệt yêu cầu, then backend từ chối.
+- [ ] **AC-UC17-05 [P0]** Given số dư thay đổi đồng thời lúc duyệt, when transaction khóa dòng và kiểm tra lại thất bại, then rollback toàn bộ và giữ yêu cầu `PENDING`.
+- [ ] **AC-UC17-06 [P0]** Given yêu cầu được duyệt, when kiểm tra tích hợp ngân hàng, then hệ thống chỉ ghi nhận sổ sách; không tự động chuyển khoản ngân hàng.
 
-### UC18: Gửi và Duyệt yêu cầu giải ngân Ví doanh nghiệp
+### UC18: Chạy ngầm Đối soát & Phân chia doanh thu Clearing
 
-- [ ] **AC-UC18-01 [P0]** Given operator wallet `ACTIVE` và đủ số dư, when Company Manager gửi yêu cầu, then tạo `withdrawal_requests` trạng thái `PENDING`.
-- [ ] **AC-UC18-02 [P0]** Given yêu cầu `PENDING` và số dư vẫn đủ, when Platform Manager duyệt, then yêu cầu chuyển `APPROVED`, ví doanh nghiệp bị trừ đúng số tiền và tạo transaction `OPERATOR_PAYOUT`.
-- [ ] **AC-UC18-03 [P0]** Given yêu cầu `PENDING`, when Platform Manager từ chối, then yêu cầu chuyển `REJECTED` và số dư ví không đổi.
-- [ ] **AC-UC18-04 [P0]** Given số dư không đủ hoặc wallet không `ACTIVE`, when gửi hoặc duyệt yêu cầu, then backend từ chối.
-- [ ] **AC-UC18-05 [P0]** Given số dư thay đổi đồng thời lúc duyệt, when transaction khóa dòng và kiểm tra lại thất bại, then rollback toàn bộ và giữ yêu cầu `PENDING`.
-- [ ] **AC-UC18-06 [P0]** Given yêu cầu được duyệt, when kiểm tra tích hợp ngân hàng, then hệ thống chỉ ghi nhận sổ sách; không tự động chuyển khoản ngân hàng.
-
-### UC19: Chạy ngầm Đối soát & Phân chia doanh thu Clearing
-
-- [ ] **AC-UC19-01 [P0]** Given dữ liệu ngày trước chưa xử lý, when scheduler chạy lúc `02:00` theo múi giờ `Asia/Ho_Chi_Minh`, then hệ thống tính phân bổ doanh thu theo operator.
-- [ ] **AC-UC19-02 [P0]** Given clearing thành công, when commit, then ví `OPERATOR` được cộng đúng số tiền, tạo `clearing_settlements` và đánh dấu journey liên quan `PROCESSED`.
-- [ ] **AC-UC19-03 [P0]** Given cùng kỳ clearing đã xử lý, when scheduler hoặc admin rerun, then hệ thống không cộng tiền trùng.
-- [ ] **AC-UC19-04 [P0]** Given lỗi DB hoặc mạng trong quá trình clearing, when transaction thất bại, then rollback toàn bộ số dư, settlement và trạng thái journey.
-- [ ] **AC-UC19-05 [P1]** Given clearing thất bại, when rollback hoàn tất, then hệ thống ghi log và gửi cảnh báo kỹ thuật để rerun thủ công.
+- [ ] **AC-UC18-01 [P0]** Given dữ liệu ngày trước chưa xử lý, when scheduler chạy lúc `02:00` theo múi giờ `Asia/Ho_Chi_Minh`, then hệ thống tính phân bổ doanh thu theo operator.
+- [ ] **AC-UC18-02 [P0]** Given clearing thành công, when commit, then ví `OPERATOR` được cộng đúng số tiền, tạo `clearing_settlements` và đánh dấu journey liên quan `PROCESSED`.
+- [ ] **AC-UC18-03 [P0]** Given cùng kỳ clearing đã xử lý, when scheduler hoặc admin rerun, then hệ thống không cộng tiền trùng.
+- [ ] **AC-UC18-04 [P0]** Given lỗi DB hoặc mạng trong quá trình clearing, when transaction thất bại, then rollback toàn bộ số dư, settlement và trạng thái journey.
+- [ ] **AC-UC18-05 [P1]** Given clearing thất bại, when rollback hoàn tất, then hệ thống ghi log và gửi cảnh báo kỹ thuật để rerun thủ công.
 
 ---
 
 ## 6. Module 5: Quản trị vận hành đơn vị
 
-### UC20: Quản lý Nhân viên ga & Phân lịch ca trực
+### UC19: Quản lý Nhân viên ga & Phân lịch ca trực
 
-- [ ] **AC-UC20-01 [P0]** Given Company Manager hợp lệ, when tạo staff trong tenant của mình, then hệ thống tạo tài khoản `STAFF` và lưu thông tin đơn vị.
-- [ ] **AC-UC20-02 [P0]** Given staff và trạm hợp lệ, when phân lịch, then hệ thống lưu `staff_shifts` đúng staff, trạm, thời gian và operator.
-- [ ] **AC-UC20-03 [P0]** Given username hoặc email đã tồn tại, when tạo staff, then backend từ chối.
-- [ ] **AC-UC20-04 [P1]** Given file import sai cấu trúc hoặc trống, when tải lên, then backend từ chối và không tạo dữ liệu.
-- [ ] **AC-UC20-05 [P1]** Given file import có lỗi logic, when xử lý, then rollback toàn bộ lô và trả báo cáo lỗi.
-- [ ] **AC-UC20-06 [P0]** Given Company Manager cố thao tác staff của tenant khác, when gọi API, then backend từ chối.
+- [ ] **AC-UC19-01 [P0]** Given Company Manager hợp lệ, when tạo staff trong tenant của mình, then hệ thống tạo tài khoản `STAFF` và lưu thông tin đơn vị.
+- [ ] **AC-UC19-02 [P0]** Given staff và trạm hợp lệ, when phân lịch, then hệ thống lưu `staff_shifts` đúng staff, trạm, thời gian và operator.
+- [ ] **AC-UC19-03 [P0]** Given username hoặc email đã tồn tại, when tạo staff, then backend từ chối.
+- [ ] **AC-UC19-04 [P1]** Given file import sai cấu trúc hoặc trống, when tải lên, then backend từ chối và không tạo dữ liệu.
+- [ ] **AC-UC19-05 [P1]** Given file import có lỗi logic, when xử lý, then rollback toàn bộ lô và trả báo cáo lỗi.
+- [ ] **AC-UC19-06 [P0]** Given Company Manager cố thao tác staff của tenant khác, when gọi API, then backend từ chối.
 
-### UC21: Quản trị Tuyến trạm và Lưới nhà ga
+### UC20: Quản trị Tuyến trạm và Lưới nhà ga
 
-- [ ] **AC-UC21-01 [P0]** Given Company Manager hợp lệ, when thêm hoặc sửa tuyến/trạm thuộc tenant của mình, then dữ liệu được lưu và API danh mục phản ánh cấu hình mới.
-- [ ] **AC-UC21-02 [P0]** Given `station_order` trùng hoặc không liên tục, when cập nhật, then backend từ chối.
-- [ ] **AC-UC21-03 [P0]** Given Company Manager cố sửa tuyến/trạm tenant khác, when gọi API, then backend từ chối.
-- [ ] **AC-UC21-04 [P1]** Given file import sai cấu trúc, rỗng hoặc có lỗi logic, when xử lý, then rollback toàn bộ và trả báo cáo lỗi.
-- [ ] **AC-UC21-05 [P1]** Given cấu hình tuyến/trạm thay đổi hợp lệ, when cập nhật hoàn tất, then Gate Simulator nhận được dữ liệu mới qua cơ chế đồng bộ/cấu hình MVP.
+- [ ] **AC-UC20-01 [P0]** Given Company Manager hợp lệ, when thêm hoặc sửa tuyến/trạm thuộc tenant của mình, then dữ liệu được lưu và API danh mục phản ánh cấu hình mới.
+- [ ] **AC-UC20-02 [P0]** Given `station_order` trùng hoặc không liên tục, when cập nhật, then backend từ chối.
+- [ ] **AC-UC20-03 [P0]** Given Company Manager cố sửa tuyến/trạm tenant khác, when gọi API, then backend từ chối.
+- [ ] **AC-UC20-04 [P1]** Given file import sai cấu trúc, rỗng hoặc có lỗi logic, when xử lý, then rollback toàn bộ và trả báo cáo lỗi.
+- [ ] **AC-UC20-05 [P1]** Given cấu hình tuyến/trạm thay đổi hợp lệ, when cập nhật hoàn tất, then Gate Simulator nhận được dữ liệu mới qua cơ chế đồng bộ/cấu hình MVP.
 
-### UC22: Thiết lập Cấu hình Biểu giá tuyến
+### UC21: Thiết lập Cấu hình Biểu giá tuyến
 
-- [ ] **AC-UC22-01 [P0]** Given Company Manager cấu hình giá hợp lệ cho tenant của mình, when lưu, then policy được cập nhật trong `fare_policies.json` và nạp lại vào cache RAM.
-- [ ] **AC-UC22-02 [P0]** Given policy bus đồng giá hoặc Metro lũy tiến theo số ga, when Fare Engine tính giá, then kết quả đúng công thức trong SRS.
-- [ ] **AC-UC22-03 [P0]** Given mức giá vượt khung trần, when lưu policy, then backend từ chối với lỗi nghiệp vụ.
-- [ ] **AC-UC22-04 [P0]** Given policy mới có hiệu lực, when mua/gia hạn vé hoặc tính chênh lệch tại PSC, then hệ thống dùng policy mới mà không cần restart.
-- [ ] **AC-UC22-05 [P0]** Given Company Manager cố sửa policy tenant khác, when gọi API, then backend từ chối.
+- [ ] **AC-UC21-01 [P0]** Given Company Manager cấu hình giá hợp lệ cho tenant của mình, when lưu, then policy được cập nhật trong `fare_policies.json` và nạp lại vào cache RAM.
+- [ ] **AC-UC21-02 [P0]** Given policy bus đồng giá hoặc Metro lũy tiến theo số ga, when Fare Engine tính giá, then kết quả đúng công thức trong SRS.
+- [ ] **AC-UC21-03 [P0]** Given mức giá vượt khung trần, when lưu policy, then backend từ chối với lỗi nghiệp vụ.
+- [ ] **AC-UC21-04 [P0]** Given policy mới có hiệu lực, when mua/gia hạn vé hoặc tính chênh lệch tại PSC, then hệ thống dùng policy mới mà không cần restart.
+- [ ] **AC-UC21-05 [P0]** Given Company Manager cố sửa policy tenant khác, when gọi API, then backend từ chối.
 
 ---
 
 ## 7. Module 6: Quản trị nền tảng
 
-### UC23: Khởi tạo Tenant & Cấp tài khoản Company Manager
+### UC22: Khởi tạo Tenant & Cấp tài khoản Company Manager
 
-- [ ] **AC-UC23-01 [P0]** Given Platform Manager nhập hồ sơ doanh nghiệp hợp lệ, when khởi tạo tenant, then tenant/operator được tạo ở trạng thái `ACTIVE`.
-- [ ] **AC-UC23-02 [P0]** Given tenant tạo thành công, when kiểm tra dữ liệu, then tài khoản `COMPANY_MANAGER` và wallet `OPERATOR` số dư `0` được tạo.
-- [ ] **AC-UC23-03 [P0]** Given MST hoặc email đại diện đã tồn tại, when khởi tạo, then backend từ chối và không tạo dữ liệu dở dang.
-- [ ] **AC-UC23-04 [P0]** Given user không phải Platform Manager, when gọi API khởi tạo tenant, then backend từ chối.
+- [ ] **AC-UC22-01 [P0]** Given Platform Manager nhập hồ sơ doanh nghiệp hợp lệ, when khởi tạo tenant, then tenant/operator được tạo ở trạng thái `ACTIVE`.
+- [ ] **AC-UC22-02 [P0]** Given tenant tạo thành công, when kiểm tra dữ liệu, then tài khoản `COMPANY_MANAGER` và wallet `OPERATOR` số dư `0` được tạo.
+- [ ] **AC-UC22-03 [P0]** Given MST hoặc email đại diện đã tồn tại, when khởi tạo, then backend từ chối và không tạo dữ liệu dở dang.
+- [ ] **AC-UC22-04 [P0]** Given user không phải Platform Manager, when gọi API khởi tạo tenant, then backend từ chối.
 
-### UC24: Cấu hình Khung giá trần toàn hệ thống
+### UC23: Cấu hình Khung giá trần toàn hệ thống
 
-- [ ] **AC-UC24-01 [P0]** Given Platform Manager nhập mức trần dương hợp lệ, when lưu, then giá trị được cập nhật trong `system_configs.json` và nạp lại vào cache.
-- [ ] **AC-UC24-02 [P0]** Given khung trần mới có hiệu lực, when Company Manager lưu policy vượt trần, then backend từ chối.
-- [ ] **AC-UC24-03 [P0]** Given giá trị trần nhỏ hơn hoặc bằng `0`, when lưu, then backend từ chối.
-- [ ] **AC-UC24-04 [P0]** Given user không phải Platform Manager, when sửa khung trần, then backend từ chối.
+- [ ] **AC-UC23-01 [P0]** Given Platform Manager nhập mức trần dương hợp lệ, when lưu, then giá trị được cập nhật trong `system_configs.json` và nạp lại vào cache.
+- [ ] **AC-UC23-02 [P0]** Given khung trần mới có hiệu lực, when Company Manager lưu policy vượt trần, then backend từ chối.
+- [ ] **AC-UC23-03 [P0]** Given giá trị trần nhỏ hơn hoặc bằng `0`, when lưu, then backend từ chối.
+- [ ] **AC-UC23-04 [P0]** Given user không phải Platform Manager, when sửa khung trần, then backend từ chối.
 
 ---
 
 ## 8. Module 7: Giám sát, Bảo mật & Phân quyền
 
-### UC25: Khóa và Mở khóa tài khoản khẩn cấp
+### UC24: Khóa và Mở khóa tài khoản khẩn cấp
 
-- [ ] **AC-UC25-01 [P0]** Given Admin khóa tài khoản hợp lệ, when thao tác hoàn tất, then `accounts.is_active = FALSE` và token đang hoạt động bị vô hiệu hóa.
-- [ ] **AC-UC25-02 [P0]** Given tài khoản đã bị khóa, when đăng nhập, gọi API hoặc quét vé, then hệ thống từ chối.
-- [ ] **AC-UC25-03 [P0]** Given Admin mở khóa tài khoản, when thao tác hoàn tất, then `accounts.is_active = TRUE` và người dùng có thể đăng nhập lại.
-- [ ] **AC-UC25-04 [P0]** Given Admin cố tự khóa chính mình, when gửi yêu cầu, then backend từ chối.
-- [ ] **AC-UC25-05 [P0]** Given khóa hoặc mở khóa, when kiểm tra audit, then hệ thống lưu admin thao tác, tài khoản mục tiêu, thời gian và lý do.
+- [ ] **AC-UC24-01 [P0]** Given Admin khóa tài khoản hợp lệ, when thao tác hoàn tất, then `accounts.is_active = FALSE` và token đang hoạt động bị vô hiệu hóa.
+- [ ] **AC-UC24-02 [P0]** Given tài khoản đã bị khóa, when đăng nhập, gọi API hoặc quét vé, then hệ thống từ chối.
+- [ ] **AC-UC24-03 [P0]** Given Admin mở khóa tài khoản, when thao tác hoàn tất, then `accounts.is_active = TRUE` và người dùng có thể đăng nhập lại.
+- [ ] **AC-UC24-04 [P0]** Given Admin cố tự khóa chính mình, when gửi yêu cầu, then backend từ chối.
+- [ ] **AC-UC24-05 [P0]** Given khóa hoặc mở khóa, when kiểm tra audit, then hệ thống lưu admin thao tác, tài khoản mục tiêu, thời gian và lý do.
 
-### UC26: Cấu hình Phân quyền động
+### UC25: Cấu hình Phân quyền động
 
-- [ ] **AC-UC26-01 [P0]** Given Admin gán permission cho role, when lưu cấu hình, then quyền có hiệu lực runtime mà không restart server.
-- [ ] **AC-UC26-02 [P0]** Given Admin tước permission khỏi role, when user thuộc role gọi API tương ứng, then backend từ chối ngay theo cấu hình mới.
-- [ ] **AC-UC26-03 [P0]** Given Admin cố tước quyền cốt lõi như `CONFIG_RBAC` hoặc `MANAGE_USERS` khỏi role `ADMIN`, when lưu, then backend từ chối.
-- [ ] **AC-UC26-04 [P0]** Given user không phải Admin, when sửa RBAC, then backend từ chối.
-- [ ] **AC-UC26-05 [P0]** Given RBAC thay đổi, when kiểm tra audit, then hệ thống lưu cấu hình trước/sau và admin thao tác.
+- [ ] **AC-UC25-01 [P0]** Given Admin gán permission cho role, when lưu cấu hình, then quyền có hiệu lực runtime mà không restart server.
+- [ ] **AC-UC25-02 [P0]** Given Admin tước permission khỏi role, when user thuộc role gọi API tương ứng, then backend từ chối ngay theo cấu hình mới.
+- [ ] **AC-UC25-03 [P0]** Given Admin cố tước quyền cốt lõi như `CONFIG_RBAC` hoặc `MANAGE_USERS` khỏi role `ADMIN`, when lưu, then backend từ chối.
+- [ ] **AC-UC25-04 [P0]** Given user không phải Admin, when sửa RBAC, then backend từ chối.
+- [ ] **AC-UC25-05 [P0]** Given RBAC thay đổi, when kiểm tra audit, then hệ thống lưu cấu hình trước/sau và admin thao tác.
 
-### UC27: Giám sát kỹ thuật & Tra cứu System Logs
+### UC26: Giám sát kỹ thuật & Tra cứu System Logs
 
-- [ ] **AC-UC27-01 [P0]** Given Admin truy cập Portal giám sát, when lọc theo thời gian, loại log hoặc mức độ, then hệ thống trả đúng dữ liệu log trong phạm vi truy vấn.
-- [ ] **AC-UC27-02 [P0]** Given log có dữ liệu chi tiết, when mở bản ghi, then Portal hiển thị cấu trúc JSON và metadata cần thiết.
-- [ ] **AC-UC27-03 [P1]** Given kết quả truy vấn log, when Admin xuất báo cáo, then hệ thống tạo file CSV hoặc Excel tải được.
-- [ ] **AC-UC27-04 [P1]** Given phát sinh `incident_logs` mức `CRITICAL`, when backend ghi nhận, then hệ thống hiển thị cảnh báo trên Portal và gửi webhook đến kênh kỹ thuật đã cấu hình.
-- [ ] **AC-UC27-05 [P0]** Given user không phải Admin, when truy cập system logs toàn cục, then backend từ chối.
+- [ ] **AC-UC26-01 [P0]** Given Admin truy cập Portal giám sát, when lọc theo thời gian, loại log hoặc mức độ, then hệ thống trả đúng dữ liệu log trong phạm vi truy vấn.
+- [ ] **AC-UC26-02 [P0]** Given log có dữ liệu chi tiết, when mở bản ghi, then Portal hiển thị cấu trúc JSON và metadata cần thiết.
+- [ ] **AC-UC26-03 [P1]** Given kết quả truy vấn log, when Admin xuất báo cáo, then hệ thống tạo file CSV hoặc Excel tải được.
+- [ ] **AC-UC26-04 [P1]** Given phát sinh `incident_logs` mức `CRITICAL`, when backend ghi nhận, then hệ thống hiển thị cảnh báo trên Portal và gửi webhook đến kênh kỹ thuật đã cấu hình.
+- [ ] **AC-UC26-05 [P0]** Given user không phải Admin, when truy cập system logs toàn cục, then backend từ chối.
 
 ---
 
@@ -278,7 +270,7 @@
 
 ### 9.3. Audit và vận hành
 
-- [ ] **AC-CROSS-07 [P0]** Các thao tác nhạy cảm gồm ban/unban, RBAC, giải khóa miễn phí, thu phạt, bù chặng, kết ca, clearing và payout đều lưu audit.
+- [ ] **AC-CROSS-07 [P0]** Các thao tác nhạy cảm gồm ban/unban, RBAC, giải khóa thẻ, đóng ca, clearing và payout đều lưu audit.
 - [ ] **AC-CROSS-08 [P0]** Toàn hệ thống dùng múi giờ `Asia/Ho_Chi_Minh` cho nghiệp vụ, log và scheduler.
 - [ ] **AC-CROSS-09 [P0]** Các file cấu hình `fare_policies.json`, `system_configs.json`, `route_stations.json`, `tenants.json` được nạp vào cache RAM khi backend khởi động và có cơ chế cập nhật cache khi thay đổi.
 
@@ -291,9 +283,9 @@ MVP được xem là đạt yêu cầu khi:
 1. Toàn bộ tiêu chí `[P0]` đã pass.
 2. Không còn lỗi blocker hoặc lỗi sai lệch số dư tài chính.
 3. Các luồng demo xuyên suốt hoạt động:
-   - Passenger đăng ký bằng SĐT/OTP hoặc đăng nhập bằng SĐT/mật khẩu, hoàn thiện hồ sơ, nạp ví, phát hành/mua vé và xem lịch sử.
+   - Passenger đăng ký bằng SĐT/OTP hoặc đăng nhập bằng SĐT/mật khẩu, hoàn thiện hồ sơ, thanh toán trực tiếp để phát hành/mua vé và xem lịch sử.
    - Passenger quét Dynamic QR để check-in/check-out qua Webcam Gate Simulator.
-   - Staff mở ca, xử lý lỗi tại PSC, kết ca và đối chiếu tiền mặt.
+   - Staff mở ca, xử lý lỗi tại PSC và kết ca.
    - Company Manager quản lý staff, tuyến/trạm và biểu giá trong tenant.
    - Platform Manager khởi tạo tenant, quản lý khung giá và duyệt payout.
    - Scheduler chạy clearing và phân bổ doanh thu không trùng lặp.

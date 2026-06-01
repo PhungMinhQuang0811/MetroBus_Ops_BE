@@ -52,19 +52,15 @@ graph TD
     *   Quyền hạn bị giới hạn chặt chẽ theo địa điểm ga/quầy được gán và thời gian hoạt động của ca trực (`shift_id`).
     *   **Nhiệm vụ cốt lõi tại Quầy dịch vụ (Passenger Service Center):**
         1.  **Xử lý sự cố Vé/Thẻ:** Quét mã QR/mã thẻ bị lỗi rào chắn để tra cứu thông tin ga vào, ga đăng ký ra, và lý do bị kẹt soát vé (`IN_PROGRESS`).
-        2.  **Bù cự ly trạm (Fare Adjustment):** Thu phí chênh lệch bằng tiền mặt từ khách đi quá ga (Over-riding), thực hiện cập nhật vé cho phép mở rào ra ga. Giao dịch tiền mặt được ghi nhận (`CASH_FARE_ADJUSTMENT`) và gắn với ca trực `shift_id`.
-        3.  **Xử lý Giải khóa thẻ & Thu phạt (Penalty/Free Unlock):** Khi thẻ bị khóa do "Quên Check-out" quá 24 giờ, hệ thống phân biệt 2 tình huống để đảm bảo công bằng cho khách hàng:
-            * **Trường hợp cố ý trốn vé/lách rào (Tailgating):** Thu phí phạt cố định bằng tiền mặt (10,000 VNĐ) và ghi nhận vào ca trực.
-            * **Trường hợp lỗi hệ thống/Sự cố khách quan (Mất điện, Sơ tán khẩn cấp, Nhân viên hỗ trợ mở cổng phụ):** Thực hiện **Giải khóa miễn phí (Free Override)** với phí phạt 0 VNĐ.
-            Cả hai trường hợp đều cập nhật bổ sung trạm xuống chặng trước, đổi trạng thái thẻ về `ACTIVE` để khách tiếp tục hành trình.
-        4.  **Cập nhật tiến độ đơn hàng in thẻ cứng:** Khi đơn đăng ký thẻ cứng của hành khách được thanh toán trực tuyến thành công, hệ thống tự động chuyển trạng thái đơn hàng sang `PRINTING`. Nhân viên quầy ga tiến hành in ấn thẻ cứng vật lý ở môi trường bên ngoài, sau đó click cập nhật trạng thái đơn hàng (`order_status`) trên Portal sang `READY_FOR_PICKUP` hoặc `SHIPPED` và cuối cùng là `COMPLETED` khi bàn giao xong. Khâu này thuần túy là cập nhật phần mềm trên Portal để theo dõi đơn hàng, không tích hợp phần cứng máy in hay đầu đọc RFID.
-        5.  **Kết ca & Đối chiếu ca trực (Shift Reconciliation):** Kết ca trực, in báo cáo đối chiếu doanh thu tiền mặt thu được tại quầy ga (bán vé tại quầy, nạp ví, tiền bù quá chặng, tiền phạt) để bàn giao chuẩn xác cho thủ quỹ ga đối chiếu ca trực.
-*   **Ý nghĩa nghiệp vụ:** Triệt lưu thất thoát tài chính cấp đại lý/quầy bán vé, kiểm soát lỗi vận hành, đồng thời giải phóng sự cố di chuyển nhanh chóng cho hành khách.
+        2.  **Xử lý Giải khóa thẻ kẹt ga:** Khi thẻ bị khóa do "Quên Check-out" quá 24 giờ, Staff tra cứu journey bị treo và thực hiện giải khóa vận hành.
+        3.  **Cập nhật tiến độ đơn hàng in thẻ cứng:** Khi đơn đăng ký thẻ cứng của hành khách được thanh toán trực tuyến thành công, hệ thống tự động chuyển trạng thái đơn hàng sang `PRINTING`. Nhân viên quầy ga tiến hành in ấn thẻ cứng vật lý ở môi trường bên ngoài, sau đó click cập nhật trạng thái đơn hàng (`order_status`) trên Portal sang `READY_FOR_PICKUP` hoặc `SHIPPED` và cuối cùng là `COMPLETED` khi bàn giao xong. Khâu này thuần túy là cập nhật phần mềm trên Portal để theo dõi đơn hàng, không tích hợp phần cứng máy in hay đầu đọc RFID.
+        4.  **Check-in/Check-out ca trực:** Staff mở ca khi bắt đầu làm việc và đóng ca khi kết thúc. Hệ thống chỉ lưu thời gian mở/đóng ca và trạm trực để phục vụ audit vận hành; đối chiếu két thực tế và xử lý chênh lệch kế toán không thuộc MVP.
+*   **Ý nghĩa nghiệp vụ:** Kiểm soát lỗi vận hành, lưu vết trách nhiệm xử lý sự cố và giải phóng sự cố di chuyển nhanh chóng cho hành khách.
 
 ### 2.5. `PASSENGER` (Hành khách tham gia giao thông)
 *   **Định nghĩa:** Người tiêu dùng sử dụng dịch vụ đi lại bằng thẻ vé liên thông trên toàn mạng lưới.
 *   **Ranh giới kiểm soát (Scope Boundary):** **Self-Service Scope (Phạm vi Tự phục vụ Cá nhân).**
-    *   Chỉ truy cập và tương tác với dữ liệu của chính mình (thông tin tài khoản, danh sách thẻ cá nhân, lịch sử đi lại, số dư ví).
+    *   Chỉ truy cập và tương tác với dữ liệu của chính mình (thông tin tài khoản, danh sách thẻ cá nhân, lịch sử đi lại, lịch sử vé/thanh toán).
     *   Tuyệt đối không thể truy xuất dữ liệu của bất kỳ hành khách nào khác.
     *   Trên PWA, Passenger chỉ phát hành thẻ ảo, gia hạn/mua vé và số hóa thẻ cứng đã mua sang thẻ ảo; không tham gia luồng mua thẻ cứng UC07.
 *   **Ý nghĩa nghiệp vụ:** Bảo vệ quyền riêng tư dữ liệu cá nhân theo quy định pháp luật.
@@ -72,7 +68,7 @@ graph TD
 ### 2.6. `GUEST` (Khách vãng lai / Người dùng ẩn danh)
 *   **Định nghĩa:** Người dùng chưa đăng nhập tài khoản hệ thống, truy cập công khai vào Cổng mua vé công cộng (Web Desktop Portal).
 *   **Ranh giới kiểm soát (Scope Boundary):** **Anonymous Web Scope (Phạm vi Trình duyệt Ẩn danh).**
-    *   Chỉ được phép thực hiện điền biểu mẫu mua/đăng ký thẻ cứng vật lý theo luồng UC07 Guest Checkout và mua vé chặng lẻ dùng 1 lần, thực hiện thanh toán trực tuyến qua VNPay Sandbox ở môi trường dev hoặc Sepay/VietQR ở production.
+    *   Chỉ được phép thực hiện điền biểu mẫu mua/đăng ký thẻ cứng vật lý theo luồng UC07 Guest Checkout và gia hạn vé chu kỳ bằng mã thẻ, thực hiện thanh toán trực tuyến qua VNPay Sandbox ở môi trường dev hoặc Sepay/VietQR ở production.
     *   Tuyệt đối không có tài khoản ví điện tử nội bộ, không có lịch sử đi lại cá nhân, và không có quyền truy xuất bất kỳ thông tin nào khác trên hệ thống.
 *   **Ý nghĩa nghiệp vụ:** Triệt tiêu hoàn toàn rào cản đăng nhập, tối ưu doanh thu bán vé công cộng cho mạng lưới.
 
@@ -99,17 +95,17 @@ Dưới đây là ma trận ánh xạ chi tiết giữa các Vai trò và các h
 | | Thu hồi, khóa thẻ lỗi/thẻ hết hạn | | | | **X** | | |
 | | **Đăng ký mua thẻ cứng trực tuyến (Guest Checkout)** | | | | | | **X** |
 | | **Số hóa thẻ cứng vật lý thành thẻ ảo trên PWA** | | | | | **X** | |
-| | **Mua vé lượt chặng lẻ trực tuyến (Guest Checkout)** | | | | | **X** | **X** |
+| | **Mua vé lượt chặng lẻ trực tuyến (Guest Checkout)** | | | | | Out of MVP | Out of MVP |
 | | Đăng ký thẻ ảo trực tiếp (QR Code định danh) | | | | | **X** | |
 | | Tự động duyệt đơn & Kích hoạt thẻ | | | | | **X (Auto)** | |
 | | Liên kết thẻ vật lý vào tài khoản cá nhân | | | | | **X** | |
 | **Vận hành Soát vé** | Giả lập quẹt Check-in (Xác minh thẻ) | | | | | X *(Auto)* | |
 | | Giả lập quẹt Check-out (Xác minh vé chặng ra) | | | | | X *(Auto)* | |
 | | Xử lý sự cố vé, thu phí chênh lệch tại ga | | | | X | | |
-| | Giải khóa thẻ & Thu phí phạt (Quên Check-out) | | | | X | | |
-| | Kết ca trực & Báo cáo doanh thu tiền mặt ca | | | | X | | |
-| **Tài chính & Ví** | Xem số dư ví tài khoản | | | | | **X** | |
-| | Nạp tiền vào ví điện tử (Top-up sandbox) | | | | | **X** | |
+| | Giải khóa thẻ kẹt ga do quên Check-out | | | | X | | |
+| | Check-in/Check-out ca trực | | | | X | | |
+| **Tài chính & Thanh toán** | Thanh toán trực tiếp đơn thẻ/vé | | | | | **X** | **X** |
+| | Xem lịch sử thanh toán/vé đã mua | | | | | **X** | |
 | **Đối soát & Báo cáo** | Tổng hợp đối soát cấp hệ thống (Clearing) | | **X** | | | | |
 | | Xem báo cáo doanh thu nội bộ đơn vị | | | **X** | | | |
 | | Tra cứu lịch sử đi lại & lịch sử giao dịch cá nhân | | | | | **X** | |
@@ -183,51 +179,35 @@ Mặc dù hệ thống rào chắn tự động (Barrier Turnstile Gates) kiểm
 
 Khi xảy ra các ca lỗi này, chuyến đi của khách sẽ bị treo ở trạng thái `IN_PROGRESS` trong DB `ticket_db`. Ở lượt di chuyển tiếp theo (ví dụ: sáng hôm sau đi làm), rào chắn Gate vào sẽ chặn thẻ lại (do luật không cho phép check-in mới khi chuyến đi cũ chưa check-out). Lúc này khách buộc phải qua Quầy dịch vụ gặp `STAFF` để kiểm tra và giải khóa thẻ để khôi phục trạng thái hoạt động bình thường (`ACTIVE`).
 
-### 5.5. Quy trình kỹ thuật xử lý giải khóa và thu phạt "Quên Check-out" (Có phân loại sự cố)
+### 5.5. Quy trình kỹ thuật xử lý giải khóa "Quên Check-out"
 
-Để đảm bảo trải nghiệm khách hàng tối ưu và tính công bằng, hệ thống tại Quầy dịch vụ (Passenger Service Center) sẽ phân tách rõ ràng quy trình xử lý giải khóa thẻ bị kẹt dựa trên nguyên nhân lỗi:
+Để đảm bảo trải nghiệm khách hàng tối ưu, hệ thống tại Quầy dịch vụ (Passenger Service Center) xử lý giải khóa thẻ bị kẹt như một thao tác vận hành.
 
-#### 1. Các trường hợp sự cố (Mất điện, Sơ tán, Cổng lỗi kỹ thuật, Nhân viên mở tay trợ giúp xe lăn)
+#### 1. Xử lý giải khóa thẻ kẹt ga
 > [!IMPORTANT]
-> **Quy tắc Nghiệp vụ:** Lỗi thuộc về hạ tầng hoặc nằm trong quy trình vận hành khẩn cấp của đơn vị vận hành $\rightarrow$ **Tuyệt đối KHÔNG phạt tiền hành khách**.
-* **Thao tác của Nhân viên ga (`STAFF`):** Trên màn hình Portal, nhân viên kiểm tra lịch sử thẻ, chọn lý do lỗi là **"Sự cố hệ thống / Sơ tán / Trợ giúp"** và nhấn **"Giải khóa Miễn phí (Free Override Unlock)"**.
+> **Quy tắc Nghiệp vụ:** Staff chỉ mở khóa thẻ, hoàn tất journey bị treo và lưu audit xử lý.
+* **Thao tác của Nhân viên ga (`STAFF`):** Trên màn hình Portal, nhân viên kiểm tra lịch sử thẻ, chọn lý do lỗi và nhấn **"Giải khóa"**.
 * **Xử lý dưới Database:**
   * Cập nhật bổ sung thông tin trạm xuống của chuyến đi bị treo `IN_PROGRESS` bằng trạm ga hiện tại của ca trực.
   * Chuyển trạng thái chuyến đi cũ thành `COMPLETED`.
   * Chuyển trạng thái thẻ về `ACTIVE`.
-  * **Không** tạo giao dịch biến động tiền mặt phạt (hoặc tạo giao dịch với `amount = 0`, ghi rõ lý do sự cố để phục vụ báo cáo kiểm toán hệ thống).
+  * Ghi audit log gồm `staff_id`, `shift_id`, `card_uid`, `journey_id` và lý do xử lý.
 
-#### 2. Các trường hợp cố ý trốn vé, lách rào (Tailgating / Jumper)
-> [!WARNING]
-> **Quy tắc Nghiệp vụ:** Lỗi thuộc về hành vi cố tình vi phạm của khách hàng (lách rào, nhảy rào, bám đuôi) $\rightarrow$ **Thu phí phạt cố định bằng tiền mặt để răn đe**.
-* **Thao tác của Nhân viên ga (`STAFF`):** Sau khi xác minh lỗi là do hành vi bám đuôi trốn vé, nhân viên thu **10,000 VNĐ tiền mặt** từ khách và nhấn **"Giải khóa có phạt (Penalty Unlock)"**.
-* **Xử lý dưới Database (Database Transaction) được thực thi đồng bộ:**
-  * **Cập nhật bổ sung chặng trước:** Tra cứu chuyến đi đang bị treo (`IN_PROGRESS`) của hành khách này, thực hiện cập nhật bổ sung thông tin trạm xuống chặng trước (gán bằng trạm ga nhân viên đang trực).
-  * **Đóng chuyến đi cũ:** Chuyển trạng thái của chuyến đi cũ từ `IN_PROGRESS` sang `COMPLETED`.
-  * **Mở khóa thẻ:** Cập nhật trạng thái của chiếc thẻ/vé về `ACTIVE` trong bảng `tickets`.
-  * **Ghi nhận doanh thu tiền mặt ca trực:** Khởi tạo một bản ghi giao dịch mới trong bảng `transactions` để đối soát ca trực:
-    * `transaction_type = 'CASH_PENALTY'` (Phạt tiền mặt)
-    * `amount = 10000` (10,000 VNĐ)
-    * `payment_method = 'CASH'` (Tiền mặt)
-    * `status = 'SUCCESS'`
-    * `wallet_id = NULL` (Không liên quan đến ví nội bộ cá nhân của khách do nộp tiền mặt trực tiếp tại quầy)
-    * `shift_id = current_staff_shift_id` (Ghi nhận trực tiếp vào doanh thu tiền mặt ca trực hiện tại của nhân viên đó phục vụ cho việc đối chiếu kết ca trực sau này).
+### 5.6. Kiểm soát audit khi giải khóa thẻ
 
-### 5.6. Cơ chế phân biệt tự động và kiểm soát chống lạm dụng (Oversight & Fraud Prevention)
-
-Để nhân viên ga không phải tự mình "đoán mò" và tránh các hành vi gian lận (ví dụ: nhân viên ga tự ý giải khóa miễn phí cho người quen hoặc nhận tiền mặt của khách rồi chọn giải khóa miễn phí để đút túi riêng), hệ thống tích hợp các cơ chế kiểm soát kỹ thuật đa lớp sau:
+Để nhân viên ga không phải tự mình "đoán mò" và tránh xử lý thiếu nhất quán, hệ thống tích hợp các cơ chế kiểm soát kỹ thuật đơn giản sau:
 
 ```mermaid
 flowchart TD
     Scan[Quét thẻ/QR bị khóa tại PSC] --> CheckSub{Khách dùng Vé tháng/Subscription?}
-    CheckSub -- Yes --> Free[Tự động gợi ý: Giải khóa MIỄN PHÍ]
+    CheckSub -- Yes --> Free[Tự động gợi ý: Giải khóa]
     CheckSub -- No --> CheckIncident{Hệ thống ghi nhận sự cố tại trạm lúc đó?}
     
     CheckIncident -- Yes --> Free
     CheckIncident -- No --> CheckHistory{Tỷ lệ hoàn thành chặng > 98%?}
     
-    CheckHistory -- Yes --> StaffDecision[Nhân viên xác minh trực quan & CCTV]
-    CheckHistory -- No --> Penalty[Yêu cầu bắt buộc: THU PHẠT 10,000đ]
+    CheckHistory -- Yes --> StaffDecision[Nhân viên xác minh trực quan]
+    CheckHistory -- No --> StaffDecision
     
     StaffDecision --> SelectReason[Staff bắt buộc chọn lý do giải trình]
     SelectReason --> AuditLog[Ghi nhận Audit Log kèm Staff ID + Shift ID]
@@ -235,16 +215,16 @@ flowchart TD
 
 #### 1. Tự động đối chiếu với Nhật ký sự cố hệ thống (Incident Logs Integration)
 * **Cơ chế hoạt động:** Hệ thống duy trì collection MongoDB `incident_logs` ghi nhận các sự cố toàn ga (mất điện, sơ tán khẩn cấp, nghẽn mạng) hoặc lỗi chẩn đoán của từng cổng soát vé theo khoảng thời gian thực tế. Không tạo thêm bảng riêng `gate_malfunction_events` trong MVP; các sự kiện lỗi cổng được lưu như một loại `incident_type` trong `incident_logs`.
-* **Xử lý tự động:** Khi quét thẻ bị lỗi, hệ thống đối soát thời gian check-in của chuyến đi bị treo với nhật ký sự cố của ga vào/ga ra. Nếu trùng khớp thời gian xảy ra sự cố, hệ thống **tự động khóa nút "Giải khóa có phạt"** và chỉ cho phép nhân viên ga nhấn **"Giải khóa miễn phí"**, loại bỏ hoàn toàn yếu tố cảm tính của con người.
+* **Xử lý tự động:** Khi quét thẻ bị lỗi, hệ thống đối soát thời gian check-in của chuyến đi bị treo với nhật ký sự cố của ga vào/ga ra để gợi ý lý do giải khóa phù hợp cho staff.
 
 #### 2. Luật miễn trừ tự động cho Hành khách dùng Vé tháng (Subscription Exemption)
 * **Cơ chế hoạt động:** Khách hàng sở hữu vé tháng/vé chu kỳ (`Period Passes / Subscriptions`) đã thanh toán trọn gói cước đi lại không giới hạn từ trước. Họ hoàn toàn không có động cơ kinh tế để trốn vé tại chặng ra (vì dù có check-out thành công hay không thì họ cũng không bị trừ thêm tiền).
-* **Xử lý tự động:** Đối với bất kỳ thẻ nào có gói vé tháng còn hiệu lực tại thời điểm xảy ra lỗi, hệ thống mặc định coi lỗi quên check-out là sơ suất vô ý hoặc do lỗi kỹ thuật của cổng và **áp dụng chính sách giải khóa miễn phí 100%**.
+* **Xử lý tự động:** Đối với bất kỳ thẻ nào có gói vé tháng còn hiệu lực tại thời điểm xảy ra lỗi, hệ thống cho phép staff giải khóa sau khi chọn lý do xử lý.
 
 #### 3. Tra cứu lịch sử đi lại & Đánh giá độ tin cậy (Commuter History Auditing)
 * **Cơ chế hoạt động:** Màn hình Portal của nhân viên hiển thị nhanh lịch sử di chuyển và tỷ lệ hoàn thành chuyến đi (`completion_rate`) của khách hàng.
-* **Xử lý tự động:** Nếu hành khách có lịch sử đi lại chuẩn chỉ (ví dụ: tỷ lệ hoàn thành > 98% trong 100 chuyến gần nhất), hệ thống sẽ gợi ý giải khóa miễn phí vì đây rõ ràng là sự cố kỹ thuật đọc thẻ hoặc khách vô ý sơ sẩy. Ngược lại, nếu thẻ có lịch sử liên tục bị treo chặng tại cùng một ga mà không có logs sự cố hạ tầng, hệ thống sẽ gắn nhãn cảnh báo đỏ và yêu cầu áp dụng mức phạt để răn đe hành vi bám đuôi có hệ thống.
+* **Xử lý tự động:** Nếu thẻ có lịch sử liên tục bị treo chặng tại cùng một ga, hệ thống gắn nhãn cảnh báo để Company Manager xem xét vận hành/camera ngoài hệ thống.
 
 #### 4. Nhật ký kiểm toán & Giám sát hành vi nhân sự (Audit Trails & Staff Oversight)
-* **Ngăn ngừa tham nhũng nội bộ:** Mỗi giao dịch **"Giải khóa miễn phí"** đều yêu cầu nhân viên ga bắt buộc phải chọn lý do giải trình cụ thể từ danh sách định sẵn (như: *Hỗ trợ cổng phụ xe lăn, Lỗi cảm biến cổng số 4, Khách mang hành lý cồng kềnh*).
-* **Báo cáo phân tích bất thường (Anomaly Detection):** Hệ thống tự động tổng hợp tỷ lệ giải khóa miễn phí của từng nhân viên ga theo tuần. Nếu một nhân viên có tỷ lệ giải khóa miễn phí vượt quá ngưỡng bình thường của ga (ví dụ: > 8% số ca xử lý, trong khi trung bình của ga chỉ là 1%), hệ thống sẽ tự động gửi cảnh báo bất thường đến tài khoản `COMPANY_MANAGER` và `PLATFORM_MANAGER` để trích xuất camera CCTV đối chất, triệt tiêu hoàn toàn rủi ro nhân viên nhận tiền đút lót để giải khóa lậu.
+* **Audit bắt buộc:** Mỗi thao tác **"Giải khóa"** đều yêu cầu nhân viên ga chọn lý do giải trình cụ thể từ danh sách định sẵn.
+* **Báo cáo phân tích bất thường (Anomaly Detection):** Hệ thống có thể tổng hợp tỷ lệ giải khóa của từng nhân viên ga theo tuần để Company Manager xem xét nếu vượt ngưỡng vận hành bình thường.

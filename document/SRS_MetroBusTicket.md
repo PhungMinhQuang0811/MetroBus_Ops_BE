@@ -1,4 +1,4 @@
-# TÀI LIỆU ĐẶC TẢ YÊU CẦU PHẦN MỀM (SOFTWARE REQUIREMENTS SPECIFICATION - SRS)
+﻿# TÀI LIỆU ĐẶC TẢ YÊU CẦU PHẦN MỀM (SOFTWARE REQUIREMENTS SPECIFICATION - SRS)
 **Dự án:** Hệ thống Quản lý Vé tháng Giao thông Công cộng tự động (Period-based Fare Collection - PFC)  
 **Mô hình áp dụng:** Period-Pass Subscription & Multi-tenant (Đa đơn vị vận hành liên thông)  
 **Thời gian thực hiện:** 6 tuần  
@@ -17,15 +17,15 @@
 | Nguyên tắc tránh trùng lặp | SRS không lặp lại toàn bộ use case và ma trận role; chỉ giữ baseline và link tới tài liệu chuyên trách. |
 
 ### 1.2. Phạm vi dự án (Scope)
-Hệ thống PFC được thiết kế theo mô hình **Thu soát vé tự động (Automated Fare Collection - AFC)** kết hợp **Vé tháng/Vé chu kỳ trả trước (Period Passes & Subscriptions)**, **Vé chặng lẻ dùng 1 lần (Single-Journey Tickets)** và **Ví điện tử nội bộ đa đối tượng (Multi-user Wallet Ledger)**.
+Hệ thống PFC được thiết kế theo mô hình **Thu soát vé tự động (Automated Fare Collection - AFC)** kết hợp **Vé tháng/Vé chu kỳ trả trước (Period Passes & Subscriptions)**, thanh toán trực tiếp qua cổng thanh toán và sổ sách ví doanh nghiệp nội bộ. MVP không triển khai vé lượt lẻ dùng một lần và không triển khai ví Passenger.
 
 | Nhóm phạm vi | Nội dung trong MVP | Ràng buộc/ngoài phạm vi |
 | :--- | :--- | :--- |
-| Hành khách (`PASSENGER`) | Đăng ký bằng SĐT/OTP, đăng nhập bằng SĐT/mật khẩu, quản lý hồ sơ, nạp ví, mua/gia hạn vé, phát hành thẻ ảo, số hóa thẻ cứng, dùng Dynamic QR để soát vé. | Không rút tiền khỏi ví; không mua thẻ cứng trên PWA; không nạp tiền hoặc trừ ví tại validator. |
+| Hành khách (`PASSENGER`) | Đăng ký bằng SĐT/OTP, đăng nhập bằng SĐT/mật khẩu, quản lý hồ sơ, đăng ký/gia hạn vé chu kỳ, phát hành thẻ ảo, số hóa thẻ cứng, xem lịch sử chuyến đi/lịch sử vé đã mua, dùng Dynamic QR để soát vé. | Không có ví Passenger; không nạp/rút ví; không mua thẻ cứng trên PWA; không mua vé lượt lẻ; không nạp tiền hoặc trừ tiền tại validator. |
 | Đơn vị vận hành (`OPERATOR` / `COMPANY_MANAGER`) | Theo dõi ví doanh nghiệp, lịch sử cộng tiền đối soát, gửi yêu cầu giải ngân thủ công, quản lý tuyến/trạm/nhân sự/biểu giá trong phạm vi tenant. | Hệ thống không chuyển khoản ngân hàng tự động; Platform Manager chỉ duyệt/từ chối yêu cầu trên hệ thống. |
 | Quản trị nền tảng (`PLATFORM_MANAGER`) | Quản lý tenant, khung giá trần, clearing, giám sát dòng tiền và duyệt/từ chối yêu cầu giải ngân doanh nghiệp. | Không tự động thay thế quy trình kế toán/ngân hàng ngoài đời. |
-| Staff/quầy ga (`STAFF`) | Khởi tạo phôi thẻ, in/giao/thu hồi thẻ cứng, mở ca/kết ca, hỗ trợ xử lý kẹt ga/quên check-out/đi quá chặng. | Webcam Gate Simulator không đọc RFID/thẻ cứng. |
-| Validator Gate Simulator | Quét Dynamic QR của thẻ/vé điện tử, kiểm tra trạng thái vé/subscription và ghi nhận journey. | Không hỗ trợ vé giấy/token vật lý/RFID trong MVP. |
+| Staff/quầy ga (`STAFF`) | Khởi tạo phôi thẻ, in/giao/thu hồi thẻ cứng, mở ca/kết ca, hỗ trợ xử lý kẹt ga/quên check-out. | Webcam Gate Simulator không đọc RFID/thẻ cứng; không xử lý bù chặng vé lượt trong MVP. |
+| Validator Gate Simulator | Quét Dynamic QR của thẻ điện tử, kiểm tra trạng thái subscription và ghi nhận journey. | Không hỗ trợ vé giấy/token vật lý/RFID/vé lượt lẻ trong MVP. |
 | Thành phần hệ thống | Web Hành khách PWA, Portal vận hành, Validator Gate giả lập, `identity-service`, `ticket-service`, PostgreSQL và MongoDB audit/log. | Các tích hợp AFC phần cứng thật để future phase. |
 | Vận hành đoàn tàu | Không thuộc scope MVP backend ticketing/AFC. DOCX FEED chỉ dùng làm ngữ cảnh tham khảo Metro. | Không triển khai lịch chạy tàu, headway, dwell time, train set, service day hoặc kế hoạch khai thác đoàn tàu. |
 
@@ -33,15 +33,15 @@ Hệ thống PFC được thiết kế theo mô hình **Thu soát vé tự độ
 | Thuật ngữ | Định nghĩa |
 | :--- | :--- |
 | PFC (Period-based Fare Collection) | Hệ thống thu phí và soát vé dựa trên vé chu kỳ/vé tháng. |
-| Single-Journey Ticket | Vé lượt đi một lần dạng điện tử QR, được mua và thanh toán trước. Cổng soát vé chỉ kiểm tra trạng thái vé, không trừ ví tại chỗ. |
+| Single-Journey Ticket | Vé lượt đi một lần. **Out of MVP** để giảm scope; MVP chỉ triển khai vé chu kỳ gắn với thẻ. |
 | Period Pass / Subscription | Gói cước vé dài hạn Metro/Bus, đi lại theo tuyến/phạm vi đã đăng ký trong thời hạn mua. |
-| Passenger Wallet | Ví nội bộ của hành khách để nạp tiền và thanh toán vé/gói vé. Passenger không được rút tiền khỏi ví trong MVP. |
+| Passenger Wallet | **Out of MVP.** Hành khách thanh toán đăng ký/gia hạn vé chu kỳ trực tiếp qua cổng thanh toán, không nạp ví và không giữ số dư nội bộ. |
 | Operator Wallet | Ví/sổ sách nội bộ của công ty vận hành để nhận tiền đối soát và làm căn cứ gửi yêu cầu giải ngân thủ công. |
-| Ledger Transactions | Nhật ký biến động số dư ví: nạp tiền, mua vé, cộng đối soát, `OPERATOR_PAYOUT`, giao dịch tiền mặt tại quầy. |
+| Ledger Transactions | Nhật ký thanh toán và sổ sách: thanh toán trực tiếp đơn thẻ/vé, cộng đối soát ví doanh nghiệp và `OPERATOR_PAYOUT`. |
 | Physical Card | Thẻ cứng được phát hành/bán/in/giao nhận tại Portal. Không được đọc trực tiếp bởi Webcam Gate Simulator; muốn dùng để đi lại phải số hóa sang thẻ điện tử. |
 | Virtual Card | Thẻ điện tử trên PWA/App, hiển thị Dynamic QR và tham gia trực tiếp luồng soát vé giả lập. |
 | Physical-to-Virtual Migration | Quy trình số hóa thẻ cứng sang thẻ ảo, di trú subscription còn hiệu lực và chuyển thẻ cứng sang `VIRTUALIZED`. |
-| Virtual Single-Journey Ticket | Vé lượt ảo QR dùng một lần, thanh toán trước qua ví, `VNPAY_SANDBOX` ở dev hoặc `SEPAY`/VietQR ở production. |
+| Virtual Single-Journey Ticket | Vé lượt ảo QR dùng một lần. **Out of MVP**; không có API mua/soát vé lượt trong bản MVP. |
 | Validator Gate Simulator | Trang web giả lập cổng soát vé bằng webcam, dùng để quét Dynamic QR và mô phỏng check-in/check-out. |
 | PWA (Progressive Web App) | Web app tự phục vụ trên điện thoại của hành khách để mua vé, quản lý ví/thẻ và hiển thị Dynamic QR. |
 
@@ -51,8 +51,8 @@ Hệ thống PFC được thiết kế theo mô hình **Thu soát vé tự độ
 
 ### 2.1. Kiến trúc hệ thống tổng quát
 Hệ thống được tổ chức theo mô hình Microservices phân tách nghiệp vụ rõ ràng, trong đó hai dịch vụ cốt lõi là:
-1.  **`identity-service`:** Quản lý tài khoản hành khách và đối tác, thông tin hồ sơ cá nhân, phân quyền và ví nội bộ. Hồ sơ cá nhân được gộp vào `accounts`; ví được tách thành bảng `wallets` vì là đối tượng sổ sách độc lập có biến động số dư và luồng giải ngân riêng.
-2.  **`ticket-service` (Java Spring Boot):** Quản lý phôi thẻ, đơn đăng ký làm thẻ cứng trực tuyến (`orders`), quản lý các gói vé tháng (`subscriptions`), nhật ký lượt đi (`journeys`), soát vé Validator (kiểm tra hạn dùng vé tháng), tích hợp thanh toán VNPay Sandbox ở dev/Sepay ở production, biến động số dư và Clearing Scheduler chạy ngầm đối soát doanh thu phân bổ vào ví doanh nghiệp.
+1.  **`identity-service`:** Quản lý tài khoản hành khách và đối tác, thông tin hồ sơ cá nhân, phân quyền và ví nội bộ doanh nghiệp/platform. Hồ sơ cá nhân được gộp vào `accounts`; bảng `wallets` chỉ dùng cho sổ sách `OPERATOR`/`PLATFORM`, không tạo ví `PASSENGER` trong MVP.
+2.  **`ticket-service` (Java Spring Boot):** Quản lý phôi thẻ, đơn đăng ký làm thẻ cứng trực tuyến (`orders`), quản lý các gói vé tháng (`subscriptions`), nhật ký lượt đi (`journeys`), soát vé Validator (kiểm tra hạn dùng vé tháng), tích hợp thanh toán trực tiếp VNPay Sandbox ở dev/Sepay ở production và Clearing Scheduler chạy ngầm đối soát doanh thu phân bổ vào ví doanh nghiệp.
 
 ```mermaid
 graph LR
@@ -63,9 +63,9 @@ graph LR
 ```
 
 ### 2.2. Kế hoạch triển khai 6 tuần
-*   **Tuần 1:** Tài liệu nghiệp vụ (SRS), sơ đồ Sequence Diagram, thiết kế cơ sở dữ liệu (ERD) hỗ trợ quản lý ví điện tử, đơn hàng vé tháng và đăng ký thẻ trực tuyến.
-*   **Tuần 2:** Đặc tả Swagger API và cài đặt Base Code Spring Boot `ticket-service`, tích hợp cổng thanh toán VNPay Sandbox cho môi trường dev, chuẩn bị adapter Sepay/VietQR cho môi trường production, tạo luồng nạp tiền ví và mua vé tháng từ ví.
-*   **Tuần 3:** Phát triển UI App Hành khách (Mobile-First) cho phép nạp tiền ví, phát hành thẻ ảo QR Code động, số hóa thẻ cứng sang thẻ ảo, thanh toán mua vé tháng bằng ví hoặc ngân hàng. Luồng mua thẻ cứng ship tận nhà thuộc Web Portal Guest Checkout.
+*   **Tuần 1:** Tài liệu nghiệp vụ (SRS), sơ đồ Sequence Diagram, thiết kế cơ sở dữ liệu (ERD) hỗ trợ đơn hàng vé tháng, đăng ký thẻ trực tuyến và ví doanh nghiệp.
+*   **Tuần 2:** Đặc tả Swagger API và cài đặt Base Code Spring Boot `ticket-service`, tích hợp cổng thanh toán VNPay Sandbox cho môi trường dev, chuẩn bị adapter Sepay/VietQR cho môi trường production, tạo luồng thanh toán trực tiếp cho đăng ký/gia hạn vé tháng.
+*   **Tuần 3:** Phát triển UI App Hành khách (Mobile-First) cho phép phát hành thẻ ảo QR Code động, số hóa thẻ cứng sang thẻ ảo, thanh toán trực tiếp mua/gia hạn vé tháng qua cổng thanh toán. Luồng mua thẻ cứng ship tận nhà thuộc Web Portal Guest Checkout.
 *   **Tuần 4:** Hiện thực hóa API Check-in/Check-out tại Gate Validator (Kiểm tra thời hạn hiệu lực vé tháng còn hạn, ghi nhận lượt đi).
 *   **Tuần 5:** Phát triển Scheduler chạy ngầm đối soát doanh thu quỹ tổng và tự động cộng tiền phân bổ đối soát vào ví doanh nghiệp của các đơn vị thành viên.
 *   **Tuần 6:** Hoàn thiện báo cáo kỹ thuật ($\le 30$ trang) và slide thuyết trình ($\le 20$ slide).
@@ -88,24 +88,24 @@ Các nhóm chức năng MVP được khóa theo 27 use case trong `use_case_spec
 | Xác thực & tài khoản | UC01-UC06 | Passenger đăng ký bằng SĐT/OTP và đăng nhập bằng SĐT/mật khẩu; username/password cho nhân sự nội bộ; profile nằm trong `accounts`. |
 | Thẻ & vé tháng | UC07-UC12 | UC07 mua thẻ cứng chỉ dành cho Guest trên Web Portal; Passenger PWA chỉ phát hành thẻ ảo và số hóa thẻ cứng; soát vé chỉ dùng thẻ/vé điện tử qua Dynamic QR. |
 | Soát vé & vận hành quầy ga | UC13-UC16 | Validator không trừ ví tại cổng; chỉ kiểm tra vé/subscription đã mua trước và ghi nhận journey. |
-| Tài chính & ví điện tử | UC17-UC19 | Passenger chỉ nạp tiền và thanh toán vé; operator được gửi yêu cầu giải ngân thủ công; clearing chạy hằng đêm. |
+| Tài chính & thanh toán | UC17-UC18 | Operator được gửi yêu cầu giải ngân thủ công; clearing chạy hằng đêm. Thanh toán trực tiếp của Passenger/Guest được mô tả trong UC07, UC08 và UC10 theo từng nghiệp vụ. |
 
 #### Chính sách OTP trong MVP
 
 OTP SMS chỉ dùng cho đăng ký tài khoản Passenger mới và quên mật khẩu, không dùng cho đăng nhập thường. OTP có 6 chữ số, TTL 2 phút; OTP mới ghi đè OTP cũ cùng `phoneNumber` và `purpose`. Backend áp dụng cooldown 60 giây giữa hai lần gửi, tối đa 5 OTP/ngày cho mỗi số điện thoại và `purpose`, tối đa 20 OTP/giờ cho mỗi IP, tối đa 5 lần nhập sai cho mỗi OTP. Vượt giới hạn gửi OTP trả HTTP `429 Too Many Requests`. Các giới hạn được cấu hình trong application config và counter được lưu tạm trong Redis.
-| Quản trị vận hành đơn vị | UC20-UC22 | Company Manager quản lý nhân sự, tuyến/trạm và biểu giá trong phạm vi operator/tenant của mình. |
-| Quản trị nền tảng | UC23-UC24 | Platform Manager quản lý tenant và khung giá trần toàn hệ thống. |
-| Giám sát, bảo mật & phân quyền | UC25-UC27 | Admin quản trị kỹ thuật, ban/unban, RBAC và system logs; không tự ý can thiệp tài chính nếu không có audit flow. |
+| Quản trị vận hành đơn vị | UC19-UC21 | Company Manager quản lý nhân sự, tuyến/trạm và biểu giá trong phạm vi operator/tenant của mình. |
+| Quản trị nền tảng | UC22-UC23 | Platform Manager quản lý tenant và khung giá trần toàn hệ thống. |
+| Giám sát, bảo mật & phân quyền | UC24-UC26 | Admin quản trị kỹ thuật, ban/unban, RBAC và system logs; không tự ý can thiệp tài chính nếu không có audit flow. |
 
 ### 3.2. Business Rules Giữ Lại Trong SRS
 
-- **Thanh toán:** Dev dùng `VNPAY_SANDBOX`; production dùng `SEPAY`/VietQR; thanh toán bằng ví dùng `WALLET`; giao dịch tiền mặt tại quầy dùng `CASH`.
-- **Ví nội bộ:** Profile được gộp vào `accounts`; ví được tách thành `wallets` vì là sổ sách độc lập. Passenger không được rút tiền. Operator chỉ gửi yêu cầu giải ngân để Platform Manager duyệt/từ chối thủ công.
+- **Thanh toán:** Dev dùng `VNPAY_SANDBOX`; production dùng `SEPAY`/VietQR; Passenger/Guest thanh toán trực tiếp cho đơn đăng ký/gia hạn vé.
+- **Ví nội bộ:** Profile được gộp vào `accounts`; `wallets` chỉ dùng cho sổ sách `OPERATOR`/`PLATFORM`. Không tạo ví `PASSENGER` trong MVP. Operator chỉ gửi yêu cầu giải ngân để Platform Manager duyệt/từ chối thủ công.
 - **Thẻ vật lý:** Staff khởi tạo/bán/giao/in/quản lý thẻ cứng; Guest mua thẻ cứng qua Web Portal Guest Checkout; Passenger trên PWA chỉ số hóa thẻ cứng sang thẻ điện tử. Webcam Gate Simulator không hỗ trợ RFID/thẻ cứng.
 - **Validator:** Cổng soát vé chỉ xác thực Dynamic QR của thẻ/vé điện tử đã mua trước, không nạp tiền/trừ tiền tại thời điểm quét.
 - **Biểu giá/tuyến/ga:** Các bộ dữ liệu Hanoi/HCM trong tài liệu là seed/demo data theo operator/tenant, không phải giới hạn địa bàn của hệ thống.
 - **Dữ liệu cấu hình resource:** `fare_policies`, `system_configs`, `route_stations`, `tenants/companies` được lưu thành các file JSON trong `src/main/resources` của backend, nạp vào `ConcurrentHashMap` khi khởi động để Fare Engine và API danh mục truy xuất O(1). Backend MVP không tạo thêm các bảng SQL này; dữ liệu lõi vẫn bám theo schema tối giản gồm `operators`, `routes`, `stations` và các bảng vé/giao dịch liên quan.
-- **Fare Engine:** Công thức tính giá vé cụ thể được giữ trong SRS ở mục 3.4 bên dưới. Luồng soát vé/tính cự ly chi tiết xem UC13 và luồng cấu hình biểu giá tuyến xem UC22 trong [use_case_specifications.md](use_case_specifications.md).
+- **Fare Engine:** Công thức tính giá vé cụ thể được giữ trong SRS ở mục 3.4 bên dưới. Luồng soát vé/tính cự ly chi tiết xem UC13 và luồng cấu hình biểu giá tuyến xem UC21 trong [use_case_specifications.md](use_case_specifications.md).
 - **Role & scope:** Ma trận quyền, ranh giới dữ liệu theo role và tenant isolation lấy theo [role_and_scope_analysis.md](role_and_scope_analysis.md).
 - **Vận hành đoàn tàu:** Không triển khai module vận hành đoàn tàu trong MVP; các khái niệm headway, dwell time, turnaround, train set, service calendar chỉ là future phase nếu mở rộng ngoài ticketing/AFC.
 
@@ -219,12 +219,6 @@ Các nhóm dữ liệu dưới đây được đặt ở backend dưới dạng 
     "description": "Cong thanh toan/VietQR dung cho production"
   },
   {
-    "config_key": "fare.bus.max_single_journey_fare",
-    "config_value": 20000,
-    "value_type": "NUMBER",
-    "description": "Khung gia tran ve luot bus"
-  },
-  {
     "config_key": "qr.offline_totp.time_step_seconds",
     "config_value": 30,
     "value_type": "NUMBER",
@@ -248,62 +242,17 @@ Các nhóm dữ liệu dưới đây được đặt ở backend dưới dạng 
 - Nếu cùng một dữ liệu tồn tại ở cả SQL và resource JSON, SQL/backend là nguồn đúng cho trạng thái nghiệp vụ; resource JSON chỉ là cấu hình/cache đọc nhanh cho danh mục và Fare Engine.
 - Khi một nhóm cấu hình bắt đầu cần audit lịch sử, phân quyền chỉnh sửa runtime hoặc hiệu lực theo thời gian phức tạp, lúc đó mới tách khỏi resource JSON thành bảng/API quản trị riêng.
 
-### 3.4. Công Thức Tính Giá Vé (Fare Engine Formula)
+### 3.4. Công Thức Tính Giá Vé Chu Kỳ (Fare Engine Formula)
 
-Biểu giá dưới đây là **seed/demo fare rule theo operator/tenant** để backend có công thức cụ thể khi triển khai MVP. Khi đổi địa bàn hoặc đơn vị vận hành, các giá trị này được cấu hình lại trong backend resource `fare_policies.json`, không cần đổi mã nguồn và không phát sinh bảng SQL riêng trong MVP.
+Biểu giá dưới đây là **seed/demo fare rule theo operator/tenant** để backend có công thức cụ thể khi triển khai MVP. MVP chỉ triển khai vé chu kỳ/vé tháng gắn với thẻ; vé lượt Metro/Bus theo chặng lẻ nằm ngoài phạm vi MVP.
 
-#### 3.4.1. Vé lượt Metro theo số ga
+#### 3.4.1. Vé lượt Metro theo số ga (Out of MVP)
 
-| Điều kiện | Công thức/giá vé |
-| :--- | :--- |
-| `delta_S = 0` | `fare = 0` VNĐ |
-| `delta_S = 1` | `fare = 9,000` VNĐ |
-| `delta_S >= 2` | `fare = 8,000 + delta_S * 1,000` VNĐ |
-| Biểu thức thu gọn với `delta_S >= 1` | `fare = max(9,000, 8,000 + delta_S * 1,000)` |
+Không triển khai bán, soát vé hoặc bù chặng vé lượt Metro trong MVP. Validator chỉ kiểm tra subscription còn hiệu lực và ghi nhận journey phục vụ thống kê/clearing.
 
-Trong đó:
+#### 3.4.2. Vé lượt Bus theo chiều dài tuyến (Out of MVP)
 
-- `delta_S = abs(exit_station.station_order - entry_station.station_order)`.
-- Vé tháng/subscription hợp lệ không tính tiền theo lượt, `fare = 0`.
-- Nếu vé lượt xuống quá ga đã mua, hệ thống so sánh `actual_delta_S` với `paid_delta_S` và chuyển khách sang quầy PSC để thu chênh lệch.
-
-```json
-{
-  "rule_id": "FARE_METRO_STATION_COUNT_DEMO",
-  "transport_type": "METRO",
-  "calculation_model": "STATION_COUNT",
-  "formula": {
-    "base_fare": 8000,
-    "step_fare": 1000,
-    "min_fare": 9000
-  }
-}
-```
-
-#### 3.4.2. Vé lượt Bus theo chiều dài tuyến
-
-| Chiều dài tuyến | Giá vé lượt |
-| :--- | ---: |
-| Dưới 15 km | 8,000 VNĐ |
-| Từ 15 km đến dưới 25 km | 10,000 VNĐ |
-| Từ 25 km đến dưới 30 km | 12,000 VNĐ |
-| Từ 30 km đến dưới 40 km | 15,000 VNĐ |
-| Từ 40 km trở lên | 20,000 VNĐ |
-
-```json
-{
-  "rule_id": "FARE_BUS_ROUTE_FLAT_DEMO",
-  "transport_type": "BUS",
-  "calculation_model": "ROUTE_FLAT_FARE",
-  "tiers_config": [
-    { "max_route_length_km": 15.0, "fare": 8000 },
-    { "max_route_length_km": 25.0, "fare": 10000 },
-    { "max_route_length_km": 30.0, "fare": 12000 },
-    { "max_route_length_km": 40.0, "fare": 15000 },
-    { "max_route_length_km": 999.0, "fare": 20000 }
-  ]
-}
-```
+Không triển khai vé lượt Bus trong MVP. Bus validator chỉ xác minh thẻ ảo có subscription hợp lệ.
 
 ---
 
@@ -335,21 +284,21 @@ Mặc dù hai cơ sở dữ liệu hoàn toàn độc lập về mặt vật lý
 2.  **`cards.created_by` $\rightarrow$ `accounts.id`**: Lưu vết ID của nhân viên quầy (`STAFF`) chịu trách nhiệm khởi tạo phôi thẻ cứng, bán/giao thẻ, in ấn thẻ cứng vật lý hoặc cập nhật trạng thái thẻ, phục vụ mục đích kiểm toán. Thẻ cứng không được dùng trực tiếp trong luồng quét Webcam Gate Simulator.
 3.  **`staff_shifts.staff_id` $\rightarrow$ `accounts.id`**: Lưu vết ID của nhân viên ga (`STAFF`) trực tiếp phụ trách ca soát vé tại một trạm nhất định.
 4.  **`orders.user_id` $\rightarrow$ `accounts.id`**: Xác định tài khoản khách hàng thực hiện gửi yêu cầu đăng ký mua thẻ cứng/vé tháng trực tuyến và thực hiện thanh toán.
-5.  **`wallets.account_id` $\rightarrow$ `accounts.id`**: Liên kết ví nội bộ với tài khoản sở hữu bên `auth_db`.
-6.  **`transactions.wallet_id` $\rightarrow$ `wallets.wallet_id`**: Liên kết logic biến động sổ cái giao dịch bên `ticket_db` sang ví nội bộ bên `auth_db`.
+5.  **`wallets.account_id` $\rightarrow$ `accounts.id`**: Liên kết ví nội bộ doanh nghiệp/platform với tài khoản sở hữu/quản lý bên `auth_db`; không áp dụng cho Passenger trong MVP.
+6.  **`transactions.wallet_id` $\rightarrow$ `wallets.wallet_id`**: Liên kết logic biến động sổ cái giao dịch bên `ticket_db` sang ví nội bộ bên `auth_db` khi giao dịch thuộc operator/platform; giao dịch thanh toán trực tiếp của Passenger có thể để `wallet_id = NULL`.
 
 Vai trò, quyền thao tác và ranh giới dữ liệu theo từng actor không định nghĩa lại trong SRS; xem [role_and_scope_analysis.md](role_and_scope_analysis.md).
 
 ---
 
 ### 4.2. Đặc tả Cơ sở dữ liệu `auth_db` (`identity-service`)
-Database `auth_db` tập trung quản lý thông tin tài khoản định danh, hồ sơ cá nhân, ví nội bộ và cơ chế phân quyền RBAC/PBAC. Hồ sơ cá nhân được gộp vào bảng `accounts` để giảm join trong truy vấn đăng nhập/hiển thị profile. Ví được tách thành bảng `wallets` vì là đối tượng sổ sách độc lập, có số dư, trạng thái, loại ví và liên quan tới lịch sử giao dịch/giải ngân.
+Database `auth_db` tập trung quản lý thông tin tài khoản định danh, hồ sơ cá nhân, ví nội bộ doanh nghiệp/platform và cơ chế phân quyền RBAC/PBAC. Hồ sơ cá nhân được gộp vào bảng `accounts` để giảm join trong truy vấn đăng nhập/hiển thị profile. Ví được tách thành bảng `wallets` vì là đối tượng sổ sách độc lập cho operator/platform, có số dư, trạng thái, loại ví và liên quan tới lịch sử giao dịch/giải ngân.
 
 #### 4.2.1. ERD `auth_db`
 
 ![ERD auth_db](auth_erd_current.svg)
 
-> Ảnh ERD này phản ánh schema hiện tại: profile nằm trong `accounts`, ví tách riêng ở `wallets`, RBAC dùng `roles`, `permissions`, `account_roles`, `role_permissions`.
+> Ảnh ERD này phản ánh schema hiện tại: profile nằm trong `accounts`, ví operator/platform tách riêng ở `wallets`, RBAC dùng `roles`, `permissions`, `account_roles`, `role_permissions`. MVP không tạo ví `PASSENGER`.
 
 #### 4.2.2. SQL schema `auth_db`
 
@@ -377,7 +326,7 @@ CREATE TABLE accounts (
 CREATE TABLE wallets (
     wallet_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     account_id VARCHAR(36) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    wallet_type VARCHAR(20) NOT NULL, -- 'PASSENGER', 'OPERATOR', 'PLATFORM'
+    wallet_type VARCHAR(20) NOT NULL, -- 'OPERATOR', 'PLATFORM'
     balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
     status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- 'ACTIVE', 'LOCKED', 'SUSPENDED'
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -505,25 +454,7 @@ CREATE TABLE subscriptions (
 );
 
 -- =========================================================================
--- 5. BẢNG TICKETS: Quản lý các vé lượt lẻ dùng 1 lần (Single-Journey Tickets)
--- =========================================================================
-CREATE TABLE tickets (
-    ticket_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    card_id UUID NOT NULL REFERENCES cards(card_id) ON DELETE CASCADE, -- Thẻ cứng hoặc thẻ ảo liên kết khi mua
-    ticket_type VARCHAR(20) NOT NULL, -- 'BUS', 'METRO'
-    route_id INT REFERENCES routes(route_id) ON DELETE SET NULL, -- Tuyến xe bus hoặc tuyến Metro
-    entry_station_id INT REFERENCES stations(station_id) ON DELETE SET NULL, -- Ga vào (chỉ dùng cho METRO)
-    exit_station_id INT REFERENCES stations(station_id) ON DELETE SET NULL, -- Ga ra (chỉ dùng cho METRO)
-    price DECIMAL(10, 2) NOT NULL, -- Giá vé lượt đã thanh toán
-    payment_method VARCHAR(20) NOT NULL, -- 'VNPAY_SANDBOX', 'SEPAY', 'WALLET'
-    payment_status VARCHAR(20) DEFAULT 'PENDING', -- 'PENDING', 'COMPLETED', 'FAILED', 'EXPIRED', 'MANUAL_REVIEW'
-    status VARCHAR(20) DEFAULT 'ACTIVE', -- 'ACTIVE' (chờ sử dụng), 'IN_PROGRESS' (đang đi), 'USED' (đã sử dụng), 'EXPIRED' (hết hạn)
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- =========================================================================
--- 6. BẢNG ORDERS: Đơn hàng đăng ký mua thẻ cứng/vé tháng trực tuyến
+-- 5. BẢNG ORDERS: Đơn hàng đăng ký mua thẻ cứng/vé tháng trực tuyến
 -- =========================================================================
 CREATE TABLE orders (
     order_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -544,7 +475,7 @@ CREATE TABLE orders (
     card_price DECIMAL(10, 2) NOT NULL, -- Phí làm thẻ cứng vật lý (nếu có)
     ticket_price DECIMAL(10, 2) NOT NULL, -- Phí mua vé tháng
     total_amount DECIMAL(10, 2) NOT NULL, -- Tổng số tiền thanh toán
-    payment_method VARCHAR(20) NOT NULL, -- 'VNPAY_SANDBOX', 'SEPAY', 'WALLET'
+    payment_method VARCHAR(20) NOT NULL, -- 'VNPAY_SANDBOX', 'SEPAY'
     payment_status VARCHAR(20) DEFAULT 'PENDING', -- 'PENDING', 'COMPLETED', 'FAILED', 'EXPIRED', 'MANUAL_REVIEW'
     order_status VARCHAR(20) DEFAULT 'PENDING_PAYMENT', -- 'PENDING_PAYMENT', 'PRINTING', 'READY_FOR_PICKUP', 'SHIPPED', 'COMPLETED', 'CANCELLED'
     card_id UUID REFERENCES cards(card_id) ON DELETE SET NULL, -- Được gán sau khi tạo thẻ vật lý thành công
@@ -553,7 +484,7 @@ CREATE TABLE orders (
 );
 
 -- =========================================================================
--- 7. BẢNG STAFF_SHIFTS: Quản lý phân ca trực kíp nhân viên nhà ga
+-- 6. BẢNG STAFF_SHIFTS: Quản lý phân ca trực kíp nhân viên nhà ga
 -- =========================================================================
 CREATE TABLE staff_shifts (
     shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -565,12 +496,11 @@ CREATE TABLE staff_shifts (
 );
 
 -- =========================================================================
--- 8. BẢNG JOURNEYS: Lịch sử và trạng thái các chuyến đi của hành khách
+-- 7. BẢNG JOURNEYS: Lịch sử và trạng thái các chuyến đi của hành khách
 -- =========================================================================
 CREATE TABLE journeys (
     journey_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    card_id UUID REFERENCES cards(card_id) ON DELETE CASCADE, -- Nullable (nếu đi bằng thẻ ảo)
-    ticket_id UUID REFERENCES tickets(ticket_id) ON DELETE CASCADE, -- Nullable (nếu đi bằng vé lượt ảo)
+    card_id UUID NOT NULL REFERENCES cards(card_id) ON DELETE CASCADE,
     entry_station_id INT REFERENCES stations(station_id) ON DELETE SET NULL,
     exit_station_id INT REFERENCES stations(station_id) ON DELETE SET NULL,
     started_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -582,15 +512,15 @@ CREATE TABLE journeys (
 );
 
 -- =========================================================================
--- 9. BẢNG TRANSACTIONS: Nhật ký giao dịch tài chính & tiền mặt ca trực
+-- 8. BẢNG TRANSACTIONS: Nhật ký giao dịch tài chính
 -- =========================================================================
 CREATE TABLE transactions (
     transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    wallet_id UUID, -- Khóa ngoại logic liên kết wallets.wallet_id bên auth_db (nếu giao dịch qua ví)
-    shift_id UUID REFERENCES staff_shifts(shift_id) ON DELETE SET NULL, -- Liên kết ca trực của STAFF nếu là giao dịch tiền mặt tại quầy ga
+    wallet_id UUID, -- Khóa ngoại logic liên kết wallets.wallet_id bên auth_db nếu giao dịch thuộc operator/platform
+    shift_id UUID REFERENCES staff_shifts(shift_id) ON DELETE SET NULL, -- Dự phòng audit vận hành nếu giao dịch cần liên kết ca trực
     amount DECIMAL(15, 2) NOT NULL, -- Số tiền giao dịch (+ cộng, - trừ)
-    transaction_type VARCHAR(30) NOT NULL, -- 'TOP_UP', 'CASH_TOP_UP', 'PAY_SUBSCRIPTION', 'PAY_TICKET', 'CASH_FARE_ADJUSTMENT', 'CASH_PENALTY', 'CREDIT_CLEARING', 'OPERATOR_PAYOUT'
-    payment_method VARCHAR(20), -- 'VNPAY_SANDBOX', 'SEPAY', 'WALLET', 'CASH', NULL nếu là clearing
+    transaction_type VARCHAR(30) NOT NULL, -- 'PAY_SUBSCRIPTION', 'CREDIT_CLEARING', 'OPERATOR_PAYOUT'
+    payment_method VARCHAR(20), -- 'VNPAY_SANDBOX', 'SEPAY', NULL nếu là clearing
     status VARCHAR(20) NOT NULL DEFAULT 'SUCCESS',-- 'PENDING', 'SUCCESS', 'FAILED', 'MANUAL_REVIEW'
     provider_transaction_id VARCHAR(100), -- Mã giao dịch từ VNPay/Sepay để chống callback trùng
     reference_id VARCHAR(36), -- ID tham chiếu logic đa bảng; lưu UUID hoặc INT dưới dạng chuỗi cho orders, journeys, clearing_settlements hoặc withdrawal_requests
@@ -641,7 +571,7 @@ CREATE TABLE withdrawal_requests (
 #### 1. Enum `OrderStatus` (Trạng thái đơn mua thẻ cứng)
 *   **Mô tả:** Quản lý vòng đời đơn đăng ký mua thẻ cứng vật lý trực tuyến của hành khách. Thẻ cứng chỉ được quản lý/bán/in/giao nhận và có thể số hóa sang thẻ điện tử; Webcam Gate Simulator không đọc thẻ cứng/RFID.
 *   **Các giá trị định nghĩa:**
-    *   `PENDING_PAYMENT`: Đơn hàng mới tạo, đang chờ khách thực hiện thanh toán online (qua VNPay Sandbox ở dev, Sepay/VietQR ở production hoặc số dư ví).
+    *   `PENDING_PAYMENT`: Đơn hàng mới tạo, đang chờ khách thực hiện thanh toán online (qua VNPay Sandbox ở dev, Sepay/VietQR ở production).
     *   `PRINTING`: Đơn đã thanh toán thành công, hệ thống tự động chuyển duyệt và đưa vào hàng chờ in ấn cơ học của nhân viên ga.
     *   `READY_FOR_PICKUP`: Thẻ cứng đã được nhân viên Portal in xong, đang chuẩn bị sẵn tại ga chờ hành khách đến nhận.
     *   `SHIPPED`: Thẻ cứng đã được đóng gói và bàn giao cho đơn vị chuyển phát nhanh (đối với hình thức giao hàng tận nhà).
@@ -701,13 +631,13 @@ stateDiagram-v2
 *   **Các giá trị:** `ACTIVE` (Gói cước vé chu kỳ còn hiệu lực), `EXPIRED` (Gói cước đã hết hạn dùng), `SUSPENDED` (Gói cước bị tạm dừng do thẻ bị báo mất hoặc tạm khóa).
 
 #### 5. Enum `WalletType` (Phân loại ví nội bộ trên `wallets`)
-*   **Các giá trị:** `PASSENGER` (Ví cá nhân khách hàng, chỉ nạp và chi mua vé, không rút tiền), `OPERATOR` (Ví doanh nghiệp vận hành, nhận đối soát và được gửi yêu cầu giải ngân thủ công), `PLATFORM` (Ví quỹ tổng hệ thống thu hộ).
+*   **Các giá trị:** `OPERATOR` (Ví doanh nghiệp vận hành, nhận đối soát và được gửi yêu cầu giải ngân thủ công), `PLATFORM` (Ví quỹ tổng hệ thống thu hộ). `PASSENGER` wallet không thuộc MVP.
 
-#### 6. Enum `TransactionType` (Loại biến động số dư ví nội bộ & tiền mặt ca trực)
-*   **Các giá trị:** `TOP_UP` (Nạp tiền ví online qua VNPay Sandbox ở dev hoặc Sepay/VietQR ở production), `CASH_TOP_UP` (Khách nạp tiền mặt vào ví tại quầy ga), `PAY_SUBSCRIPTION` (Thanh toán mua gói vé tháng/chu kỳ), `PAY_TICKET` (Thanh toán vé lượt), `CASH_FARE_ADJUSTMENT` (Khách trả tiền mặt bù quá chặng ga), `CASH_PENALTY` (Khách nộp phạt tiền mặt do quên check-out), `CREDIT_CLEARING` (Cộng tiền bù trừ đối soát phân bổ hằng đêm cho doanh nghiệp), `OPERATOR_PAYOUT` (Ghi nhận trừ sổ sách ví doanh nghiệp khi yêu cầu giải ngân thủ công được duyệt).
+#### 6. Enum `TransactionType` (Loại giao dịch tài chính)
+*   **Các giá trị:** `PAY_SUBSCRIPTION` (Thanh toán trực tiếp mua/gia hạn gói vé tháng/chu kỳ), `CREDIT_CLEARING` (Cộng tiền bù trừ đối soát phân bổ hằng đêm cho doanh nghiệp), `OPERATOR_PAYOUT` (Ghi nhận trừ sổ sách ví doanh nghiệp khi yêu cầu giải ngân thủ công được duyệt).
 
-#### 7. Enum `TicketStatus` (Trạng thái vé lượt)
-*   **Các giá trị:** `ACTIVE` (đã mua, chờ sử dụng), `IN_PROGRESS` (đã check-in với Metro), `USED` (đã hoàn tất/sử dụng), `EXPIRED` (hết hạn hoặc bị hủy).
+#### 7. Enum `TicketStatus` (Out of MVP)
+*   Vé lượt lẻ không triển khai trong MVP nên không cần enum `TicketStatus` trong code MVP.
 
 #### 8. Enum `PaymentStatus` (Trạng thái thanh toán)
 *   **Các giá trị:** `PENDING` (đang chờ callback/thanh toán), `COMPLETED` (thanh toán thành công), `FAILED` (thanh toán thất bại), `EXPIRED` (phiên thanh toán hết hạn), `MANUAL_REVIEW` (cần xử lý thủ công, thường do sai cú pháp chuyển khoản Sepay).
@@ -789,7 +719,7 @@ Lưu trữ nhật ký các sự cố xảy ra tại trạm ga (như mất điệ
 ```
 
 ##### 4. Collection `system_errors` (Nhật ký lỗi kỹ thuật và exception)
-Lưu các lỗi kỹ thuật phát sinh trong backend, các lỗi retry thất bại, lỗi sinh mã định danh, lỗi callback thanh toán hoặc lỗi tích hợp ngoài. Collection này phục vụ UC27 tra cứu system logs và không lưu trạng thái nghiệp vụ hiện hành.
+Lưu các lỗi kỹ thuật phát sinh trong backend, các lỗi retry thất bại, lỗi sinh mã định danh, lỗi callback thanh toán hoặc lỗi tích hợp ngoài. Collection này phục vụ UC26 tra cứu system logs và không lưu trạng thái nghiệp vụ hiện hành.
 ```json
 {
   "_id": "ObjectId",

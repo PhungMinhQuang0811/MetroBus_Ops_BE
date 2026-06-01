@@ -1,4 +1,4 @@
-# API Test Plan Theo Use Case
+﻿# API Test Plan Theo Use Case
 
 **Dự án:** MetroBus Ticketing/AFC MVP  
 **Mục đích:** Code xong use case nào thì test API use case đó, không phải đối chiếu qua nhiều phần tài liệu.  
@@ -213,6 +213,7 @@ POST /auth/phone/check
 ```
 
 - HTTP: `200`
+- Notes: Dev dùng `paymentProvider = "VNPAY_SANDBOX"` và trả `paymentUrl`; production dùng `paymentProvider = "SEPAY"` và trả thông tin VietQR/Sepay tương đương để passenger thanh toán đúng số tiền/nội dung.
 - Side effects: Không gửi OTP cho số điện thoại đã có tài khoản.
 - FE usage: Lưu `result.phoneNumber` làm `identifier` khi gọi `POST /auth/login`.
 
@@ -245,6 +246,7 @@ POST /auth/phone/check
 ```
 
 - HTTP: `200`
+- Notes: Dev dùng `paymentProvider = "VNPAY_SANDBOX"` và trả `paymentUrl`; production dùng `paymentProvider = "SEPAY"` và trả thông tin VietQR/Sepay tương đương để guest thanh toán đúng số tiền/nội dung.
 - Notes: Production phải gửi OTP thật qua SMS Gateway/Firebase SMS và không trả OTP trong response. Dev/test có thể dùng fake SMS hoặc log OTP để kiểm thử. Backend lưu OTP đăng ký tạm theo `phoneNumber` và `purpose` với TTL 2 phút.
 - FE usage: Lưu `result.phoneNumber` để truyền sang bước verify OTP đăng ký.
 
@@ -347,7 +349,7 @@ POST /auth/register/set-password
 - HTTP: `200`
 - Header/Cookie:
   - Response set cookie chứa access token và refresh token theo cấu hình backend.
-- Side effects: Tạo account `PASSENGER`, set `isPhoneVerified = true`, lưu password đã mã hóa và tạo wallet `PASSENGER` số dư `0`.
+- Side effects: Tạo account `PASSENGER`, set `isPhoneVerified = true`, lưu password đã mã hóa; không tạo wallet `PASSENGER`.
 
 #### API-UC01-006: Registration OTP invalid/expired
 
@@ -662,7 +664,7 @@ Cookie: accessToken=logged_out_token
 
 - HTTP: `401`
 
-### UC04: Đổi mật khẩu nội bộ
+### UC04: Đổi mật khẩu
 
 #### API-UC04-001: Change password success
 
@@ -670,7 +672,7 @@ Cookie: accessToken=logged_out_token
 
 ```http
 POST /user/change-password
-Cookie: accessToken={{staffAccessToken}}
+Cookie: accessToken={{passengerAccessToken}}
 ```
 
 ```json
@@ -692,7 +694,7 @@ Cookie: accessToken={{staffAccessToken}}
 ```
 
 - HTTP: `200`
-- Side effects: Login bằng password cũ thất bại, password mới thành công.
+- Side effects: Login bằng password cũ thất bại, password mới thành công. Case này áp dụng tương tự cho `staffAccessToken`, `companyManagerAccessToken`, `platformManagerAccessToken` và `adminAccessToken`.
 
 #### API-UC04-002: Wrong old password
 
@@ -700,7 +702,7 @@ Cookie: accessToken={{staffAccessToken}}
 
 ```http
 POST /user/change-password
-Cookie: accessToken={{staffAccessToken}}
+Cookie: accessToken={{passengerAccessToken}}
 ```
 
 ```json
@@ -729,7 +731,7 @@ Cookie: accessToken={{staffAccessToken}}
 
 ```http
 POST /user/change-password
-Cookie: accessToken={{staffAccessToken}}
+Cookie: accessToken={{passengerAccessToken}}
 ```
 
 ```json
@@ -1124,6 +1126,7 @@ POST /orders/physical-card
 ```
 
 - HTTP: `200` hoặc `201`
+- Notes: Dev dùng `paymentProvider = "VNPAY_SANDBOX"` và trả `paymentUrl`; production dùng `paymentProvider = "SEPAY"` và trả thông tin VietQR/Sepay tương đương để khách chuyển khoản đúng số tiền/nội dung.
 
 #### API-UC07-002: Physical card payment success callback
 
@@ -1161,6 +1164,7 @@ POST /payments/callback
 ```
 
 - HTTP: `200`
+- Side effects: Order chuyển `PRINTING`, tạo physical card, transaction `PAY_SUBSCRIPTION` chuyển `SUCCESS` với `payment_method = 'VNPAY_SANDBOX'` hoặc `'SEPAY'`.
 
 #### API-UC07-003: Payment cancelled/expired
 
@@ -1216,6 +1220,42 @@ POST /payments/callback
 - HTTP: `200` hoặc `409`
 - Side effects: Không tạo card/order/transaction trùng.
 
+#### API-UC07-005: Sepay webhook manual review
+
+- Request:
+
+```http
+POST /payments/callback
+```
+
+```json
+{
+  "provider": "SEPAY",
+  "providerTransactionId": "sepay_txn_id",
+  "orderId": "order_id",
+  "amount": 99000,
+  "status": "SUCCESS",
+  "signature": "signature"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "processed": true,
+    "orderId": "order_id",
+    "transactionStatus": "MANUAL_REVIEW"
+  }
+}
+```
+
+- HTTP: `200`
+- Side effects: Không tạo thẻ vật lý; order chưa chuyển `PRINTING`.
+
 ### UC08: Đăng ký và phát hành thẻ ảo
 
 #### API-UC08-001: Issue virtual card success
@@ -1230,7 +1270,7 @@ Cookie: accessToken={{passengerAccessToken}}
 ```json
 {
   "subscriptionPlanId": "MONTHLY_METRO_01",
-  "paymentMethod": "WALLET"
+  "paymentProvider": "VNPAY_SANDBOX"
 }
 ```
 
@@ -1267,20 +1307,21 @@ Cookie: accessToken={{passengerAccessToken}}
 
 - HTTP: `422`
 
-#### API-UC08-003: Reject when wallet insufficient
+#### API-UC08-003: Payment failed does not issue card
 
-- Request: giống `API-UC08-001`, dùng passenger không đủ số dư.
+- Request: payment callback cho phiên phát hành thẻ trả trạng thái `FAILED` hoặc `EXPIRED`.
 - Expected response:
 
 ```json
 {
-  "code": 3008,
-  "message": "Wallet balance is insufficient",
+  "code": 3009,
+  "message": "Payment failed or expired",
   "result": null
 }
 ```
 
-- HTTP: `422`
+- HTTP: `400` hoặc `422`
+- Side effects: Không tạo card/subscription dở dang.
 
 ### UC09: Số hóa thẻ cứng thành thẻ ảo
 
@@ -1349,7 +1390,7 @@ Cookie: accessToken={{passengerAccessToken}}
 
 ### UC10: Gia hạn gói vé chu kỳ
 
-#### API-UC10-001: Renew by passenger wallet
+#### API-UC10-001: Renew by passenger direct payment
 
 - Request:
 
@@ -1362,7 +1403,7 @@ Cookie: accessToken={{passengerAccessToken}}
 {
   "subscriptionId": "subscription_id",
   "planId": "MONTHLY_METRO_01",
-  "paymentMethod": "WALLET"
+  "paymentProvider": "VNPAY_SANDBOX"
 }
 ```
 
@@ -1373,15 +1414,14 @@ Cookie: accessToken={{passengerAccessToken}}
   "code": 1000,
   "message": "Success",
   "result": {
-    "subscriptionId": "subscription_id",
-    "startDate": "2026-06-01",
-    "endDate": "2026-06-30",
-    "transactionId": "transaction_id"
+    "paymentUrl": "https://payment-url",
+    "paymentRequestId": "payment_request_id"
   }
 }
 ```
 
 - HTTP: `200`
+- Notes: Dev dùng `paymentProvider = "VNPAY_SANDBOX"` và trả `paymentUrl`; production dùng `paymentProvider = "SEPAY"` và trả thông tin VietQR/Sepay tương đương để passenger thanh toán đúng số tiền/nội dung.
 
 #### API-UC10-002: Renew by guest online payment
 
@@ -1413,21 +1453,23 @@ POST /subscriptions/guest-renew-subscription
 ```
 
 - HTTP: `200`
+- Notes: Dev dùng `paymentProvider = "VNPAY_SANDBOX"` và trả `paymentUrl`; production dùng `paymentProvider = "SEPAY"` và trả thông tin VietQR/Sepay tương đương để guest thanh toán đúng số tiền/nội dung.
 
-#### API-UC10-003: Renew rejected when wallet insufficient
+#### API-UC10-003: Renew payment failed
 
-- Request: giống `API-UC10-001`, dùng ví không đủ tiền.
+- Request: callback gia hạn trả trạng thái `FAILED` hoặc `EXPIRED`.
 - Expected response:
 
 ```json
 {
-  "code": 3008,
-  "message": "Wallet balance is insufficient",
+  "code": 3009,
+  "message": "Payment failed or expired",
   "result": null
 }
 ```
 
-- HTTP: `422`
+- HTTP: `400` hoặc `422`
+- Side effects: Không thay đổi `subscriptions.end_date`.
 
 #### API-UC10-004: Renew payment callback idempotency
 
@@ -1447,6 +1489,41 @@ POST /subscriptions/guest-renew-subscription
 
 - HTTP: `200` hoặc `409`
 - Side effects: Subscription chỉ gia hạn một lần.
+
+#### API-UC10-005: Sepay webhook manual review
+
+- Request:
+
+```http
+POST /payments/callback
+```
+
+```json
+{
+  "provider": "SEPAY",
+  "providerTransactionId": "sepay_txn_id",
+  "paymentRequestId": "renew_payment_request_id",
+  "amount": 99000,
+  "status": "SUCCESS",
+  "signature": "signature"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "processed": true,
+    "transactionStatus": "MANUAL_REVIEW"
+  }
+}
+```
+
+- HTTP: `200`
+- Side effects: Không thay đổi `subscriptions.end_date`; không ghi nhận gia hạn thành công.
 
 ### UC11: Khởi tạo lô phôi thẻ cứng
 
@@ -1689,15 +1766,15 @@ POST /validator/scan-ticket
 
 - HTTP: `409` hoặc `422`
 
-#### API-UC13-005: Locked card or over-riding rejected
+#### API-UC13-005: Locked card rejected
 
-- Request: quét card `LOCKED` hoặc vé lượt đi quá ga đã mua.
+- Request: quét card `LOCKED`.
 - Expected response:
 
 ```json
 {
   "code": 3014,
-  "message": "Card is locked or ticket is invalid for this exit station",
+  "message": "Card is locked. Please contact PSC",
   "result": {
     "accepted": false,
     "gateOpen": false,
@@ -1736,12 +1813,12 @@ Cookie: accessToken={{staffAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC14-002: Fare adjustment cash
+#### API-UC14-002: Unlock locked card
 
 - Request:
 
 ```http
-POST /psc/fare-adjustment
+POST /psc/unlock
 Cookie: accessToken={{staffAccessToken}}
 ```
 
@@ -1749,47 +1826,8 @@ Cookie: accessToken={{staffAccessToken}}
 {
   "cardUid": "card_uid",
   "journeyId": "journey_id",
-  "actualExitStationId": 1005,
-  "amount": 5000,
-  "paymentMethod": "CASH",
   "shiftId": "shift_id",
-  "reason": "OVER_RIDING"
-}
-```
-
-- Expected response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "journeyStatus": "COMPLETED",
-    "transactionId": "transaction_id",
-    "transactionType": "CASH_FARE_ADJUSTMENT"
-  }
-}
-```
-
-- HTTP: `200`
-
-#### API-UC14-003: Penalty unlock
-
-- Request:
-
-```http
-POST /psc/penalty-unlock
-Cookie: accessToken={{staffAccessToken}}
-```
-
-```json
-{
-  "cardUid": "card_uid",
-  "journeyId": "journey_id",
-  "amount": 10000,
-  "paymentMethod": "CASH",
-  "shiftId": "shift_id",
-  "reason": "TAILGATING"
+  "reason": "MISSING_CHECKOUT"
 }
 ```
 
@@ -1802,50 +1840,16 @@ Cookie: accessToken={{staffAccessToken}}
   "result": {
     "cardStatus": "ACTIVE",
     "journeyStatus": "COMPLETED",
-    "transactionType": "CASH_PENALTY"
+    "financialTransactionCreated": false
   }
 }
 ```
 
 - HTTP: `200`
 
-#### API-UC14-004: Free override unlock
+#### API-UC14-003: PSC action rejected when shift closed
 
-- Request:
-
-```http
-POST /psc/free-unlock
-Cookie: accessToken={{staffAccessToken}}
-```
-
-```json
-{
-  "cardUid": "card_uid",
-  "journeyId": "journey_id",
-  "shiftId": "shift_id",
-  "reason": "SYSTEM_INCIDENT"
-}
-```
-
-- Expected response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "cardStatus": "ACTIVE",
-    "journeyStatus": "COMPLETED",
-    "amount": 0
-  }
-}
-```
-
-- HTTP: `200`
-
-#### API-UC14-005: PSC action rejected when shift closed
-
-- Request: dùng một trong các API `/psc/*`, truyền `shiftId` đã `CLOSED`.
+- Request: gọi `POST /psc/unlock`, truyền `shiftId` đã `CLOSED`.
 - Expected response:
 
 ```json
@@ -1936,7 +1940,7 @@ Cookie: accessToken={{staffAccessToken}}
 
 - HTTP: `409` hoặc `422`
 
-### UC16: Vận hành ca trực và đối chiếu két tiền mặt
+### UC16: Check-in/Check-out ca trực
 
 #### API-UC16-001: Open shift
 
@@ -1949,8 +1953,7 @@ Cookie: accessToken={{staffAccessToken}}
 
 ```json
 {
-  "stationId": 1001,
-  "openingCashAmount": 0
+  "stationId": 1001
 }
 ```
 
@@ -1995,9 +1998,7 @@ Cookie: accessToken={{staffAccessToken}}
 
 ```json
 {
-  "shiftId": "shift_id",
-  "actualCashCounted": 150000,
-  "discrepancyReason": "No discrepancy"
+  "shiftId": "shift_id"
 }
 ```
 
@@ -2010,178 +2011,35 @@ Cookie: accessToken={{staffAccessToken}}
   "result": {
     "shiftId": "shift_id",
     "status": "CLOSED",
-    "systemCashAmount": 150000,
-    "actualCashCounted": 150000
+    "startedAt": "2026-06-02T08:00:00+07:00",
+    "endedAt": "2026-06-02T16:00:00+07:00",
+    "stationId": 1001
   }
 }
 ```
 
 - HTTP: `200`
 
-#### API-UC16-004: Close shift with discrepancy
+#### API-UC16-004: Close invalid or already closed shift
 
-- Request: giống `API-UC16-003`, `actualCashCounted` khác `systemCashAmount` và có `discrepancyReason`.
+- Request: giống `API-UC16-003`, dùng `shiftId` không thuộc staff hiện tại hoặc ca đã `CLOSED`.
 - Expected response:
 
 ```json
 {
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "status": "CLOSED",
-    "hasDiscrepancy": true
-  }
-}
-```
-
-- HTTP: `200`
-
-## Module 4: Tài Chính & Ví Điện Tử
-
-### UC17: Quản lý ví và nạp tiền
-
-#### API-UC17-001: Get passenger wallet
-
-- Request:
-
-```http
-GET /wallets/me
-Cookie: accessToken={{passengerAccessToken}}
-```
-
-- Expected response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "walletId": "wallet_id",
-    "walletType": "PASSENGER",
-    "balance": 100000,
-    "status": "ACTIVE"
-  }
-}
-```
-
-- HTTP: `200`
-
-#### API-UC17-002: Create top-up request
-
-- Request:
-
-```http
-POST /wallets/create-top-up
-Cookie: accessToken={{passengerAccessToken}}
-```
-
-```json
-{
-  "amount": 100000,
-  "provider": "VNPAY_SANDBOX"
-}
-```
-
-- Expected response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "paymentUrl": "https://payment-url",
-    "paymentRequestId": "payment_request_id"
-  }
-}
-```
-
-- HTTP: `200`
-
-#### API-UC17-003: Top-up callback success
-
-- Request:
-
-```http
-POST /wallets/top-up-callback
-```
-
-```json
-{
-  "provider": "VNPAY_SANDBOX",
-  "providerTransactionId": "provider_txn_id",
-  "walletId": "wallet_id",
-  "amount": 100000,
-  "status": "SUCCESS",
-  "signature": "signature"
-}
-```
-
-- Expected response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "processed": true,
-    "walletId": "wallet_id",
-    "balance": 200000,
-    "transactionId": "transaction_id"
-  }
-}
-```
-
-- HTTP: `200`
-
-#### API-UC17-004: Top-up callback duplicate
-
-- Request: gửi lại callback với cùng `providerTransactionId`.
-- Expected response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "processed": false,
-    "duplicate": true
-  }
-}
-```
-
-- HTTP: `200` hoặc `409`
-- Side effects: Không cộng tiền lần hai.
-
-#### API-UC17-005: Passenger withdraw rejected
-
-- Request:
-
-```http
-POST /wallets/withdraw-wallet
-Cookie: accessToken={{passengerAccessToken}}
-```
-
-```json
-{
-  "amount": 100000
-}
-```
-
-- Expected response:
-
-```json
-{
-  "code": 3004,
-  "message": "Passenger wallet does not support withdrawal",
+  "code": 3018,
+  "message": "Shift is not active",
   "result": null
 }
 ```
 
-- HTTP: `403` hoặc `422`
+- HTTP: `409` hoặc `422`
 
-### UC18: Gửi và duyệt yêu cầu giải ngân ví doanh nghiệp
+## Module 4: Tài Chính & Thanh Toán
 
-#### API-UC18-001: Create payout request
+### UC17: Gửi và duyệt yêu cầu giải ngân ví doanh nghiệp
+
+#### API-UC17-001: Create payout request
 
 - Request:
 
@@ -2215,9 +2073,9 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200` hoặc `201`
 
-#### API-UC18-002: Insufficient operator wallet rejected
+#### API-UC17-002: Insufficient operator wallet rejected
 
-- Request: giống `API-UC18-001`, amount lớn hơn số dư.
+- Request: giống `API-UC17-001`, amount lớn hơn số dư.
 - Expected response:
 
 ```json
@@ -2230,7 +2088,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `422`
 
-#### API-UC18-003: Approve payout
+#### API-UC17-003: Approve payout
 
 - Request:
 
@@ -2263,7 +2121,7 @@ Cookie: accessToken={{platformManagerAccessToken}}
 - HTTP: `200`
 - Notes: Không tự động chuyển khoản ngân hàng.
 
-#### API-UC18-004: Reject payout
+#### API-UC17-004: Reject payout
 
 - Request:
 
@@ -2294,7 +2152,7 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC18-005: Company Manager cannot approve payout
+#### API-UC17-005: Company Manager cannot approve payout
 
 - Request: gọi `/payouts/approve-payout` bằng `companyManagerToken`.
 - Expected response:
@@ -2309,9 +2167,9 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `403`
 
-### UC19: Chạy đối soát và phân chia doanh thu
+### UC18: Chạy đối soát và phân chia doanh thu
 
-#### API-UC19-001: Run clearing manually
+#### API-UC18-001: Run clearing manually
 
 - Request:
 
@@ -2344,7 +2202,7 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC19-002: Clearing rerun idempotent
+#### API-UC18-002: Clearing rerun idempotent
 
 - Request: chạy lại cùng `settlementDate`.
 - Expected response:
@@ -2363,7 +2221,7 @@ Cookie: accessToken={{platformManagerAccessToken}}
 - HTTP: `200` hoặc `409`
 - Side effects: Không cộng ví operator lần hai.
 
-#### API-UC19-003: Get clearing reports
+#### API-UC18-003: Get clearing reports
 
 - Request:
 
@@ -2395,9 +2253,9 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 ## Module 5: Quản Trị Vận Hành Đơn Vị
 
-### UC20: Quản lý nhân viên và phân lịch ca trực
+### UC19: Quản lý nhân viên và phân lịch ca trực
 
-#### API-UC20-001: Create staff
+#### API-UC19-001: Create staff
 
 - Request:
 
@@ -2431,7 +2289,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200` hoặc `201`
 
-#### API-UC20-002: Duplicate staff rejected
+#### API-UC19-002: Duplicate staff rejected
 
 - Request: tạo staff trùng username/email.
 - Expected response:
@@ -2446,7 +2304,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `409`
 
-#### API-UC20-003: Import staff batch
+#### API-UC19-003: Import staff batch
 
 - Request:
 
@@ -2484,7 +2342,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC20-004: Assign staff shift
+#### API-UC19-004: Assign staff shift
 
 - Request:
 
@@ -2517,7 +2375,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200` hoặc `201`
 
-#### API-UC20-005: Tenant isolation for staff management
+#### API-UC19-005: Tenant isolation for staff management
 
 - Request:
 
@@ -2528,9 +2386,9 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - Expected response: không trả staff tenant khác hoặc trả `403/404`.
 
-### UC21: Quản trị tuyến trạm và lưới nhà ga
+### UC20: Quản trị tuyến trạm và lưới nhà ga
 
-#### API-UC21-001: Create/update route
+#### API-UC20-001: Create/update route
 
 - Request:
 
@@ -2562,7 +2420,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200` hoặc `201`
 
-#### API-UC21-002: Create/update station
+#### API-UC20-002: Create/update station
 
 - Request:
 
@@ -2595,7 +2453,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200` hoặc `201`
 
-#### API-UC21-003: Invalid station order rejected
+#### API-UC20-003: Invalid station order rejected
 
 - Request:
 
@@ -2626,7 +2484,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `422`
 
-#### API-UC21-004: Route/station import
+#### API-UC20-004: Route/station import
 
 - Request:
 
@@ -2663,9 +2521,9 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200`
 
-### UC22: Thiết lập cấu hình biểu giá tuyến
+### UC21: Thiết lập cấu hình biểu giá tuyến
 
-#### API-UC22-001: Create/update fare policy
+#### API-UC21-001: Create/update fare policy
 
 - Request:
 
@@ -2701,9 +2559,9 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC22-002: Fare policy exceeds ceiling rejected
+#### API-UC21-002: Fare policy exceeds ceiling rejected
 
-- Request: giống `API-UC22-001`, truyền `maxFare` vượt khung trần.
+- Request: giống `API-UC21-001`, truyền `maxFare` vượt khung trần.
 - Expected response:
 
 ```json
@@ -2716,7 +2574,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `422`
 
-#### API-UC22-003: Fare preview
+#### API-UC21-003: Fare preview
 
 - Request:
 
@@ -2750,9 +2608,9 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 ## Module 6: Quản Trị Nền Tảng
 
-### UC23: Khởi tạo tenant và cấp tài khoản Company Manager
+### UC22: Khởi tạo tenant và cấp tài khoản Company Manager
 
-#### API-UC23-001: Create tenant
+#### API-UC22-001: Create tenant
 
 - Request:
 
@@ -2788,9 +2646,9 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `200` hoặc `201`
 
-#### API-UC23-002: Duplicate tenant rejected
+#### API-UC22-002: Duplicate tenant rejected
 
-- Request: giống `API-UC23-001`, dùng `taxCode` hoặc `managerEmail` đã tồn tại.
+- Request: giống `API-UC22-001`, dùng `taxCode` hoặc `managerEmail` đã tồn tại.
 - Expected response:
 
 ```json
@@ -2803,7 +2661,7 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `409`
 
-#### API-UC23-003: List tenants
+#### API-UC22-003: List tenants
 
 - Request:
 
@@ -2833,9 +2691,9 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `200`
 
-### UC24: Cấu hình khung giá trần toàn hệ thống
+### UC23: Cấu hình khung giá trần toàn hệ thống
 
-#### API-UC24-001: Update fare ceiling
+#### API-UC23-001: Update fare ceiling
 
 - Request:
 
@@ -2847,7 +2705,6 @@ Cookie: accessToken={{platformManagerAccessToken}}
 ```json
 {
   "transportType": "METRO",
-  "maxSingleJourneyFare": 20000,
   "maxMonthlyPassFare": 300000,
   "effectiveFrom": "2026-06-01"
 }
@@ -2868,9 +2725,9 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC24-002: Invalid fare ceiling rejected
+#### API-UC23-002: Invalid fare ceiling rejected
 
-- Request: giống `API-UC24-001`, truyền giá trị âm hoặc `0`.
+- Request: giống `API-UC23-001`, truyền giá trị âm hoặc `0`.
 - Expected response:
 
 ```json
@@ -2883,7 +2740,7 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `400`
 
-#### API-UC24-003: Company Manager cannot update fare ceiling
+#### API-UC23-003: Company Manager cannot update fare ceiling
 
 - Request: gọi `/configs/fare-ceiling` bằng `companyManagerToken`.
 - Expected response:
@@ -2900,9 +2757,9 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 ## Module 7: Giám Sát, Bảo Mật & Phân Quyền
 
-### UC25: Khóa và mở khóa tài khoản khẩn cấp
+### UC24: Khóa và mở khóa tài khoản khẩn cấp
 
-#### API-UC25-001: Ban account
+#### API-UC24-001: Ban account
 
 - Request:
 
@@ -2933,7 +2790,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC25-002: Banned account blocked
+#### API-UC24-002: Banned account blocked
 
 - Request: login hoặc gọi API bằng account đã bị ban.
 - Expected response:
@@ -2948,7 +2805,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `401` hoặc `403`
 
-#### API-UC25-003: Unban account
+#### API-UC24-003: Unban account
 
 - Request:
 
@@ -2979,7 +2836,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC25-004: Admin self-ban rejected
+#### API-UC24-004: Admin self-ban rejected
 
 - Request: gọi `/admin/ban-account` với `accountId` của chính admin đang đăng nhập.
 - Expected response:
@@ -2994,9 +2851,9 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `422`
 
-### UC26: Cấu hình phân quyền động
+### UC25: Cấu hình phân quyền động
 
-#### API-UC26-001: Update role permissions
+#### API-UC25-001: Update role permissions
 
 - Request:
 
@@ -3029,7 +2886,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC26-002: Revoke permission effect
+#### API-UC25-002: Revoke permission effect
 
 - Request: remove permission khỏi role rồi gọi API tương ứng bằng user thuộc role đó.
 - Expected response:
@@ -3044,7 +2901,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `403`
 
-#### API-UC26-003: Revoke core admin permission rejected
+#### API-UC25-003: Revoke core admin permission rejected
 
 - Request:
 
@@ -3073,9 +2930,9 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `422`
 
-### UC27: Giám sát kỹ thuật và tra cứu system logs
+### UC26: Giám sát kỹ thuật và tra cứu system logs
 
-#### API-UC27-001: Search system logs
+#### API-UC26-001: Search system logs
 
 - Request:
 
@@ -3105,7 +2962,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC27-002: Export system logs
+#### API-UC26-002: Export system logs
 
 - Request:
 
@@ -3122,7 +2979,7 @@ Content-Type: text/csv hoặc application/vnd.openxmlformats-officedocument.spre
 
 - HTTP: `200`
 
-#### API-UC27-003: Critical incident alert
+#### API-UC26-003: Critical incident alert
 
 - Request:
 
@@ -3154,7 +3011,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC27-004: Non-admin cannot access system logs
+#### API-UC26-004: Non-admin cannot access system logs
 
 - Request: gọi `/admin/logs` bằng `companyManagerToken`, `staffToken` hoặc `passengerToken`.
 - Expected response:
@@ -3191,17 +3048,16 @@ Nên tạo folder trong Postman theo đúng thứ tự:
 14. `UC14 - PSC`
 15. `UC15 - Physical Card Order Processing`
 16. `UC16 - Shift`
-17. `UC17 - Wallet Top-up`
-18. `UC18 - Payout`
-19. `UC19 - Clearing`
-20. `UC20 - Staff & Shift Scheduling`
-21. `UC21 - Route & Station`
-22. `UC22 - Fare Policy`
-23. `UC23 - Tenant`
-24. `UC24 - Fare Ceiling`
-25. `UC25 - Ban/Unban`
-26. `UC26 - RBAC`
-27. `UC27 - Logs`
+17. `UC17 - Payout`
+18. `UC18 - Clearing`
+19. `UC19 - Staff & Shift Scheduling`
+20. `UC20 - Route & Station`
+21. `UC21 - Fare Policy`
+22. `UC22 - Tenant`
+23. `UC23 - Fare Ceiling`
+24. `UC24 - Ban/Unban`
+25. `UC25 - RBAC`
+26. `UC26 - Logs`
 
 ---
 

@@ -1,4 +1,4 @@
-# UI Mockup Specifications
+﻿# UI Mockup Specifications
 
 **Dự án:** MetroBus Ticketing/AFC MVP  
 **Mục đích:** Mô tả nhanh các màn hình cần có để generate UI frontend bằng v0/dev tool, bám theo 27 use case đã chốt.  
@@ -110,7 +110,6 @@ Gợi ý route FE:
 
 /app
 /app/cards
-/app/wallet
 /app/history
 /app/profile
 /app/qr
@@ -151,7 +150,7 @@ Gợi ý route FE:
 | Actor | App surface | Mục tiêu UI |
 | :--- | :--- | :--- |
 | `GUEST` | Public Web Portal | Mua thẻ cứng, gia hạn vé bằng mã thẻ, không đăng nhập |
-| `PASSENGER` | Mobile PWA | Đăng ký bằng SĐT/OTP, đăng nhập bằng SĐT/mật khẩu, quản lý hồ sơ, ví, thẻ ảo, QR, lịch sử |
+| `PASSENGER` | Mobile PWA | Đăng ký bằng SĐT/OTP, đăng nhập bằng SĐT/mật khẩu, quản lý hồ sơ, thẻ ảo, QR, lịch sử |
 | `STAFF` | Staff Portal | Mở/kết ca, xử lý PSC, phôi thẻ, order thẻ cứng |
 | `COMPANY_MANAGER` | Company Portal | Quản lý staff, ca trực, tuyến/trạm, biểu giá, payout |
 | `PLATFORM_MANAGER` | Platform Portal | Tenant, khung giá trần, clearing, payout approval |
@@ -167,13 +166,11 @@ Gợi ý route FE:
 - Bottom navigation:
   - `Home`
   - `Cards`
-  - `Wallet`
   - `History`
   - `Profile`
 - Header:
   - Greeting/user name
-  - Wallet balance
-  - Notification icon
+- Notification icon
 - Primary card:
   - Active virtual card
   - Subscription status
@@ -261,16 +258,14 @@ Acceptance focus:
 
 ### PWA-02: Passenger Home Dashboard
 
-**Use cases:** `UC06`, `UC08`, `UC10`, `UC13`, `UC17`
+**Use cases:** `UC06`, `UC08`, `UC10`, `UC13`
 
 Mục tiêu: Màn hình chính cho passenger sau đăng nhập.
 
 UI elements:
 
-- Wallet balance card
 - Active card/subscription summary
 - Button: `Show QR`
-- Button: `Top up`
 - Button: `Renew pass`
 - Recent journeys list
 - Recent transactions list
@@ -282,11 +277,10 @@ States:
 - Has active virtual card
 - Subscription expired/expiring soon
 - KYC incomplete
-- Wallet balance low
 
 ### PWA-03: Profile & KYC
 
-**Use cases:** `UC06`
+**Use cases:** `UC04`, `UC06`
 
 UI elements:
 
@@ -302,39 +296,18 @@ UI elements:
   - OTP input
   - Button: `Verify email`
 - KYC status badge: `PENDING`, `VERIFIED`, `REJECTED`
+- Account actions:
+  - Change password
+  - Logout
 
 API mapping:
 
 - `GET /user/me`
 - `PUT /user/me`
 - `POST /user/verify-email`
+- `POST /user/change-password`
 
-### PWA-04: Wallet
-
-**Use cases:** `UC17`
-
-UI elements:
-
-- Balance card
-- Top-up amount input
-- Provider selector:
-  - `VNPAY_SANDBOX`
-  - `SEPAY`
-- Button: `Create top-up`
-- Transaction history table/list
-- Status badge:
-  - `SUCCESS`
-  - `FAILED`
-  - `EXPIRED`
-  - `MANUAL_REVIEW`
-
-API mapping:
-
-- `GET /wallets/me`
-- `POST /wallets/create-top-up`
-- `POST /wallets/top-up-callback` only for test/provider simulation
-
-### PWA-05: Virtual Card Issue
+### PWA-04: Virtual Card Issue
 
 **Use cases:** `UC08`
 
@@ -342,7 +315,7 @@ UI elements:
 
 - Plan selector
 - Fare/package summary
-- Wallet balance preview
+- Payment provider selector
 - Button: `Issue virtual card`
 - Confirmation modal
 - Success state showing card UID and subscription period
@@ -350,7 +323,7 @@ UI elements:
 States:
 
 - KYC incomplete: disabled CTA with warning
-- Insufficient wallet balance
+- Payment failed/expired
 - Already has active virtual card
 - Success
 
@@ -358,7 +331,7 @@ API mapping:
 
 - `POST /cards/create-virtual-card`
 
-### PWA-06: Virtualize Physical Card
+### PWA-05: Virtualize Physical Card
 
 **Use cases:** `UC09`
 
@@ -380,7 +353,7 @@ API mapping:
 
 - `POST /cards/virtualize-card`
 
-### PWA-07: Renew Subscription
+### PWA-06: Renew Subscription
 
 **Use cases:** `UC10`
 
@@ -389,14 +362,15 @@ UI elements:
 - Current subscription card
 - Plan selector
 - Payment method:
-  - Wallet for passenger
+  - `VNPAY_SANDBOX`
+  - `SEPAY`
 - Price summary
 - Button: `Renew`
 - Success summary with new `endDate`
 
 States:
 
-- Insufficient balance
+- Payment failed/expired
 - Expired subscription
 - Active subscription extended from old end date
 
@@ -430,14 +404,14 @@ Notes:
 
 ### PWA-09: Travel & Purchase History
 
-**Use cases:** `UC10`, `UC13`, `UC17`, `UC19`
+**Use cases:** `UC10`, `UC13`, `UC18`
 
 UI elements:
 
 - Tabs:
   - Journeys
-  - Tickets/Subscriptions
-  - Wallet transactions
+  - Subscriptions
+  - Payment transactions
 - Filters:
   - Date range
   - Status
@@ -506,7 +480,7 @@ UI elements:
 - Camera/QR upload simulator
 - Station selector
 - Gate ID selector
-- Button: `Scan ticket`
+- Button: `Scan card`
 - Result panel:
   - Accepted
   - Rejected
@@ -524,7 +498,6 @@ States:
 - Invalid QR
 - Anti-passback
 - Locked card
-- Over-riding ticket
 
 Result UI:
 
@@ -568,17 +541,9 @@ UI elements:
 
 - Current shift status
 - Station selector
-- Opening cash amount
 - Button: `Open shift`
-- Cash summary:
-  - Fare adjustment cash
-  - Penalty cash
-  - Total system cash
-- Close shift form:
-  - Actual cash counted
-  - Discrepancy reason
 - Button: `Close shift`
-- Shift report preview
+- Shift summary preview
 
 API mapping:
 
@@ -590,7 +555,6 @@ States:
 - No active shift
 - Active shift
 - Shift closed
-- Cash discrepancy
 
 ### STAFF-03: PSC Incident Handling
 
@@ -603,28 +567,20 @@ UI elements:
   - Card status
   - Journey status
   - Entry station
-  - Missing checkout/over-riding reason
-- Action tabs:
-  - Fare adjustment
-  - Penalty unlock
-  - Free unlock
-- Amount field
+  - Missing checkout reason
 - Reason selector
 - Confirmation modal
 
 API mapping:
 
 - `GET /psc/incidents`
-- `POST /psc/fare-adjustment`
-- `POST /psc/penalty-unlock`
-- `POST /psc/free-unlock`
+- `POST /psc/unlock`
 
 States:
 
 - Shift not active: actions disabled
 - Card locked
-- Over-riding ticket
-- Free unlock requires reason
+- Unlock requires reason
 
 ### STAFF-04: Physical Card Inventory
 
@@ -678,7 +634,7 @@ API mapping:
 
 ### COMPANY-01: Staff Management
 
-**Use cases:** `UC20`
+**Use cases:** `UC19`
 
 UI elements:
 
@@ -701,7 +657,7 @@ API mapping:
 
 ### COMPANY-02: Route & Station Management
 
-**Use cases:** `UC21`
+**Use cases:** `UC20`
 
 UI elements:
 
@@ -721,7 +677,7 @@ API mapping:
 
 ### COMPANY-03: Fare Policy Management
 
-**Use cases:** `UC22`
+**Use cases:** `UC21`
 
 UI elements:
 
@@ -746,7 +702,7 @@ API mapping:
 
 ### COMPANY-04: Payout Request
 
-**Use cases:** `UC18`
+**Use cases:** `UC17`
 
 UI elements:
 
@@ -773,7 +729,7 @@ API mapping:
 
 ### PLATFORM-01: Tenant Management
 
-**Use cases:** `UC23`
+**Use cases:** `UC22`
 
 UI elements:
 
@@ -793,13 +749,12 @@ API mapping:
 
 ### PLATFORM-02: Fare Ceiling Config
 
-**Use cases:** `UC24`
+**Use cases:** `UC23`
 
 UI elements:
 
 - Fare ceiling config form:
   - Transport type
-  - Max single journey fare
   - Max monthly pass fare
   - Effective from
 - Current config card
@@ -811,7 +766,7 @@ API mapping:
 
 ### PLATFORM-03: Clearing Dashboard
 
-**Use cases:** `UC19`
+**Use cases:** `UC18`
 
 UI elements:
 
@@ -831,7 +786,7 @@ API mapping:
 
 ### PLATFORM-04: Payout Approval
 
-**Use cases:** `UC18`
+**Use cases:** `UC17`
 
 UI elements:
 
@@ -857,7 +812,7 @@ API mapping:
 
 ### ADMIN-01: Account Ban/Unban
 
-**Use cases:** `UC25`
+**Use cases:** `UC24`
 
 UI elements:
 
@@ -877,7 +832,7 @@ API mapping:
 
 ### ADMIN-02: Dynamic RBAC
 
-**Use cases:** `UC26`
+**Use cases:** `UC25`
 
 UI elements:
 
@@ -894,7 +849,7 @@ API mapping:
 
 ### ADMIN-03: System Logs
 
-**Use cases:** `UC27`
+**Use cases:** `UC26`
 
 UI elements:
 
@@ -925,8 +880,7 @@ Screens:
 
 1. `PWA-01 Phone Login / Registration`
 2. `PWA-03 Profile & KYC`
-3. `PWA-04 Wallet`
-4. `PWA-05 Virtual Card Issue`
+3. `PWA-04 Virtual Card Issue`
 5. `PWA-02 Home Dashboard`
 
 ### Flow B: Passenger Travel
