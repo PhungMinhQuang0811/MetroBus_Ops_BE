@@ -22,8 +22,9 @@ graph LR
     %% Guest & Passenger Use Cases
     Guest --> UC07["UC07: Đăng ký mua Thẻ cứng (Guest Checkout)"]
     Guest --> UC10["UC10: Gia hạn gói vé chu kỳ"]
-    Passenger --> UC01["UC01: Đăng nhập OTP di động"]
+    Passenger --> UC01["UC01: Đăng ký/đăng nhập bằng SĐT"]
     Passenger --> UC03["UC03: Đăng xuất tài khoản PWA/Portal"]
+    Passenger --> UC05["UC05: Khôi phục mật khẩu"]
     Passenger --> UC06["UC06: Cập nhật hồ sơ cá nhân"]
     Passenger --> UC09["UC09: Số hóa Thẻ cứng thành Thẻ ảo"]
     Passenger --> UC13["UC13: Quét soát vé tự động qua Validator"]
@@ -35,7 +36,7 @@ graph LR
     Staff --> UC02["UC02: Đăng nhập Web Portal"]
     Staff --> UC03
     Staff --> UC04["UC04: Thay đổi mật khẩu nội bộ"]
-    Staff --> UC05["UC05: Khôi phục mật khẩu nội bộ"]
+    Staff --> UC05
     Staff --> UC06
     Staff --> UC14["UC14: PSC Giải khóa thẻ kẹt ga"]
     Staff --> UC15["UC15: In thẻ cứng & Cập nhật đơn hàng"]
@@ -100,29 +101,48 @@ graph LR
 
 *Quản lý toàn bộ vòng đời danh tính người dùng: đăng ký, đăng nhập, phân quyền và quản lý thông tin cá nhân.*
 
-### UC01: Đăng nhập bằng OTP Số điện thoại (Passenger Mobile PWA)
-*   **Mô tả:** Hành khách thực hiện đăng ký tài khoản mới hoặc đăng nhập vào Web App di động (PWA) siêu nhanh bằng số điện thoại nhận mã OTP (không mật khẩu).
+### UC01: Đăng ký & Đăng nhập bằng Số điện thoại (Passenger Mobile PWA)
+*   **Mô tả:** Hành khách bắt đầu bằng số điện thoại. Nếu số điện thoại chưa có tài khoản, hệ thống gửi OTP để xác minh chủ sở hữu số điện thoại rồi yêu cầu đặt mật khẩu. Nếu số điện thoại đã có tài khoản, hệ thống chuyển sang màn hình nhập mật khẩu và không gửi OTP cho đăng nhập thường. Luồng quên mật khẩu thuộc UC05.
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
 | **Mã Use Case** | **UC01** |
 | **Tác nhân chính** | Hành khách / Passenger |
 | **Tiền điều kiện** | Hành khách sở hữu số điện thoại di động đang hoạt động bình thường. |
-| **Hậu điều kiện** | Hành khách đăng nhập thành công vào PWA, nhận JWT Token để làm việc, tài khoản được tạo mới nếu đăng nhập lần đầu. |
-| **Tác nhân kích hoạt** | Khách truy cập PWA di động, nhập số điện thoại và nhấn "Gửi mã OTP". |
+| **Hậu điều kiện** | Hành khách đăng nhập thành công vào PWA và nhận JWT Token. Tài khoản mới chỉ được tạo sau khi xác minh OTP và đặt mật khẩu thành công. |
+| **Tác nhân kích hoạt** | Khách truy cập PWA di động, nhập số điện thoại và nhấn "Tiếp tục". |
 
 #### Luồng xử lý chính (Basic Flow):
 1. **Bước 1:** Khách truy cập ứng dụng PWA trên điện thoại di động.
-2. **Bước 2:** Khách nhập Số điện thoại cá nhân và nhấn "Gửi mã OTP".
-3. **Bước 3:** Backend sinh ngẫu nhiên mã OTP gồm 6 chữ số và gửi qua hệ thống SMS Gateway/Firebase SMS đến điện thoại của khách hàng.
-4. **Bước 4:** Khách hàng nhập mã OTP nhận được trên giao diện PWA và nhấn "Xác nhận".
-5. **Bước 5:** Backend xác thực mã OTP:
-   * *Nếu trùng khớp:* Sinh JWT Access Token duy trì phiên đăng nhập.
-   * *If là SĐT mới chưa từng đăng ký:* Hệ thống tự động tạo mới tài khoản (`accounts`) với quyền `ROLE_PASSENGER` (gán cứng ở backend để bảo mật), khởi tạo các trường hồ sơ rỗng và tạo ví hành khách trong bảng `wallets` với `wallet_type = 'PASSENGER'`, `balance = 0đ`.
+2. **Bước 2:** Khách nhập số điện thoại cá nhân và nhấn "Tiếp tục".
+3. **Bước 3:** Backend kiểm tra định dạng, normalize số điện thoại và tra cứu tài khoản theo số điện thoại đã normalize. Response trả lại `phoneNumber` đã normalize để PWA dùng tiếp ở các bước sau.
+4. **Bước 4:** Nếu số điện thoại đã có tài khoản đang hoạt động, PWA chuyển sang màn hình nhập mật khẩu.
+5. **Bước 5:** Khách nhập mật khẩu, backend xác thực thông tin đăng nhập, sinh JWT Access Token/Refresh Token và trả phiên đăng nhập.
 6. **Bước 6:** Hành khách đăng nhập thành công, chuyển hướng vào màn hình Dashboard chính của PWA.
 
+#### Luồng thay thế (Alternative Flows):
+*   **Alt 1a - Số điện thoại chưa có tài khoản:** Backend kiểm tra giới hạn gửi OTP, sinh OTP 6 chữ số, lưu tạm theo `phoneNumber` và mục đích sử dụng (`purpose`) với TTL 2 phút rồi gửi qua SMS Gateway/Firebase SMS. PWA chuyển sang màn hình nhập OTP.
+*   **Alt 1b - Xác minh OTP đăng ký thành công:** Khách nhập OTP hợp lệ, hệ thống đánh dấu số điện thoại đã xác minh tạm thời và chuyển sang màn hình đặt mật khẩu.
+*   **Alt 1c - Đặt mật khẩu đăng ký thành công:** Backend tạo mới tài khoản `PASSENGER`, lưu mật khẩu đã mã hóa, gán `isPhoneVerified = true`, khởi tạo hồ sơ rỗng và tạo ví hành khách trong bảng `wallets` với `wallet_type = 'PASSENGER'`, `balance = 0`. Sau đó hệ thống sinh JWT và đăng nhập người dùng.
+*   **Alt 2a - Quên mật khẩu:** Với số điện thoại đã có tài khoản, khách nhấn "Quên mật khẩu" và được chuyển sang luồng khôi phục mật khẩu của UC05.
+
+#### Chính sách OTP MVP:
+*   OTP trong UC01 chỉ dùng cho đăng ký mới; không gửi OTP cho đăng nhập thường. OTP quên mật khẩu thuộc UC05 nhưng dùng cùng chính sách giới hạn.
+*   OTP gồm 6 chữ số, hết hạn sau 2 phút. Gửi OTP mới sẽ ghi đè và vô hiệu hóa OTP cũ cùng `phoneNumber` và `purpose`.
+*   Mỗi số điện thoại được gửi tối đa 5 OTP/ngày cho mỗi `purpose`, đồng thời phải chờ tối thiểu 60 giây giữa hai lần gửi.
+*   Mỗi IP được gửi tối đa 20 OTP/giờ để hạn chế spam hàng loạt.
+*   Mỗi OTP được nhập sai tối đa 5 lần. Khi vượt giới hạn, OTP hiện tại bị vô hiệu hóa và khách phải yêu cầu OTP mới.
+*   Khi vượt giới hạn gửi OTP, backend trả HTTP `429 Too Many Requests`.
+*   Các giới hạn phải được cấu hình trong application config và counter được lưu tạm trong Redis theo `phoneNumber`, IP và `purpose`, không hard-code trong service.
+*   Production phải gửi OTP thật qua SMS Gateway/Firebase SMS và không trả OTP trong response. Dev/test có thể dùng fake SMS hoặc log OTP.
+
 #### Luồng ngoại lệ (Exception Flows):
-*   **Exc 1a - Nhập sai mã OTP:** Khách nhập sai mã OTP hoặc OTP bị quá hạn 2 phút, hệ thống báo đỏ từ chối và yêu cầu nhập lại hoặc gửi lại mã khác.
+*   **Exc 1a - Số điện thoại sai định dạng:** Backend từ chối yêu cầu và PWA hiển thị lỗi định dạng số điện thoại.
+*   **Exc 1b - Tài khoản bị khóa:** Nếu số điện thoại thuộc tài khoản không hoạt động, backend từ chối đăng nhập/đặt lại mật khẩu và hiển thị thông báo tài khoản bị khóa.
+*   **Exc 1c - Sai mật khẩu:** Backend từ chối đăng nhập và không cấp JWT.
+*   **Exc 1d - Nhập sai OTP hoặc OTP hết hạn:** Hệ thống từ chối xác minh, không tạo tài khoản/không cho đặt lại mật khẩu và cho phép yêu cầu OTP mới.
+*   **Exc 1e - Vượt giới hạn gửi OTP:** Backend không gửi thêm SMS, trả HTTP `429 Too Many Requests` và yêu cầu khách thử lại sau.
+*   **Exc 1f - Vượt giới hạn nhập sai OTP:** Backend vô hiệu hóa OTP hiện tại và yêu cầu khách gửi OTP mới.
 
 ---
 
@@ -200,18 +220,18 @@ graph LR
 
 ---
 
-### UC05: Khôi phục mật khẩu nội bộ (Forgot/Reset Password - Admin, Staff, Managers)
-*   **Mô tả:** Người dùng nội bộ quên mật khẩu thực hiện yêu cầu khôi phục thông qua email cá nhân đã đăng ký trên hệ thống để tự thiết lập lại mật khẩu mới.
+### UC05: Khôi phục mật khẩu (Forgot/Reset Password)
+*   **Mô tả:** Người dùng khôi phục mật khẩu khi quên thông tin đăng nhập. Người dùng nội bộ khôi phục bằng email và reset token gửi qua liên kết. Hành khách (`PASSENGER`) khôi phục bằng số điện thoại, OTP SMS và reset token tạm thời.
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
 | **Mã Use Case** | **UC05** |
-| **Tác nhân chính** | Nhân viên ga / Staff, Quản lý đơn vị / Company Manager, Quản lý nền tảng / Platform Manager, Quản trị tối cao / Admin |
-| **Tiền điều kiện** | Người dùng có tài khoản nội bộ đã được cập nhật địa chỉ email chính xác và xác thực trong hệ thống. |
-| **Hậu điều kiện** | Mật khẩu mới được thiết lập thành công sau khi xác thực liên kết gửi về email cá nhân. |
-| **Tác nhân kích hoạt** | Người dùng nhấn "Quên mật khẩu" tại màn hình đăng nhập Web Portal. |
+| **Tác nhân chính** | Hành khách / Passenger, Nhân viên ga / Staff, Quản lý đơn vị / Company Manager, Quản lý nền tảng / Platform Manager, Quản trị tối cao / Admin |
+| **Tiền điều kiện** | Người dùng có tài khoản đang hoạt động. Tài khoản nội bộ có email đã đăng ký; tài khoản Passenger có số điện thoại đã đăng ký. |
+| **Hậu điều kiện** | Mật khẩu mới được thiết lập thành công, token/OTP khôi phục bị vô hiệu hóa. |
+| **Tác nhân kích hoạt** | Người dùng nhấn "Quên mật khẩu" tại màn hình đăng nhập PWA hoặc Web Portal. |
 
-#### Luồng xử lý chính (Basic Flow):
+#### Luồng xử lý chính (Basic Flow - Nội bộ qua Email):
 1. **Bước 1:** Người dùng mở giao diện "Quên mật khẩu" trên Web Portal.
 2. **Bước 2:** Người dùng nhập địa chỉ Email đã đăng ký và nhấn "Gửi yêu cầu khôi phục".
 3. **Bước 3:** Backend kiểm tra email tồn tại trong DB, sinh một mã Token khôi phục mật khẩu (Secure Token) có thời hạn 15 phút, lưu tạm vào Redis cache, và gửi link khôi phục chứa mã token này về email cá nhân của người dùng.
@@ -220,14 +240,27 @@ graph LR
 6. **Bước 6:** Người dùng nhập mật khẩu mới và nhấn "Xác nhận khôi phục".
 7. **Bước 7:** Backend cập nhật băm BCrypt mật khẩu mới vào bảng `accounts`, xóa token khôi phục trong Redis và hiển thị thông báo khôi phục mật khẩu thành công.
 
+#### Luồng thay thế (Alternative Flow - Passenger qua SĐT/OTP):
+*   **Alt 5a.1:** Hành khách mở màn hình quên mật khẩu trên PWA, nhập số điện thoại đã đăng ký và nhấn "Gửi OTP".
+*   **Alt 5a.2:** Backend kiểm tra số điện thoại tồn tại, tài khoản đang hoạt động và giới hạn gửi OTP. Nếu hợp lệ, backend sinh OTP 6 chữ số, lưu theo `phoneNumber` và `purpose = RESET_PASSWORD` với TTL 2 phút rồi gửi SMS.
+*   **Alt 5a.3:** Hành khách nhập OTP. Backend xác minh OTP, kiểm tra giới hạn số lần nhập sai và trả reset token tạm thời nếu OTP hợp lệ.
+*   **Alt 5a.4:** Hành khách nhập mật khẩu mới. Backend xác minh reset token, băm BCrypt mật khẩu mới, lưu vào `accounts`, xóa reset token và vô hiệu hóa OTP reset password.
+
+#### Chính sách OTP khôi phục mật khẩu Passenger:
+*   Áp dụng cùng chính sách OTP MVP: cooldown 60 giây, tối đa 5 OTP/ngày theo `phoneNumber + purpose`, tối đa 20 OTP/giờ theo IP, tối đa 5 lần nhập sai mỗi OTP.
+*   Vượt giới hạn gửi OTP trả HTTP `429 Too Many Requests` và không gửi SMS.
+
 #### Luồng ngoại lệ (Exception Flows):
 *   **Exc 5a - Nhập email không tồn tại:** Hệ thống báo lỗi "Email không tồn tại trong hệ thống".
 *   **Exc 5b - Token quá hạn:** Nếu người dùng click link sau 15 phút, hệ thống báo lỗi "Liên kết khôi phục mật khẩu đã quá hạn. Vui lòng thực hiện gửi lại yêu cầu!".
+*   **Exc 5c - SĐT Passenger không tồn tại hoặc tài khoản bị khóa:** Backend từ chối gửi OTP khôi phục mật khẩu.
+*   **Exc 5d - OTP reset password sai, hết hạn hoặc vượt quá số lần nhập sai:** Backend từ chối cấp reset token và yêu cầu gửi OTP mới.
+*   **Exc 5e - Vượt giới hạn gửi OTP:** Backend trả HTTP `429 Too Many Requests` và không gửi SMS.
 
 ---
 
 ### UC06: Cập nhật hồ sơ cá nhân (Passenger Mobile PWA & Web Portal)
-*   **Mô tả:** Người dùng hệ thống (tất cả các vai trò bao gồm Hành khách, Nhân viên ga, Quản lý đơn vị, Quản lý nền tảng và Admin) thực hiện cập nhật các thông tin hồ sơ cá nhân tiêu chuẩn trên giao diện Cài đặt tài khoản. Riêng đối với Hành khách (Passenger) đăng nhập bằng OTP số điện thoại, hệ thống cung cấp một luồng rẽ nhánh riêng để hoàn thiện hồ sơ KYC và xác thực Email OTP nhằm kích hoạt ví điện tử và thẻ ảo.
+*   **Mô tả:** Người dùng hệ thống (tất cả các vai trò bao gồm Hành khách, Nhân viên ga, Quản lý đơn vị, Quản lý nền tảng và Admin) thực hiện cập nhật các thông tin hồ sơ cá nhân tiêu chuẩn trên giao diện Cài đặt tài khoản. Riêng đối với Hành khách (Passenger) đăng ký/đăng nhập bằng số điện thoại, hệ thống cung cấp một luồng rẽ nhánh riêng để hoàn thiện hồ sơ KYC và xác thực Email OTP nhằm kích hoạt ví điện tử và thẻ ảo.
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
@@ -311,7 +344,7 @@ graph LR
 ---
 
 ### UC08: Đăng ký và Phát hành Thẻ ảo trực tiếp (Passenger Mobile PWA)
-*   **Mô tả:** Hành khách (`PASSENGER`) sau khi đăng ký tài khoản bằng OTP SĐT (UC01) và hoàn thiện KYC/xác thực email (UC06 - Alt 6a), thực hiện quy trình đăng ký phát hành thẻ ảo đi kèm chọn mua gói vé tháng lần đầu ngay trên ứng dụng di động Mobile PWA để kích hoạt thẻ và sử dụng đi lại tức thời mà không cần qua thẻ cứng vật lý.
+*   **Mô tả:** Hành khách (`PASSENGER`) sau khi đăng ký tài khoản bằng số điện thoại, xác minh OTP và đặt mật khẩu (UC01), đồng thời hoàn thiện KYC/xác thực email (UC06 - Alt 6a), thực hiện quy trình đăng ký phát hành thẻ ảo đi kèm chọn mua gói vé tháng lần đầu ngay trên ứng dụng di động Mobile PWA để kích hoạt thẻ và sử dụng đi lại tức thời mà không cần qua thẻ cứng vật lý.
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
@@ -390,7 +423,7 @@ graph LR
 | **Tác nhân kích hoạt** | Khách nhấn "Số hóa thẻ vật lý thành thẻ ảo" trên màn hình PWA di động. |
 
 #### Luồng xử lý chính (Basic Flow):
-1. **Bước 1:** Khách hàng đăng nhập thành công vào PWA di động qua SĐT/OTP.
+1. **Bước 1:** Khách hàng đăng nhập thành công vào PWA di động qua SĐT/mật khẩu.
 2. **Bước 2:** Trên màn hình chính PWA, khách hàng nhấn nút "Số hóa thẻ vật lý thành thẻ ảo".
 3. **Bước 3:** Khách hàng nhập các thông tin xác thực bao gồm: Mã số thẻ cứng **`card_uid`** (nhận từ email hoặc lịch sử mua trước đó) và Số CCCD **`personal_id`** của chính mình.
 4. **Bước 4:** Khách hàng nhấn "Xác nhận số hóa".

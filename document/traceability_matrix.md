@@ -23,7 +23,7 @@
 
 | ID | Yêu cầu | Use case cover | Acceptance criteria | API tests | Priority | Ghi chú |
 | :--- | :--- | :--- | :--- | :--- | :---: | :--- |
-| `REQ-01` | Quản lý tài khoản cá nhân hành khách | `UC01`, `UC03`, `UC06` | `AC-UC01-*`, `AC-UC03-*`, `AC-UC06-*` | `API-UC01-*`, `API-UC03-*`, `API-UC06-*` | P0 | OTP, profile, email/KYC |
+| `REQ-01` | Quản lý tài khoản cá nhân hành khách | `UC01`, `UC03`, `UC05`, `UC06` | `AC-UC01-*`, `AC-UC03-*`, `AC-UC05-*`, `AC-UC06-*` | `API-UC01-*`, `API-UC03-*`, `API-UC05-*`, `API-UC06-*` | P0 | Phone auth, registration/reset OTP, profile, email/KYC |
 | `REQ-02` | Quản lý người dùng nhân viên vận hành | `UC02`, `UC04`, `UC05`, `UC20` | `AC-UC02-*`, `AC-UC04-*`, `AC-UC05-*`, `AC-UC20-*` | `API-UC02-*`, `API-UC04-*`, `API-UC05-*`, `API-UC20-*` | P0 | Staff do Company Manager quản lý |
 | `REQ-03` | Quản lý ca kíp | `UC16`, `UC20` | `AC-UC16-*`, `AC-UC20-*` | `API-UC16-*`, `API-UC20-*` | P0 | Mở ca, kết ca, phân lịch |
 | `REQ-04` | Quản lý phát hành thẻ vé | `UC07`, `UC08`, `UC11`, `UC15` | `AC-UC07-*`, `AC-UC08-*`, `AC-UC11-*`, `AC-UC15-*` | `API-UC07-*`, `API-UC08-*`, `API-UC11-*`, `API-UC15-*` | P0 | Thẻ cứng, thẻ ảo, đơn hàng |
@@ -42,11 +42,11 @@
 
 | Use case | Nhóm nghiệp vụ | Yêu cầu liên quan | Acceptance criteria | API tests | E2E coverage đề xuất | Priority |
 | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| `UC01` | OTP Passenger | `REQ-01` | `AC-UC01-*` | `API-UC01-*` | Passenger onboarding | P0 |
+| `UC01` | Passenger Phone Auth | `REQ-01` | `AC-UC01-*` | `API-UC01-*` | Passenger onboarding | P0 |
 | `UC02` | Internal Login | `REQ-02`, `REQ-12` | `AC-UC02-*` | `API-UC02-*` | Staff/Manager/Admin login | P0 |
 | `UC03` | Logout | `REQ-01`, `REQ-02` | `AC-UC03-*` | `API-UC03-*` | Logout and token invalidation | P0 |
 | `UC04` | Change Password | `REQ-02`, `REQ-12` | `AC-UC04-*` | `API-UC04-*` | Internal account security | P1 |
-| `UC05` | Forgot/Reset Password | `REQ-02`, `REQ-12` | `AC-UC05-*` | `API-UC05-*` | Internal account recovery | P1 |
+| `UC05` | Forgot/Reset Password | `REQ-01`, `REQ-02`, `REQ-12` | `AC-UC05-*` | `API-UC05-*` | Passenger/internal account recovery | P1 |
 | `UC06` | Profile/KYC | `REQ-01` | `AC-UC06-*` | `API-UC06-*` | Passenger profile completion | P0 |
 | `UC07` | Physical Card Guest Order | `REQ-04`, `REQ-09` | `AC-UC07-*` | `API-UC07-*` | Guest buys physical card | P0 |
 | `UC08` | Virtual Card Issue | `REQ-04`, `REQ-09` | `AC-UC08-*` | `API-UC08-*` | Passenger issues virtual card | P0 |
@@ -76,7 +76,7 @@
 
 | Flow | Use cases | Acceptance criteria | API tests | Mục tiêu |
 | :--- | :--- | :--- | :--- | :--- |
-| `E2E-01 Passenger onboarding` | `UC01`, `UC06`, `UC17`, `UC08` | `AC-UC01-*`, `AC-UC06-*`, `AC-UC17-*`, `AC-UC08-*` | `API-UC01-*`, `API-UC06-*`, `API-UC17-*`, `API-UC08-*` | Passenger đăng nhập OTP, hoàn thiện hồ sơ, nạp ví, phát hành thẻ ảo |
+| `E2E-01 Passenger onboarding` | `UC01`, `UC06`, `UC17`, `UC08` | `AC-UC01-*`, `AC-UC06-*`, `AC-UC17-*`, `AC-UC08-*` | `API-UC01-*`, `API-UC06-*`, `API-UC17-*`, `API-UC08-*` | Passenger đăng ký bằng SĐT/OTP hoặc đăng nhập bằng mật khẩu, hoàn thiện hồ sơ, nạp ví, phát hành thẻ ảo |
 | `E2E-02 Passenger travel` | `UC13`, `UC10` | `AC-UC13-*`, `AC-UC10-*` | `API-UC13-*`, `API-UC10-*` | Passenger gia hạn/mua vé và check-in/check-out |
 | `E2E-03 PSC incident` | `UC16`, `UC14` | `AC-UC16-*`, `AC-UC14-*` | `API-UC16-*`, `API-UC14-*` | Staff mở ca, xử lý sự cố, ghi nhận tiền mặt |
 | `E2E-04 Staff card operations` | `UC11`, `UC12`, `UC15` | `AC-UC11-*`, `AC-UC12-*`, `AC-UC15-*` | `API-UC11-*`, `API-UC12-*`, `API-UC15-*` | Staff quản lý phôi thẻ, thu hồi, xử lý order |
@@ -90,7 +90,7 @@
 
 | Nhóm | Số UC | P0/P1 chính | Ghi chú |
 | :--- | :---: | :--- | :--- |
-| Xác thực & tài khoản | 6 | P0/P1 | OTP, profile, auth nội bộ |
+| Xác thực & tài khoản | 6 | P0/P1 | Phone auth, registration/reset OTP, profile, auth nội bộ |
 | Thẻ & vé tháng | 6 | P0 | Thẻ cứng, thẻ ảo, subscription |
 | Soát vé & quầy ga | 4 | P0 | Validator, PSC, shift |
 | Tài chính & ví | 3 | P0 | Top-up, payout, clearing |
@@ -106,4 +106,3 @@
 - Khi đổi endpoint API, chỉ cần sửa cột `API tests` nếu mã test không đổi; nếu đổi mã test thì cập nhật toàn bộ dòng liên quan.
 - Khi một yêu cầu chuyển khỏi scope MVP, đánh dấu rõ `Out of MVP` thay vì xóa mất dấu vết.
 - Không kéo thêm scope từ tài liệu PDF tham khảo nếu không có quyết định chốt scope mới.
-

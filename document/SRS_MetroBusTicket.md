@@ -21,7 +21,7 @@ Hệ thống PFC được thiết kế theo mô hình **Thu soát vé tự độ
 
 | Nhóm phạm vi | Nội dung trong MVP | Ràng buộc/ngoài phạm vi |
 | :--- | :--- | :--- |
-| Hành khách (`PASSENGER`) | Đăng ký/đăng nhập OTP, quản lý hồ sơ, nạp ví, mua/gia hạn vé, phát hành thẻ ảo, số hóa thẻ cứng, dùng Dynamic QR để soát vé. | Không rút tiền khỏi ví; không mua thẻ cứng trên PWA; không nạp tiền hoặc trừ ví tại validator. |
+| Hành khách (`PASSENGER`) | Đăng ký bằng SĐT/OTP, đăng nhập bằng SĐT/mật khẩu, quản lý hồ sơ, nạp ví, mua/gia hạn vé, phát hành thẻ ảo, số hóa thẻ cứng, dùng Dynamic QR để soát vé. | Không rút tiền khỏi ví; không mua thẻ cứng trên PWA; không nạp tiền hoặc trừ ví tại validator. |
 | Đơn vị vận hành (`OPERATOR` / `COMPANY_MANAGER`) | Theo dõi ví doanh nghiệp, lịch sử cộng tiền đối soát, gửi yêu cầu giải ngân thủ công, quản lý tuyến/trạm/nhân sự/biểu giá trong phạm vi tenant. | Hệ thống không chuyển khoản ngân hàng tự động; Platform Manager chỉ duyệt/từ chối yêu cầu trên hệ thống. |
 | Quản trị nền tảng (`PLATFORM_MANAGER`) | Quản lý tenant, khung giá trần, clearing, giám sát dòng tiền và duyệt/từ chối yêu cầu giải ngân doanh nghiệp. | Không tự động thay thế quy trình kế toán/ngân hàng ngoài đời. |
 | Staff/quầy ga (`STAFF`) | Khởi tạo phôi thẻ, in/giao/thu hồi thẻ cứng, mở ca/kết ca, hỗ trợ xử lý kẹt ga/quên check-out/đi quá chặng. | Webcam Gate Simulator không đọc RFID/thẻ cứng. |
@@ -85,10 +85,14 @@ Các nhóm chức năng MVP được khóa theo 27 use case trong `use_case_spec
 
 | Nhóm chức năng | Use case nguồn | Ghi chú scope trong SRS |
 | :--- | :--- | :--- |
-| Xác thực & tài khoản | UC01-UC06 | OTP cho passenger; username/password cho nhân sự nội bộ; profile nằm trong `accounts`. |
+| Xác thực & tài khoản | UC01-UC06 | Passenger đăng ký bằng SĐT/OTP và đăng nhập bằng SĐT/mật khẩu; username/password cho nhân sự nội bộ; profile nằm trong `accounts`. |
 | Thẻ & vé tháng | UC07-UC12 | UC07 mua thẻ cứng chỉ dành cho Guest trên Web Portal; Passenger PWA chỉ phát hành thẻ ảo và số hóa thẻ cứng; soát vé chỉ dùng thẻ/vé điện tử qua Dynamic QR. |
 | Soát vé & vận hành quầy ga | UC13-UC16 | Validator không trừ ví tại cổng; chỉ kiểm tra vé/subscription đã mua trước và ghi nhận journey. |
 | Tài chính & ví điện tử | UC17-UC19 | Passenger chỉ nạp tiền và thanh toán vé; operator được gửi yêu cầu giải ngân thủ công; clearing chạy hằng đêm. |
+
+#### Chính sách OTP trong MVP
+
+OTP SMS chỉ dùng cho đăng ký tài khoản Passenger mới và quên mật khẩu, không dùng cho đăng nhập thường. OTP có 6 chữ số, TTL 2 phút; OTP mới ghi đè OTP cũ cùng `phoneNumber` và `purpose`. Backend áp dụng cooldown 60 giây giữa hai lần gửi, tối đa 5 OTP/ngày cho mỗi số điện thoại và `purpose`, tối đa 20 OTP/giờ cho mỗi IP, tối đa 5 lần nhập sai cho mỗi OTP. Vượt giới hạn gửi OTP trả HTTP `429 Too Many Requests`. Các giới hạn được cấu hình trong application config và counter được lưu tạm trong Redis.
 | Quản trị vận hành đơn vị | UC20-UC22 | Company Manager quản lý nhân sự, tuyến/trạm và biểu giá trong phạm vi operator/tenant của mình. |
 | Quản trị nền tảng | UC23-UC24 | Platform Manager quản lý tenant và khung giá trần toàn hệ thống. |
 | Giám sát, bảo mật & phân quyền | UC25-UC27 | Admin quản trị kỹ thuật, ban/unban, RBAC và system logs; không tự ý can thiệp tài chính nếu không có audit flow. |
@@ -353,7 +357,7 @@ Database `auth_db` tập trung quản lý thông tin tài khoản định danh, 
 CREATE TABLE accounts (
     id VARCHAR(36) PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(100),
+    password VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE,
     phone_number VARCHAR(15) UNIQUE,
     full_name VARCHAR(100),

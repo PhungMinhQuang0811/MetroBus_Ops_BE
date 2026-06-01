@@ -19,12 +19,18 @@
 
 ## 2. Module 1: Xác thực & Tài khoản
 
-### UC01: Đăng ký & Đăng nhập bằng OTP Số điện thoại
+### UC01: Đăng ký & Đăng nhập bằng Số điện thoại
 
-- [ ] **AC-UC01-01 [P0]** Given hành khách nhập số điện thoại hợp lệ, when yêu cầu OTP, then hệ thống sinh OTP 6 chữ số và ghi nhận thời hạn hiệu lực 2 phút.
-- [ ] **AC-UC01-02 [P0]** Given OTP hợp lệ và còn hạn, when hành khách xác nhận, then hệ thống trả JWT và đăng nhập thành công.
-- [ ] **AC-UC01-03 [P0]** Given số điện thoại chưa tồn tại, when xác nhận OTP thành công lần đầu, then hệ thống tạo `accounts` với role `PASSENGER` và tạo ví `PASSENGER` có số dư `0`.
-- [ ] **AC-UC01-04 [P0]** Given OTP sai hoặc hết hạn, when hành khách xác nhận, then hệ thống từ chối đăng nhập và cho phép yêu cầu OTP mới.
+- [ ] **AC-UC01-01 [P0]** Given hành khách nhập số điện thoại hợp lệ chưa có tài khoản, when nhấn "Tiếp tục", then hệ thống sinh OTP 6 chữ số, gửi SMS và ghi nhận thời hạn hiệu lực 2 phút.
+- [ ] **AC-UC01-02 [P0]** Given số điện thoại đã có tài khoản đang hoạt động, when nhấn "Tiếp tục", then hệ thống không gửi OTP và trả trạng thái để PWA chuyển sang màn hình nhập mật khẩu.
+- [ ] **AC-UC01-03 [P0]** Given OTP đăng ký hợp lệ và còn hạn, when hành khách xác nhận, then hệ thống cho phép chuyển sang bước đặt mật khẩu, chưa đăng nhập nếu chưa có mật khẩu.
+- [ ] **AC-UC01-04 [P0]** Given hành khách đặt mật khẩu thành công sau khi xác minh OTP đăng ký, then hệ thống tạo `accounts` với role `PASSENGER`, tạo ví `PASSENGER` có số dư `0`, cấp JWT và đăng nhập thành công.
+- [ ] **AC-UC01-05 [P0]** Given tài khoản đã tồn tại và mật khẩu đúng, when hành khách đăng nhập, then hệ thống cấp JWT và đăng nhập thành công.
+- [ ] **AC-UC01-06 [P0]** Given OTP đăng ký sai hoặc hết hạn, when hành khách xác nhận, then hệ thống từ chối xác minh và không tạo tài khoản.
+- [ ] **AC-UC01-07 [P0]** Given cùng số điện thoại và `purpose = REGISTER`, when yêu cầu OTP lần thứ 6 trong ngày hoặc yêu cầu lại trước 60 giây, then hệ thống không gửi SMS và trả HTTP `429`.
+- [ ] **AC-UC01-08 [P0]** Given cùng IP, when tổng số yêu cầu OTP đăng ký vượt 20 lần trong 1 giờ, then hệ thống không gửi SMS và trả HTTP `429`.
+- [ ] **AC-UC01-09 [P0]** Given OTP đăng ký đã bị nhập sai 5 lần, when xác minh lại, then hệ thống vô hiệu hóa OTP hiện tại và yêu cầu hành khách gửi OTP mới.
+- [ ] **AC-UC01-10 [P0]** Given OTP đăng ký mới được gửi cho cùng số điện thoại, then OTP cũ bị ghi đè và không còn hợp lệ.
 
 ### UC02: Đăng nhập tài khoản nội bộ
 
@@ -46,12 +52,17 @@
 - [ ] **AC-UC04-03 [P0]** Given mật khẩu mới không đạt chính sách hoặc xác nhận không khớp, when gửi yêu cầu, then hệ thống trả lỗi validation.
 - [ ] **AC-UC04-04 [P1]** Given đổi mật khẩu thành công, when thao tác hoàn tất, then phiên cũ bị vô hiệu hóa và người dùng phải đăng nhập lại.
 
-### UC05: Khôi phục mật khẩu nội bộ
+### UC05: Khôi phục mật khẩu
 
 - [ ] **AC-UC05-01 [P0]** Given email nội bộ tồn tại, when yêu cầu khôi phục, then hệ thống sinh token reset có thời hạn 15 phút và gửi liên kết qua email.
 - [ ] **AC-UC05-02 [P0]** Given token reset hợp lệ và còn hạn, when người dùng nhập mật khẩu mới hợp lệ, then hệ thống cập nhật mật khẩu BCrypt và vô hiệu hóa token reset.
 - [ ] **AC-UC05-03 [P0]** Given token reset sai, đã dùng hoặc hết hạn, when xác nhận, then hệ thống từ chối cập nhật.
 - [ ] **AC-UC05-04 [P1]** Given email không tồn tại, when gửi yêu cầu, then hệ thống xử lý theo chính sách phản hồi đã chốt và không tạo token reset.
+- [ ] **AC-UC05-05 [P0]** Given số điện thoại Passenger đã tồn tại và tài khoản đang hoạt động, when yêu cầu quên mật khẩu, then hệ thống gửi OTP reset password qua SMS.
+- [ ] **AC-UC05-06 [P0]** Given OTP reset password hợp lệ và còn hạn, when hành khách xác nhận, then hệ thống trả reset token tạm thời để đặt mật khẩu mới.
+- [ ] **AC-UC05-07 [P0]** Given reset token từ OTP hợp lệ, when hành khách đặt mật khẩu mới hợp lệ, then hệ thống cập nhật mật khẩu BCrypt và vô hiệu hóa reset token/OTP.
+- [ ] **AC-UC05-08 [P0]** Given OTP reset password sai, hết hạn hoặc nhập sai quá 5 lần, when hành khách xác nhận, then hệ thống từ chối cấp reset token.
+- [ ] **AC-UC05-09 [P0]** Given cùng số điện thoại và `purpose = RESET_PASSWORD`, when yêu cầu OTP lần thứ 6 trong ngày hoặc yêu cầu lại trước 60 giây, then hệ thống không gửi SMS và trả HTTP `429`.
 
 ### UC06: Cập nhật hồ sơ cá nhân
 
@@ -280,11 +291,10 @@ MVP được xem là đạt yêu cầu khi:
 1. Toàn bộ tiêu chí `[P0]` đã pass.
 2. Không còn lỗi blocker hoặc lỗi sai lệch số dư tài chính.
 3. Các luồng demo xuyên suốt hoạt động:
-   - Passenger đăng nhập OTP, hoàn thiện hồ sơ, nạp ví, phát hành/mua vé và xem lịch sử.
+   - Passenger đăng ký bằng SĐT/OTP hoặc đăng nhập bằng SĐT/mật khẩu, hoàn thiện hồ sơ, nạp ví, phát hành/mua vé và xem lịch sử.
    - Passenger quét Dynamic QR để check-in/check-out qua Webcam Gate Simulator.
    - Staff mở ca, xử lý lỗi tại PSC, kết ca và đối chiếu tiền mặt.
    - Company Manager quản lý staff, tuyến/trạm và biểu giá trong tenant.
    - Platform Manager khởi tạo tenant, quản lý khung giá và duyệt payout.
    - Scheduler chạy clearing và phân bổ doanh thu không trùng lặp.
    - Admin ban/unban, cấu hình RBAC và tra cứu logs.
-

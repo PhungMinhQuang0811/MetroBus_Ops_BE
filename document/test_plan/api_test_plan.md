@@ -182,14 +182,14 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 ## Module 1: Xác Thực & Tài Khoản
 
-### UC01: Đăng ký & Đăng nhập OTP Passenger
+### UC01: Đăng ký & Đăng nhập bằng Số điện thoại Passenger
 
-#### API-UC01-001: Request OTP success
+#### API-UC01-001: Check phone number - existing account
 
 - Request:
 
 ```http
-POST /auth/request-otp
+POST /auth/phone/check
 ```
 
 ```json
@@ -204,25 +204,62 @@ POST /auth/request-otp
 {
   "code": 1000,
   "message": "Success",
-  "result": null
+  "result": {
+    "exists": true,
+    "nextStep": "PASSWORD_LOGIN",
+    "phoneNumber": "0900000001"
+  }
 }
 ```
 
 - HTTP: `200`
-- Notes: Production phải gửi OTP thật qua SMS Gateway/Firebase SMS và không trả OTP trong response. Dev/test có thể dùng fake SMS hoặc log OTP để kiểm thử. Backend lưu OTP tạm theo `phoneNumber` với TTL ngắn.
+- Side effects: Không gửi OTP cho số điện thoại đã có tài khoản.
+- FE usage: Lưu `result.phoneNumber` làm `identifier` khi gọi `POST /auth/login`.
 
-#### API-UC01-002: Verify OTP success
+#### API-UC01-002: Check phone number - new account triggers registration OTP
 
 - Request:
 
 ```http
-POST /auth/verify-otp
+POST /auth/phone/check
 ```
 
 ```json
 {
-  "phoneNumber": "0900000001",
-  "otp": "123456"
+  "phoneNumber": "0900000002"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "exists": false,
+    "nextStep": "REGISTER_OTP",
+    "phoneNumber": "0900000002"
+  }
+}
+```
+
+- HTTP: `200`
+- Notes: Production phải gửi OTP thật qua SMS Gateway/Firebase SMS và không trả OTP trong response. Dev/test có thể dùng fake SMS hoặc log OTP để kiểm thử. Backend lưu OTP đăng ký tạm theo `phoneNumber` và `purpose` với TTL 2 phút.
+- FE usage: Lưu `result.phoneNumber` để truyền sang bước verify OTP đăng ký.
+
+#### API-UC01-003: Login existing passenger with password
+
+- Request:
+
+```http
+POST /auth/login
+```
+
+```json
+{
+  "identifier": "0900000001",
+  "password": "P@ssword123"
 }
 ```
 
@@ -234,7 +271,7 @@ POST /auth/verify-otp
   "message": "Success",
   "result": {
     "id": "account_id",
-    "username": "0900000001",
+    "phoneNumber": "0900000001",
     "roles": ["PASSENGER"],
     "permissions": []
   }
@@ -243,20 +280,86 @@ POST /auth/verify-otp
 
 - HTTP: `200`
 - Header/Cookie:
-  - Response set cookie chứa access token theo cấu hình backend, ví dụ `Set-Cookie: accessToken=...; HttpOnly; Path=/; SameSite=Lax`
-- Side effects: Nếu phone mới, tạo account `PASSENGER` và wallet số dư `0`.
+  - Response set cookie chứa access token và refresh token theo cấu hình backend.
+- Side effects: Không gửi OTP.
 
-#### API-UC01-003: Verify OTP invalid/expired
+#### API-UC01-004: Verify registration OTP success
 
 - Request:
 
 ```http
-POST /auth/verify-otp
+POST /auth/register/verify-otp
 ```
 
 ```json
 {
-  "phoneNumber": "0900000001",
+  "phoneNumber": "0900000002",
+  "otp": "123456"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "registrationToken": "temporary-registration-token",
+    "nextStep": "SET_PASSWORD"
+  }
+}
+```
+
+- HTTP: `200`
+- Side effects: Chưa tạo account hoàn chỉnh và chưa cấp JWT nếu người dùng chưa đặt mật khẩu.
+
+#### API-UC01-005: Complete registration by setting password
+
+- Request:
+
+```http
+POST /auth/register/set-password
+```
+
+```json
+{
+  "registrationToken": "temporary-registration-token",
+  "password": "P@ssword123"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": "account_id",
+    "phoneNumber": "0900000002",
+    "roles": ["PASSENGER"],
+    "permissions": []
+  }
+}
+```
+
+- HTTP: `200`
+- Header/Cookie:
+  - Response set cookie chứa access token và refresh token theo cấu hình backend.
+- Side effects: Tạo account `PASSENGER`, set `isPhoneVerified = true`, lưu password đã mã hóa và tạo wallet `PASSENGER` số dư `0`.
+
+#### API-UC01-006: Registration OTP invalid/expired
+
+- Request:
+
+```http
+POST /auth/register/verify-otp
+```
+
+```json
+{
+  "phoneNumber": "0900000002",
   "otp": "000000"
 }
 ```
@@ -273,17 +376,17 @@ POST /auth/verify-otp
 
 - HTTP: `400` hoặc `422`
 
-#### API-UC01-004: Request OTP again replaces previous OTP
+#### API-UC01-007: Request registration OTP again replaces previous OTP
 
 - Request:
 
 ```http
-POST /auth/request-otp
+POST /auth/phone/check
 ```
 
 ```json
 {
-  "phoneNumber": "0900000001"
+  "phoneNumber": "0900000002"
 }
 ```
 
@@ -293,19 +396,23 @@ POST /auth/request-otp
 {
   "code": 1000,
   "message": "Success",
-  "result": null
+  "result": {
+    "exists": false,
+    "nextStep": "REGISTER_OTP",
+    "phoneNumber": "0900000002"
+  }
 }
 ```
 
 - HTTP: `200`
-- Side effects: OTP cũ bị ghi đè bằng OTP mới theo `phoneNumber`; backend không cần endpoint resend riêng.
+- Side effects: Nếu số điện thoại chưa có tài khoản, OTP cũ bị ghi đè bằng OTP mới theo `phoneNumber`; backend không cần endpoint resend riêng.
 
-#### API-UC01-005: Request OTP invalid phone number
+#### API-UC01-008: Invalid phone number
 
 - Request:
 
 ```http
-POST /auth/request-otp
+POST /auth/phone/check
 ```
 
 ```json
@@ -325,6 +432,96 @@ POST /auth/request-otp
 ```
 
 - HTTP: `400`
+
+#### API-UC01-009: Request registration OTP during cooldown
+
+- Request:
+
+```http
+POST /auth/phone/check
+```
+
+```json
+{
+  "phoneNumber": "0900000002"
+}
+```
+
+- Precondition: Cùng số điện thoại và `purpose = REGISTER` vừa được gửi OTP chưa đủ 60 giây.
+- Expected response:
+
+```json
+{
+  "code": 3002,
+  "message": "OTP request limit exceeded. Please try again later.",
+  "result": null
+}
+```
+
+- HTTP: `429`
+- Side effects: Không gửi SMS và không thay đổi OTP đang còn hiệu lực.
+
+#### API-UC01-010: Daily registration OTP limit by phone number and purpose
+
+- Request: Gọi yêu cầu OTP lần thứ 6 trong ngày với cùng số điện thoại và cùng `purpose`.
+- Expected response:
+
+```json
+{
+  "code": 3002,
+  "message": "OTP request limit exceeded. Please try again later.",
+  "result": null
+}
+```
+
+- HTTP: `429`
+- Side effects: Không gửi SMS.
+
+#### API-UC01-011: Hourly registration OTP limit by IP
+
+- Request: Gọi yêu cầu OTP lần thứ 21 trong 1 giờ từ cùng IP.
+- Expected response:
+
+```json
+{
+  "code": 3002,
+  "message": "OTP request limit exceeded. Please try again later.",
+  "result": null
+}
+```
+
+- HTTP: `429`
+- Side effects: Không gửi SMS.
+
+#### API-UC01-012: Registration OTP invalid after 5 failed verification attempts
+
+- Request: Xác minh sai OTP lần thứ 5 rồi thử xác minh lại OTP cũ.
+- Expected response:
+
+```json
+{
+  "code": 3001,
+  "message": "OTP is invalid or expired",
+  "result": null
+}
+```
+
+- HTTP: `400` hoặc `422`
+- Side effects: OTP hiện tại bị vô hiệu hóa; hành khách phải yêu cầu OTP mới.
+
+#### Cấu hình OTP MVP
+
+Các giới hạn phải nằm trong application config và counter được lưu tạm trong Redis theo `phoneNumber`, IP và `purpose`:
+
+```yaml
+app:
+  otp:
+    expiration-ms: 120000
+    resend-cooldown-seconds: 60
+    max-requests-per-phone-per-day: 5
+    max-requests-per-ip-per-hour: 20
+    max-verification-attempts: 5
+```
 
 ### UC02: Đăng nhập tài khoản nội bộ
 
@@ -555,9 +752,9 @@ Cookie: accessToken={{staffAccessToken}}
 
 - HTTP: `400`
 
-### UC05: Khôi phục mật khẩu nội bộ
+### UC05: Khôi phục mật khẩu
 
-#### API-UC05-001: Forgot password request
+#### API-UC05-001: Internal forgot password request by email
 
 - Request:
 
@@ -638,6 +835,134 @@ POST /auth/reset-password
 ```
 
 - HTTP: `400` hoặc `422`
+
+#### API-UC05-004: Passenger forgot password request OTP
+
+- Request:
+
+```http
+POST /auth/forgot-password/request-otp
+```
+
+```json
+{
+  "phoneNumber": "0900000001"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": null
+}
+```
+
+- HTTP: `200`
+- Notes: Chỉ gửi OTP nếu số điện thoại đã tồn tại và tài khoản đang hoạt động. OTP reset password được lưu tách biệt theo `purpose = RESET_PASSWORD`.
+
+#### API-UC05-005: Passenger verify forgot password OTP
+
+- Request:
+
+```http
+POST /auth/forgot-password/verify-otp
+```
+
+```json
+{
+  "phoneNumber": "0900000001",
+  "otp": "123456"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "resetToken": "temporary-reset-token",
+    "nextStep": "RESET_PASSWORD"
+  }
+}
+```
+
+- HTTP: `200`
+
+#### API-UC05-006: Passenger reset password by phone OTP token
+
+- Request:
+
+```http
+POST /auth/reset-password
+```
+
+```json
+{
+  "token": "temporary-reset-token",
+  "newPassword": "NewP@ssword123"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": null
+}
+```
+
+- HTTP: `200`
+- Side effects: Lưu mật khẩu mới đã mã hóa, xóa reset token và vô hiệu hóa OTP reset password.
+
+#### API-UC05-007: Passenger forgot password OTP invalid/expired
+
+- Request:
+
+```http
+POST /auth/forgot-password/verify-otp
+```
+
+```json
+{
+  "phoneNumber": "0900000001",
+  "otp": "000000"
+}
+```
+
+- Expected response:
+
+```json
+{
+  "code": 3001,
+  "message": "OTP is invalid or expired",
+  "result": null
+}
+```
+
+- HTTP: `400` hoặc `422`
+
+#### API-UC05-008: Passenger forgot password OTP rate limited
+
+- Request: Gọi yêu cầu OTP reset password lần thứ 6 trong ngày với cùng số điện thoại và `purpose = RESET_PASSWORD`, hoặc yêu cầu lại trước 60 giây.
+- Expected response:
+
+```json
+{
+  "code": 3002,
+  "message": "OTP request limit exceeded. Please try again later.",
+  "result": null
+}
+```
+
+- HTTP: `429`
+- Side effects: Không gửi SMS.
 
 ### UC06: Cập nhật hồ sơ cá nhân
 
@@ -2850,7 +3175,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 Nên tạo folder trong Postman theo đúng thứ tự:
 
-1. `UC01 - OTP Passenger`
+1. `UC01 - Passenger Phone Auth`
 2. `UC02 - Internal Login`
 3. `UC03 - Logout`
 4. `UC04 - Change Password`

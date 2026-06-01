@@ -151,7 +151,7 @@ Gợi ý route FE:
 | Actor | App surface | Mục tiêu UI |
 | :--- | :--- | :--- |
 | `GUEST` | Public Web Portal | Mua thẻ cứng, gia hạn vé bằng mã thẻ, không đăng nhập |
-| `PASSENGER` | Mobile PWA | Đăng nhập OTP, quản lý hồ sơ, ví, thẻ ảo, QR, lịch sử |
+| `PASSENGER` | Mobile PWA | Đăng ký bằng SĐT/OTP, đăng nhập bằng SĐT/mật khẩu, quản lý hồ sơ, ví, thẻ ảo, QR, lịch sử |
 | `STAFF` | Staff Portal | Mở/kết ca, xử lý PSC, phôi thẻ, order thẻ cứng |
 | `COMPANY_MANAGER` | Company Portal | Quản lý staff, ca trực, tuyến/trạm, biểu giá, payout |
 | `PLATFORM_MANAGER` | Platform Portal | Tenant, khung giá trần, clearing, payout approval |
@@ -210,42 +210,54 @@ Gợi ý route FE:
 
 ## 5. Passenger PWA Screens
 
-### PWA-01: OTP Login
+### PWA-01: Phone Login / Registration
 
 **Use cases:** `UC01`
 
-Mục tiêu: Passenger đăng nhập/đăng ký bằng số điện thoại.
+Mục tiêu: Passenger bắt đầu bằng số điện thoại; tài khoản đã tồn tại đăng nhập bằng mật khẩu, tài khoản mới xác minh OTP rồi đặt mật khẩu. OTP không được gửi cho đăng nhập thường. Link quên mật khẩu điều hướng sang luồng UC05.
 
 UI elements:
 
 - Phone number input: `phoneNumber`
-- Button: `Request OTP`
-- OTP input 6 digits
+- Button: `Continue`
+- Password input for existing account
+- Button: `Login`
+- Link: `Forgot password`
+- OTP input 6 digits for registration only
 - Button: `Verify OTP`
-- Button/link: `Resend OTP`
+- Password setup input
+- Button: `Set password`
 - Countdown timer 120s
 - Error area for invalid/expired OTP
 
 States:
 
 - Initial phone input
-- OTP sent
+- Existing account password input
+- Login loading
+- Registration OTP sent
 - OTP verifying/loading
 - OTP expired
 - OTP invalid
+- OTP request rate limited
+- Set password
 - Login success
 
 API mapping:
 
-- `POST /auth/request-otp`
-- `POST /auth/verify-otp`
-- `POST /auth/resend-otp`
+- `POST /auth/phone/check`
+- `POST /auth/login`
+- `POST /auth/register/verify-otp`
+- `POST /auth/register/set-password`
 
 Acceptance focus:
 
-- OTP request success returns no body result.
-- Verify success sets cookie and returns `AuthResponse`.
-- Resend success returns `ApiResponse<Void>`.
+- Existing account phone check does not send OTP and routes to password login.
+- New account phone check sends registration OTP and routes to OTP verification.
+- Phone check success stores `result.phoneNumber` as the normalized phone value for login identifier and OTP verification.
+- Registration completes only after OTP verification and password setup.
+- Forgot password link routes to UC05 and is not part of UC01 API mapping.
+- OTP request rate limit displays a retry-later message and keeps the submit action disabled during the 60-second cooldown.
 
 ### PWA-02: Passenger Home Dashboard
 
@@ -544,6 +556,8 @@ API mapping:
 - `POST /auth/logout`
 - `POST /user/change-password`
 - `POST /auth/forgot-password`
+- `POST /auth/forgot-password/request-otp`
+- `POST /auth/forgot-password/verify-otp`
 - `POST /auth/reset-password`
 
 ### STAFF-02: Shift Console
@@ -909,7 +923,7 @@ API mapping:
 
 Screens:
 
-1. `PWA-01 OTP Login`
+1. `PWA-01 Phone Login / Registration`
 2. `PWA-03 Profile & KYC`
 3. `PWA-04 Wallet`
 4. `PWA-05 Virtual Card Issue`
