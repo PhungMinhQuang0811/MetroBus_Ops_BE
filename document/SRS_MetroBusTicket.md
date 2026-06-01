@@ -473,11 +473,11 @@ CREATE TABLE cards (
     issued_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(36), -- Khóa ngoại logic liên kết tài khoản STAFF in ấn/giao nhận thẻ cứng
     qr_secret_key VARCHAR(255), -- Chỉ dùng cho thẻ ảo; secret đã mã hóa/bao bọc khóa để sinh Dynamic QR TOTP offline
-    qr_algorithm VARCHAR(20) DEFAULT 'HMAC-SHA256',
-    qr_time_step_seconds INT DEFAULT 30,
-    qr_allowed_drift_steps INT DEFAULT 1,
-    qr_secret_status VARCHAR(20) DEFAULT 'ACTIVE', -- 'ACTIVE', 'ROTATED', 'REVOKED'; NULL nếu không dùng QR
-    qr_secret_rotated_at TIMESTAMP WITH TIME ZONE,
+    qr_algorithm VARCHAR(20) DEFAULT 'HMAC-SHA256', -- MVP dùng cùng giá trị mặc định cho mọi thẻ ảo; backend đọc/gán vào thư viện TOTP
+    qr_time_step_seconds INT DEFAULT 30, -- MVP dùng cùng chu kỳ mặc định cho mọi thẻ ảo
+    qr_allowed_drift_steps INT DEFAULT 1, -- MVP dùng cùng drift window mặc định cho mọi thẻ ảo
+    qr_secret_status VARCHAR(20) DEFAULT 'ACTIVE', -- MVP chỉ dùng ACTIVE/REVOKED nếu cần khóa QR; chưa triển khai rotate secret phức tạp
+    qr_secret_rotated_at TIMESTAMP WITH TIME ZONE, -- Dự phòng future phase; MVP không yêu cầu luồng rotate secret
     CONSTRAINT uq_card_uid_medium UNIQUE (card_uid, card_medium) -- Đảm bảo một mã UID chỉ có tối đa 1 thẻ vật lý và 1 thẻ ảo đồng thời trong DB
 );
 
@@ -531,6 +531,7 @@ CREATE TABLE orders (
     email VARCHAR(100),
     passenger_type VARCHAR(30) NOT NULL, -- 'NORMAL'
     photo_url VARCHAR(255), -- Đường dẫn ảnh chân dung 3x4 in lên thẻ
+    address VARCHAR(255),
     route_type VARCHAR(30) NOT NULL, -- 'ALL_ROUTES' (Liên tuyến), 'ONE_ROUTE' (Một tuyến)
     route_id INT REFERENCES routes(route_id) ON DELETE SET NULL, -- Tuyến cụ thể nếu mua 1 tuyến
     months_to_buy INT NOT NULL DEFAULT 1, -- Số chu kỳ tháng mua trước (ví dụ 1 tháng, 3 tháng...)
@@ -820,5 +821,7 @@ Lưu các lỗi kỹ thuật phát sinh trong backend, các lỗi retry thất b
 
 ### 5.3. Bảo mật mã QR Code động (Dynamic QR Security)
 *   Để chống chụp ảnh màn hình hoặc đi lậu vé, mã QR hiển thị trên ứng dụng của hành khách phải là mã QR động theo cơ chế TOTP, có chu kỳ xoay vòng tối đa **30 giây**.
-*   MVP hỗ trợ QR offline TOTP: backend sinh `qr_secret_key` khi phát hành thẻ ảo, lưu trực tiếp trong bảng `cards` cùng các cột `qr_algorithm`, `qr_time_step_seconds`, `qr_allowed_drift_steps`, đồng bộ khóa xuống PWA, và validator/backend dùng cùng thuật toán để đối sánh mã trong cửa sổ thời gian hợp lệ.
+*   MVP hỗ trợ QR offline TOTP bằng **thư viện TOTP có sẵn**, không tự xây dựng thuật toán TOTP từ đầu. Backend sinh `qr_secret_key` khi phát hành thẻ ảo, lưu trực tiếp trong bảng `cards` cùng các cột `qr_algorithm`, `qr_time_step_seconds`, `qr_allowed_drift_steps`, đồng bộ khóa xuống PWA, và validator/backend đọc các giá trị này để gán vào thư viện TOTP khi đối sánh mã trong cửa sổ thời gian hợp lệ.
+*   Trong phạm vi MVP, **toàn bộ thẻ ảo dùng cùng một bộ cấu hình QR mặc định**: `qr_algorithm = 'HMAC-SHA256'`, `qr_time_step_seconds = 30`, `qr_allowed_drift_steps = 1`. Các cột này được giữ trong DB để dữ liệu tự mô tả và tiện mở rộng, nhưng hệ thống chưa hỗ trợ UI/API thay đổi cấu hình QR riêng theo từng thẻ.
+*   `qr_secret_status` và `qr_secret_rotated_at` chỉ là trường dự phòng cho khóa/revoke/rotate secret ở future phase. MVP ưu tiên khóa thẻ bằng `cards.status = 'LOCKED'` hoặc `EXPIRED`; chưa triển khai quy trình rotate secret phức tạp.
 *   Backend vẫn kiểm tra trạng thái tài khoản, thẻ, vé/subscription và blacklist khi validator gửi yêu cầu xác thực; QR offline chỉ giúp PWA sinh mã khi thiết bị hành khách mất mạng, không bỏ qua kiểm tra nghiệp vụ phía hệ thống.

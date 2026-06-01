@@ -22,7 +22,7 @@ graph LR
     %% Guest & Passenger Use Cases
     Guest --> UC07["UC07: Đăng ký mua Thẻ cứng (Guest Checkout)"]
     Guest --> UC10["UC10: Gia hạn gói vé chu kỳ"]
-    Passenger --> UC01["UC01: Đăng ký & Đăng nhập OTP di động"]
+    Passenger --> UC01["UC01: Đăng nhập OTP di động"]
     Passenger --> UC03["UC03: Đăng xuất tài khoản PWA/Portal"]
     Passenger --> UC06["UC06: Cập nhật hồ sơ cá nhân"]
     Passenger --> UC09["UC09: Số hóa Thẻ cứng thành Thẻ ảo"]
@@ -100,7 +100,7 @@ graph LR
 
 *Quản lý toàn bộ vòng đời danh tính người dùng: đăng ký, đăng nhập, phân quyền và quản lý thông tin cá nhân.*
 
-### UC01: Đăng ký & Đăng nhập bằng OTP Số điện thoại (Passenger Mobile PWA)
+### UC01: Đăng nhập bằng OTP Số điện thoại (Passenger Mobile PWA)
 *   **Mô tả:** Hành khách thực hiện đăng ký tài khoản mới hoặc đăng nhập vào Web App di động (PWA) siêu nhanh bằng số điện thoại nhận mã OTP (không mật khẩu).
 
 | Thuộc tính | Chi tiết đặc tả |
