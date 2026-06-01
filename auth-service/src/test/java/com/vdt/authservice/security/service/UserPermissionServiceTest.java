@@ -3,7 +3,7 @@ package com.vdt.authservice.security.service;
 import com.vdt.authservice.modules.identity.entity.Account;
 import com.vdt.authservice.modules.identity.entity.Permission;
 import com.vdt.authservice.modules.identity.entity.Role;
-import com.vdt.authservice.modules.identity.security.service.UserPermissionService;
+import com.vdt.authservice.modules.identity.security.service.Impl.UserPermissionService;
 import com.vdt.authservice.modules.identity.repository.AccountRepository;
 import com.vdt.authservice.common.util.RedisUtil;
 import org.junit.jupiter.api.Test;

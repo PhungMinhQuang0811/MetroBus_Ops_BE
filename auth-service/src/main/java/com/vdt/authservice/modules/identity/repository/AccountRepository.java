@@ -12,7 +12,9 @@ import java.util.Optional;
 public interface AccountRepository extends JpaRepository<Account, String> {
     boolean existsByEmail(String email);
     boolean existsByUsername(String username);
+    boolean existsByPhoneNumber(String phoneNumber);
     Optional<Account> findByEmail(String email);
+    Optional<Account> findByPhoneNumber(String phoneNumber);
 
     @Query("SELECT a FROM Account a " +
             "LEFT JOIN FETCH a.roles r " +

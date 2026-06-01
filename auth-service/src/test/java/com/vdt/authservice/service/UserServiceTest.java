@@ -5,12 +5,12 @@ import com.vdt.authservice.modules.identity.dto.response.user.UserResponse;
 import com.vdt.authservice.modules.identity.entity.Account;
 import com.vdt.authservice.common.exception.AppException;
 import com.vdt.authservice.common.exception.ErrorCode;
-import com.vdt.authservice.common.notification.email.EmailService;
-import com.vdt.authservice.modules.identity.service.UserService;
+import com.vdt.authservice.common.notification.email.IEmailService;
+import com.vdt.authservice.modules.identity.service.Impl.UserService;
 import com.vdt.authservice.modules.identity.mapper.UserMapper;
 import com.vdt.authservice.modules.identity.repository.AccountRepository;
 import com.vdt.authservice.modules.identity.repository.RoleRepository;
-import com.vdt.authservice.modules.identity.security.service.AccountTokenService;
+import com.vdt.authservice.modules.identity.security.service.IAccountTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,8 +32,8 @@ class UserServiceTest {
     @Mock private AccountRepository accountRepository;
     @Mock private RoleRepository roleRepository;
     @Mock private PasswordEncoder passwordEncoder;
-    @Mock private AccountTokenService accountTokenService;
-    @Mock private EmailService emailService;
+    @Mock private IAccountTokenService accountTokenService;
+    @Mock private IEmailService emailService;
     @Mock private UserMapper userMapper;
 
     @InjectMocks

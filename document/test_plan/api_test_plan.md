@@ -209,7 +209,7 @@ POST /auth/request-otp
 ```
 
 - HTTP: `200`
-- Notes: Production response không trả OTP thật. Backend lưu OTP tạm theo `phoneNumber` với TTL ngắn.
+- Notes: Production phải gửi OTP thật qua SMS Gateway/Firebase SMS và không trả OTP trong response. Dev/test có thể dùng fake SMS hoặc log OTP để kiểm thử. Backend lưu OTP tạm theo `phoneNumber` với TTL ngắn.
 
 #### API-UC01-002: Verify OTP success
 
@@ -273,12 +273,12 @@ POST /auth/verify-otp
 
 - HTTP: `400` hoặc `422`
 
-#### API-UC01-004: Resend OTP success
+#### API-UC01-004: Request OTP again replaces previous OTP
 
 - Request:
 
 ```http
-POST /auth/resend-otp
+POST /auth/request-otp
 ```
 
 ```json
@@ -298,19 +298,19 @@ POST /auth/resend-otp
 ```
 
 - HTTP: `200`
-- Side effects: OTP cũ bị vô hiệu hóa hoặc hết hiệu lực theo rule backend.
+- Side effects: OTP cũ bị ghi đè bằng OTP mới theo `phoneNumber`; backend không cần endpoint resend riêng.
 
-#### API-UC01-005: Resend OTP rejected after successful verification
+#### API-UC01-005: Request OTP invalid phone number
 
 - Request:
 
 ```http
-POST /auth/resend-otp
+POST /auth/request-otp
 ```
 
 ```json
 {
-  "phoneNumber": "0900000001"
+  "phoneNumber": "09000000001"
 }
 ```
 
@@ -318,13 +318,13 @@ POST /auth/resend-otp
 
 ```json
 {
-  "code": 3002,
-  "message": "OTP has already been verified",
+  "code": 2004,
+  "message": "Invalid phone number format",
   "result": null
 }
 ```
 
-- HTTP: `409` hoặc `422`
+- HTTP: `400`
 
 ### UC02: Đăng nhập tài khoản nội bộ
 

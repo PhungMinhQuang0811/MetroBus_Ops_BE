@@ -523,7 +523,6 @@ CREATE TABLE tickets (
 -- =========================================================================
 CREATE TABLE orders (
     order_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id VARCHAR(36), -- Khóa ngoại logic liên kết tài khoản PASSENGER bên auth_db (nullable nếu mua không cần đăng nhập)
     full_name VARCHAR(100) NOT NULL,
     birth_date DATE,
     personal_id VARCHAR(20), -- Số CCCD/Định danh cá nhân làm thẻ cứng

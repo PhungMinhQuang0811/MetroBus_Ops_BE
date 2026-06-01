@@ -1,4 +1,4 @@
-package com.vdt.authservice.modules.identity.security.service;
+package com.vdt.authservice.modules.identity.security.service.Impl;
 
 import com.vdt.authservice.modules.identity.entity.Account;
 import com.vdt.authservice.common.exception.AppException;

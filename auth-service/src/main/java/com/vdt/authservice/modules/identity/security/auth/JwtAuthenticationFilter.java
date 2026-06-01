@@ -4,8 +4,8 @@ import com.nimbusds.jwt.SignedJWT;
 import com.vdt.authservice.common.exception.AppException;
 import com.vdt.authservice.common.exception.ErrorCode;
 import com.vdt.authservice.modules.identity.security.entity.CustomUserDetails;
-import com.vdt.authservice.modules.identity.security.service.TokenManagementService;
-import com.vdt.authservice.modules.identity.security.service.UserPermissionService;
+import com.vdt.authservice.modules.identity.security.service.ITokenManagementService;
+import com.vdt.authservice.modules.identity.security.service.IUserPermissionService;
 import com.vdt.authservice.modules.identity.security.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -32,8 +32,8 @@ import java.util.Arrays;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     JwtUtil jwtUtil;
-    TokenManagementService tokenManagementService;
-    UserPermissionService userPermissionService;
+    ITokenManagementService tokenManagementService;
+    IUserPermissionService userPermissionService;
 
     @NonFinal
     @Value("${app.security.jwt.access-token-cookie-name}")

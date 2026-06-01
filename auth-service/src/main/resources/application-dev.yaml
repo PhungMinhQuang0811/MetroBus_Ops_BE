@@ -17,7 +17,7 @@ management:
 app:
   security:
     public-endpoints:
-      "/v3/api-docs/**,
-      /swagger-ui/**,
-      /swagger-ui.html,
-      /actuator/**"
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /actuator/**

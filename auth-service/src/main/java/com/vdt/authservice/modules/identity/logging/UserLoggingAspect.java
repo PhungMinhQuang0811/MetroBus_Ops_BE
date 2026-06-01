@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class UserLoggingAspect {
 
     // --- REGISTER ---
-    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.UserService.register(..))")
+    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.Impl.UserService.register(..))")
     public void registerPointcut() {}
 
     @AfterReturning("registerPointcut()")
@@ -36,7 +36,7 @@ public class UserLoggingAspect {
     }
 
     // --- VERIFY REGISTRATION ---
-    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.UserService.verifyRegistration(..))")
+    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.Impl.UserService.verifyRegistration(..))")
     public void verifyRegistrationPointcut() {}
 
     @AfterReturning("verifyRegistrationPointcut()")
@@ -50,7 +50,7 @@ public class UserLoggingAspect {
     }
 
     // --- RESEND VERIFICATION EMAIL ---
-    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.UserService.resendVerificationEmail(..))")
+    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.Impl.UserService.resendVerificationEmail(..))")
     public void resendVerificationEmailPointcut() {}
 
     @AfterReturning("resendVerificationEmailPointcut()")

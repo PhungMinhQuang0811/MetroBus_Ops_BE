@@ -41,10 +41,7 @@ public class SecurityConfig {
     JwtAuthenticationFilter jwtAuthenticationFilter;
     CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     CustomAccessDeniedHandler customAccessDeniedHandler;
-
-    @NonFinal
-    @Value("${app.security.public-endpoints}")
-    String[] publicEndpoints;
+    SecurityProperties securityProperties;
 
     @NonFinal
     @Value("${app.security.cors-allowed-origins}")
@@ -100,7 +97,7 @@ public class SecurityConfig {
     }
 
     private void configureAuthorization(AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry auth) {
-        auth.requestMatchers(publicEndpoints).permitAll();
+        auth.requestMatchers(publicEndpointPatterns()).permitAll();
 
         SecurityConstants.ENDPOINT_PERMISSIONS.forEach((endpoint, permission) ->
                 auth.requestMatchers(endpoint).hasAuthority(permission)
@@ -123,8 +120,15 @@ public class SecurityConfig {
                         contextPath
                 ))
                 .csrfTokenRequestHandler(requestHandler)
-                .ignoringRequestMatchers(publicEndpoints)
+                .ignoringRequestMatchers(publicEndpointPatterns())
                 .ignoringRequestMatchers(SecurityConstants.ENDPOINT_THIRD_PARTY);
+    }
+
+    private String[] publicEndpointPatterns() {
+        return securityProperties.getPublicEndpoints().stream()
+                .map(String::trim)
+                .filter(endpoint -> !endpoint.isBlank())
+                .toArray(String[]::new);
     }
 
 }

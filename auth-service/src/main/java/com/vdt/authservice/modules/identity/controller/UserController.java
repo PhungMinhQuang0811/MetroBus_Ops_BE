@@ -4,7 +4,7 @@ import com.vdt.authservice.common.ApiResponse;
 import com.vdt.authservice.modules.identity.dto.request.user.RegisterRequest;
 import com.vdt.authservice.modules.identity.dto.request.user.ResendVerificationRequest;
 import com.vdt.authservice.modules.identity.dto.response.user.UserResponse;
-import com.vdt.authservice.modules.identity.service.UserService;
+import com.vdt.authservice.modules.identity.service.Impl.UserService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;

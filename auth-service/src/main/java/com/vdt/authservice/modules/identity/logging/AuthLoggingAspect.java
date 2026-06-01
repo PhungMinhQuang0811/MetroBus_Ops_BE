@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 public class AuthLoggingAspect {
 
     // --- LOGIN ---
-    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.AuthService.login(..))")
+    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.Impl.AuthService.login(..))")
     public void loginPointcut() {}
 
     @AfterReturning("loginPointcut()")
@@ -36,7 +36,7 @@ public class AuthLoggingAspect {
     }
 
     // --- LOGOUT ---
-    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.AuthService.logout(..))")
+    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.Impl.AuthService.logout(..))")
     public void logoutPointcut() {}
 
     @AfterReturning("logoutPointcut()")
@@ -50,7 +50,7 @@ public class AuthLoggingAspect {
     }
 
     // --- REFRESH TOKEN ---
-    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.AuthService.refreshToken(..))")
+    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.Impl.AuthService.refreshToken(..))")
     public void refreshTokenPointcut() {}
 
     @AfterReturning("refreshTokenPointcut()")
@@ -64,7 +64,7 @@ public class AuthLoggingAspect {
     }
 
     // --- FORGOT PASSWORD ---
-    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.AuthService.forgotPassword(..))")
+    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.Impl.AuthService.forgotPassword(..))")
     public void forgotPasswordPointcut() {}
 
     @AfterReturning("forgotPasswordPointcut()")
@@ -88,7 +88,7 @@ public class AuthLoggingAspect {
     }
 
     // --- RESET PASSWORD ---
-    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.AuthService.resetPassword(..))")
+    @Pointcut("execution(* com.vdt.authservice.modules.identity.service.Impl.AuthService.resetPassword(..))")
     public void resetPasswordPointcut() {}
 
     @AfterReturning("resetPasswordPointcut()")

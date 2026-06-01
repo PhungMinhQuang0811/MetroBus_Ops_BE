@@ -23,6 +23,7 @@ public enum ErrorCode {
     INVALID_EMAIL(2001, "Invalid email format", HttpStatus.BAD_REQUEST),
     INVALID_PASSWORD(2002, "Password must be at least 9 characters and contain both letters and numbers", HttpStatus.BAD_REQUEST),
     INVALID_ROLE_SELECTION(2003, "Invalid role selection. You can only choose external roles.", HttpStatus.BAD_REQUEST),
+    INVALID_PHONE_NUMBER(2004, "Invalid phone number format", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
@@ -38,6 +39,8 @@ public enum ErrorCode {
     LOGOUT_FAILED(3008, "Failed to log out. Please try again.", HttpStatus.INTERNAL_SERVER_ERROR),
     ROLE_NOT_FOUND(3009, "Role not found", HttpStatus.NOT_FOUND),
     PERMISSION_NOT_FOUND(3010, "Permission not found", HttpStatus.NOT_FOUND),
+    OTP_INVALID_OR_EXPIRED(3011, "OTP is invalid or expired", HttpStatus.BAD_REQUEST),
+    OTP_SEND_FAILED(3012, "Failed to send OTP", HttpStatus.INTERNAL_SERVER_ERROR),
 
     /**
      * Range 4xxx: Security, Authentication & System errors

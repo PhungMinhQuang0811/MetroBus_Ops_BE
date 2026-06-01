@@ -1,4 +1,4 @@
-package com.vdt.authservice.modules.identity.security.service;
+package com.vdt.authservice.modules.identity.security.service.Impl;
 
 import com.vdt.authservice.modules.identity.entity.Account;
 import com.vdt.authservice.modules.identity.entity.Permission;
@@ -7,6 +7,7 @@ import com.vdt.authservice.common.exception.AppException;
 import com.vdt.authservice.common.exception.ErrorCode;
 import com.vdt.authservice.modules.identity.repository.AccountRepository;
 import com.vdt.authservice.common.util.RedisUtil;
+import com.vdt.authservice.modules.identity.security.service.IUserPermissionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -23,18 +24,20 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class UserPermissionService {
+public class UserPermissionService implements IUserPermissionService {
     AccountRepository accountRepository;
     RedisUtil redisUtil;
 
     public static final String PERM_CACHE_PREFIX = "user_perms:";
     static final long PERM_CACHE_TTL = 1; // 1 day
 
+    @Override
     public void clearAllPermissionCache() {
         redisUtil.deleteByPrefix(PERM_CACHE_PREFIX);
     }
 
     @Transactional(readOnly = true)
+    @Override
     public Collection<? extends GrantedAuthority> getUserPermissions(String accountId) {
         String cacheKey = PERM_CACHE_PREFIX + accountId;
         
@@ -79,6 +82,7 @@ public class UserPermissionService {
         return permissions;
     }
 
+    @Override
     public void invalidateCache(String accountId) {
         redisUtil.delete(PERM_CACHE_PREFIX + accountId);
     }

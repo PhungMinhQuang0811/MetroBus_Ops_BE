@@ -8,6 +8,10 @@ import com.vdt.authservice.modules.identity.entity.Role;
 import com.vdt.authservice.modules.identity.repository.AccountRepository;
 import com.vdt.authservice.modules.identity.repository.PermissionRepository;
 import com.vdt.authservice.modules.identity.repository.RoleRepository;
+import com.vdt.authservice.modules.wallet.constant.WalletStatus;
+import com.vdt.authservice.modules.wallet.constant.WalletType;
+import com.vdt.authservice.modules.wallet.entity.Wallet;
+import com.vdt.authservice.modules.wallet.repository.WalletRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -22,6 +26,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -33,10 +38,6 @@ import java.util.Set;
 public class ApplicationInitConfig {
 
     @NonFinal
-    @Value("${app.init.admin.email}")
-    String adminEmail;
-
-    @NonFinal
     @Value("${app.init.admin.password}")
     String adminPassword;
 
@@ -46,6 +47,7 @@ public class ApplicationInitConfig {
     ApplicationRunner applicationRunner(AccountRepository accountRepository,
                                         RoleRepository roleRepository,
                                         PermissionRepository permissionRepository,
+                                        WalletRepository walletRepository,
                                         PasswordEncoder passwordEncoder) {
         return args -> {
             // =========================================================================
@@ -115,16 +117,23 @@ public class ApplicationInitConfig {
 
                 if (adminRole != null) {
                     Account adminAccount = Account.builder()
-                            .email(adminEmail)
                             .username(adminUsername)
                             .password(passwordEncoder.encode(adminPassword))
+                            .email(null)
+                            .phoneNumber(null)
+                            .fullName(null)
+                            .avatarUrl(null)
+                            .address(null)
+                            .personalId(null)
                             .isActive(true)
-                            .isEmailVerified(true)
+                            .isEmailVerified(false)
+                            .isPhoneVerified(false)
                             .roles(Set.of(adminRole))
                             .build();
 
-                    accountRepository.save(adminAccount);
-                    log.info("Initialization completed successfully. Admin account created.");
+                    adminAccount = accountRepository.save(adminAccount);
+                    createWallet(walletRepository, adminAccount, WalletType.ADMIN);
+                    log.info("Initialization completed successfully. Admin account and platform wallet created.");
                 } else {
                     log.error("Failed to initialize system: Admin role could not be found in Database.");
                 }
@@ -149,5 +158,20 @@ public class ApplicationInitConfig {
                     .build();
             return repository.save(r);
         });
+    }
+
+    private void createWallet(WalletRepository repository, Account account, String walletType) {
+        if (repository.existsByAccountIdAndWalletType(account.getId(), walletType)) {
+            return;
+        }
+
+        Wallet wallet = Wallet.builder()
+                .account(account)
+                .walletType(walletType)
+                .balance(BigDecimal.ZERO)
+                .status(WalletStatus.ACTIVE)
+                .build();
+
+        repository.save(wallet);
     }
 }

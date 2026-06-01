@@ -1,18 +1,27 @@
-package com.vdt.authservice.modules.identity.service;
+package com.vdt.authservice.modules.identity.service.Impl;
 
 import com.nimbusds.jwt.SignedJWT;
 import com.vdt.authservice.modules.identity.dto.request.auth.LoginRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.ResetPasswordRequest;
+import com.vdt.authservice.modules.identity.dto.request.auth.VerifyOtpRequest;
 import com.vdt.authservice.modules.identity.dto.response.auth.AuthResponse;
+import com.vdt.authservice.modules.identity.constant.PredefinedRole;
 import com.vdt.authservice.modules.identity.entity.Account;
-import com.vdt.authservice.common.notification.email.EmailService;
+import com.vdt.authservice.common.notification.email.IEmailService;
 import com.vdt.authservice.modules.identity.mapper.AuthMapper;
 import com.vdt.authservice.modules.identity.repository.AccountRepository;
+import com.vdt.authservice.modules.identity.repository.RoleRepository;
 import com.vdt.authservice.common.exception.AppException;
 import com.vdt.authservice.common.exception.ErrorCode;
-import com.vdt.authservice.modules.identity.security.service.TokenManagementService;
-import com.vdt.authservice.modules.identity.security.service.AccountTokenService;
+import com.vdt.authservice.modules.identity.security.service.ITokenManagementService;
+import com.vdt.authservice.modules.identity.security.service.IAccountTokenService;
 import com.vdt.authservice.modules.identity.security.util.JwtUtil;
+import com.vdt.authservice.modules.identity.service.IAuthService;
+import com.vdt.authservice.modules.identity.service.IOtpService;
+import com.vdt.authservice.modules.wallet.constant.WalletStatus;
+import com.vdt.authservice.modules.wallet.constant.WalletType;
+import com.vdt.authservice.modules.wallet.entity.Wallet;
+import com.vdt.authservice.modules.wallet.repository.WalletRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,20 +39,26 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.Set;
+
 
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-public class AuthService {
+public class AuthService implements IAuthService {
     AccountRepository accountRepository;
+    RoleRepository roleRepository;
+    WalletRepository walletRepository;
     AuthMapper authMapper;
     PasswordEncoder passwordEncoder;
     AuthenticationManager authenticationManager;
     JwtUtil jwtUtil;
-    AccountTokenService accountTokenService;
-    EmailService emailService;
-    TokenManagementService tokenManagementService;
+    IAccountTokenService accountTokenService;
+    IEmailService emailService;
+    ITokenManagementService tokenManagementService;
+    IOtpService otpService;
 
     @NonFinal
     @Value("${app.security.jwt.access-token-expiration}")
@@ -81,6 +96,7 @@ public class AuthService {
     @NonFinal
     String domain;
 
+    @Override
     public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
         Account account = accountRepository.findByIdentifier(request.getIdentifier())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
@@ -96,6 +112,29 @@ public class AuthService {
         return authMapper.toAuthResponse(account);
     }
 
+    @Transactional
+    @Override
+    public AuthResponse verifyOtp(VerifyOtpRequest request, HttpServletResponse response) {
+        String phoneNumber = otpService.normalizePhoneNumber(request.getPhoneNumber());
+        otpService.verifyOtp(phoneNumber, request.getOtp());
+
+        Account account = accountRepository.findByPhoneNumber(phoneNumber)
+                .orElseGet(() -> createPassengerAccount(phoneNumber));
+
+        validateAccountStatus(account);
+
+        if (!account.isPhoneVerified()) {
+            account.setPhoneVerified(true);
+            account = accountRepository.save(account);
+        }
+
+        ensurePassengerWallet(account);
+        setTokenCookies(response, account);
+
+        return authMapper.toAuthResponse(account);
+    }
+
+    @Override
     public void forgotPassword(String email) {
         Account account = accountRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_USED_BY_ANY_ACCOUNT));
@@ -107,6 +146,7 @@ public class AuthService {
     }
 
     @Transactional
+    @Override
     public void resetPassword(ResetPasswordRequest request) {
         Account account = verifyResetPasswordTokenAndGetAccount(request.getToken());
 
@@ -116,6 +156,7 @@ public class AuthService {
         accountTokenService.deleteResetPasswordToken(request.getToken());
     }
 
+    @Override
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         invalidateTokens(request);
         clearTokenCookies(response);
@@ -154,6 +195,7 @@ public class AuthService {
         return null;
     }
 
+    @Override
     public void refreshToken(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = getCookieValueByName(request, refreshTokenCookieName);
         if (refreshToken == null || tokenManagementService.isRefreshTokenInvalidated(refreshToken)) {
@@ -181,13 +223,39 @@ public class AuthService {
         setTokenCookies(response, account);
     }
     private void validateAccountStatus(Account account) {
-        if (!account.isEmailVerified()) {
-            throw new AppException(ErrorCode.EMAIL_NOT_VERIFIED);
-        }
-
         if (!account.isActive()) {
             throw new AppException(ErrorCode.ACCOUNT_DISABLED);
         }
+    }
+
+    private Account createPassengerAccount(String phoneNumber) {
+        var passengerRole = roleRepository.findByName(PredefinedRole.PASSENGER)
+                .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+
+        Account account = Account.builder()
+                .phoneNumber(phoneNumber)
+                .isActive(true)
+                .isPhoneVerified(true)
+                .roles(Set.of(passengerRole))
+                .build();
+
+        return accountRepository.save(account);
+    }
+
+
+    private void ensurePassengerWallet(Account account) {
+        if (walletRepository.existsByAccountIdAndWalletType(account.getId(), WalletType.PASSENGER)) {
+            return;
+        }
+
+        Wallet wallet = Wallet.builder()
+                .account(account)
+                .walletType(WalletType.PASSENGER)
+                .balance(BigDecimal.ZERO)
+                .status(WalletStatus.ACTIVE)
+                .build();
+
+        walletRepository.save(wallet);
     }
 
     private void setTokenCookies(HttpServletResponse response, Account account) {
@@ -231,4 +299,3 @@ public class AuthService {
                 .build();
     }
 }
-

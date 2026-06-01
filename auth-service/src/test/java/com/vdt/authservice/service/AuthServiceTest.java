@@ -4,17 +4,24 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.vdt.authservice.modules.identity.dto.request.auth.LoginRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.ResetPasswordRequest;
+import com.vdt.authservice.modules.identity.dto.request.auth.VerifyOtpRequest;
 import com.vdt.authservice.modules.identity.dto.response.auth.AuthResponse;
 import com.vdt.authservice.modules.identity.entity.Account;
+import com.vdt.authservice.modules.identity.entity.Role;
 import com.vdt.authservice.common.exception.AppException;
 import com.vdt.authservice.common.exception.ErrorCode;
-import com.vdt.authservice.common.notification.email.EmailService;
-import com.vdt.authservice.modules.identity.service.AuthService;
+import com.vdt.authservice.common.notification.email.IEmailService;
+import com.vdt.authservice.modules.identity.service.Impl.AuthService;
+import com.vdt.authservice.modules.identity.service.IOtpService;
 import com.vdt.authservice.modules.identity.mapper.AuthMapper;
 import com.vdt.authservice.modules.identity.repository.AccountRepository;
-import com.vdt.authservice.modules.identity.security.service.AccountTokenService;
-import com.vdt.authservice.modules.identity.security.service.TokenManagementService;
+import com.vdt.authservice.modules.identity.repository.RoleRepository;
+import com.vdt.authservice.modules.identity.security.service.IAccountTokenService;
+import com.vdt.authservice.modules.identity.security.service.ITokenManagementService;
 import com.vdt.authservice.modules.identity.security.util.JwtUtil;
+import com.vdt.authservice.modules.wallet.constant.WalletType;
+import com.vdt.authservice.modules.wallet.entity.Wallet;
+import com.vdt.authservice.modules.wallet.repository.WalletRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,6 +37,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -39,12 +47,15 @@ import static org.mockito.Mockito.*;
 class AuthServiceTest {
 
     @Mock private AccountRepository accountRepository;
+    @Mock private RoleRepository roleRepository;
+    @Mock private WalletRepository walletRepository;
     @Mock private AuthMapper authMapper;
     @Mock private AuthenticationManager authenticationManager;
     @Mock private JwtUtil jwtUtil;
-    @Mock private AccountTokenService accountTokenService;
-    @Mock private TokenManagementService tokenManagementService;
-    @Mock private EmailService emailService;
+    @Mock private IAccountTokenService accountTokenService;
+    @Mock private ITokenManagementService tokenManagementService;
+    @Mock private IEmailService emailService;
+    @Mock private IOtpService otpService;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private HttpServletResponse response;
     @Mock private HttpServletRequest request;
@@ -87,7 +98,6 @@ class AuthServiceTest {
         assertNotNull(res);
         verify(authenticationManager).authenticate(any());
     }
-
     @Test
     void login_UserNotFound_ThrowsException() {
         when(accountRepository.findByIdentifier(anyString())).thenReturn(Optional.empty());
@@ -196,13 +206,6 @@ class AuthServiceTest {
         assertThrows(AppException.class, () -> authService.resetPassword(ResetPasswordRequest.builder().token("token").build()));
     }
 
-    @Test
-    void resetPassword_EmailNotVerified_ThrowsException() {
-        mockAccount.setEmailVerified(false);
-        when(accountTokenService.getAccountIdByResetPasswordToken(anyString())).thenReturn("acc-id");
-        when(accountRepository.findById("acc-id")).thenReturn(Optional.of(mockAccount));
-        assertThrows(AppException.class, () -> authService.resetPassword(ResetPasswordRequest.builder().token("token").build()));
-    }
 
     @Test
     void refreshToken_JwtVerifyException_ThrowsException() throws Exception {
@@ -235,13 +238,6 @@ class AuthServiceTest {
         when(tokenManagementService.isRefreshTokenInvalidated("invalidated-rt")).thenReturn(true);
         assertThrows(AppException.class, () -> authService.refreshToken(request, response));
     }
-    @Test
-    void forgotPassword_EmailNotVerified_ThrowsException() {
-        mockAccount.setEmailVerified(false);
-        when(accountRepository.findByEmail(anyString())).thenReturn(Optional.of(mockAccount));
-        AppException ex = assertThrows(AppException.class, () -> authService.forgotPassword("test@example.com"));
-        assertEquals(ErrorCode.EMAIL_NOT_VERIFIED, ex.getErrorCode());
-    }
 
     @Test
     void resetPassword_AccountDisabled_ThrowsException() {
@@ -270,19 +266,99 @@ class AuthServiceTest {
     }
 
     @Test
-    void refreshToken_EmailNotVerified_ThrowsException() throws Exception {
-        Cookie rtCookie = new Cookie("refresh-token", "rt-value");
-        when(request.getCookies()).thenReturn(new Cookie[]{rtCookie});
-        when(tokenManagementService.isRefreshTokenInvalidated("rt-value")).thenReturn(false);
+    void verifyOtp_NewPhone_CreatesPassengerAccountWalletAndTokens() {
+        VerifyOtpRequest req = VerifyOtpRequest.builder()
+                .phoneNumber("+84900000001")
+                .otp("123456")
+                .build();
+        Role passengerRole = Role.builder().name("PASSENGER").build();
+        Account savedAccount = Account.builder()
+                .id("passenger-id")
+                .phoneNumber("0900000001")
+                .isActive(true)
+                .isPhoneVerified(true)
+                .roles(Set.of(passengerRole))
+                .build();
+        AuthResponse authResponse = new AuthResponse();
 
-        SignedJWT signedJWT = mock(SignedJWT.class);
-        when(signedJWT.getJWTClaimsSet()).thenReturn(new JWTClaimsSet.Builder().subject(mockAccount.getId()).build());
-        when(jwtUtil.verifyRefreshToken("rt-value")).thenReturn(signedJWT);
+        when(otpService.normalizePhoneNumber("+84900000001")).thenReturn("0900000001");
+        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.empty());
+        when(roleRepository.findByName("PASSENGER")).thenReturn(Optional.of(passengerRole));
+        when(accountRepository.save(any(Account.class))).thenReturn(savedAccount);
+        when(walletRepository.existsByAccountIdAndWalletType("passenger-id", WalletType.PASSENGER)).thenReturn(false);
+        when(jwtUtil.generateToken(savedAccount)).thenReturn("at");
+        when(jwtUtil.generateRefreshToken(savedAccount)).thenReturn("rt");
+        when(authMapper.toAuthResponse(savedAccount)).thenReturn(authResponse);
 
-        mockAccount.setEmailVerified(false);
-        when(accountRepository.findById(mockAccount.getId())).thenReturn(Optional.of(mockAccount));
+        AuthResponse result = authService.verifyOtp(req, response);
 
-        AppException ex = assertThrows(AppException.class, () -> authService.refreshToken(request, response));
-        assertEquals(ErrorCode.EMAIL_NOT_VERIFIED, ex.getErrorCode());
+        assertSame(authResponse, result);
+        verify(otpService).verifyOtp("0900000001", "123456");
+        verify(walletRepository).save(any(Wallet.class));
+        verify(response, times(3)).addHeader(eq("Set-Cookie"), anyString());
+    }
+
+    @Test
+    void verifyOtp_ExistingPhoneWithoutVerified_SetsPhoneVerifiedAndSkipsExistingWallet() {
+        VerifyOtpRequest req = VerifyOtpRequest.builder()
+                .phoneNumber("0900000001")
+                .otp("123456")
+                .build();
+        Account existing = Account.builder()
+                .id("passenger-id")
+                .phoneNumber("0900000001")
+                .isActive(true)
+                .isPhoneVerified(false)
+                .build();
+
+        when(otpService.normalizePhoneNumber("0900000001")).thenReturn("0900000001");
+        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.of(existing));
+        when(accountRepository.save(existing)).thenReturn(existing);
+        when(walletRepository.existsByAccountIdAndWalletType("passenger-id", WalletType.PASSENGER)).thenReturn(true);
+        when(jwtUtil.generateToken(existing)).thenReturn("at");
+        when(jwtUtil.generateRefreshToken(existing)).thenReturn("rt");
+        when(authMapper.toAuthResponse(existing)).thenReturn(new AuthResponse());
+
+        authService.verifyOtp(req, response);
+
+        assertTrue(existing.isPhoneVerified());
+        verify(accountRepository).save(existing);
+        verify(walletRepository, never()).save(any());
+    }
+
+    @Test
+    void verifyOtp_ExistingDisabledAccount_ThrowsException() {
+        VerifyOtpRequest req = VerifyOtpRequest.builder()
+                .phoneNumber("0900000001")
+                .otp("123456")
+                .build();
+        Account existing = Account.builder()
+                .id("passenger-id")
+                .isActive(false)
+                .build();
+
+        when(otpService.normalizePhoneNumber("0900000001")).thenReturn("0900000001");
+        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.of(existing));
+
+        AppException ex = assertThrows(AppException.class, () -> authService.verifyOtp(req, response));
+
+        assertEquals(ErrorCode.ACCOUNT_DISABLED, ex.getErrorCode());
+        verify(walletRepository, never()).save(any());
+    }
+
+    @Test
+    void verifyOtp_NewPhonePassengerRoleMissing_ThrowsException() {
+        VerifyOtpRequest req = VerifyOtpRequest.builder()
+                .phoneNumber("0900000001")
+                .otp("123456")
+                .build();
+
+        when(otpService.normalizePhoneNumber("0900000001")).thenReturn("0900000001");
+        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.empty());
+        when(roleRepository.findByName("PASSENGER")).thenReturn(Optional.empty());
+
+        AppException ex = assertThrows(AppException.class, () -> authService.verifyOtp(req, response));
+
+        assertEquals(ErrorCode.ROLE_NOT_FOUND, ex.getErrorCode());
     }
 }
