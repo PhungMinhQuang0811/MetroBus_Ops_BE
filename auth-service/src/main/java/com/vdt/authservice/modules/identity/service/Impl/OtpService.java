@@ -91,7 +91,7 @@ public class OtpService implements IOtpService {
         // A valid cooldown key means an OTP was just sent and must not be replaced yet.
         Duration retryAfter = getRetryAfter(cooldownKey);
         throw new AppException(
-                ErrorCode.OTP_RATE_LIMITED,
+                ErrorCode.OTP_RESEND_COOLDOWN,
                 "OTP was sent recently. Please try again after " + formatRetryTime(retryAfter) + "."
         );
     }
@@ -114,7 +114,7 @@ public class OtpService implements IOtpService {
         if (currentRequests > maxRequestsPerPhonePerDay) {
             Duration retryAfter = getRetryAfter(rateLimitKey);
             throw new AppException(
-                    ErrorCode.OTP_RATE_LIMITED,
+                    ErrorCode.OTP_DAILY_LIMIT_REACHED,
                     "OTP request limit reached. You can request up to "
                             + maxRequestsPerPhonePerDay
                             + " OTPs within 24 hours. Please try again after "

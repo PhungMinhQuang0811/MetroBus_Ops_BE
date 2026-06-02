@@ -247,7 +247,7 @@ POST /auth/phone/check
 
 - HTTP: `200`
 - Notes: Dev dùng `paymentProvider = "VNPAY_SANDBOX"` và trả `paymentUrl`; production dùng `paymentProvider = "SEPAY"` và trả thông tin VietQR/Sepay tương đương để guest thanh toán đúng số tiền/nội dung.
-- Notes: Production phải gửi OTP thật qua SMS Gateway/Firebase SMS và không trả OTP trong response. Dev/test có thể dùng fake SMS hoặc log OTP để kiểm thử. Backend lưu OTP đăng ký tạm theo `phoneNumber` và `purpose` với TTL 2 phút.
+- Notes: Production phải gửi OTP thật qua SMS Gateway/Firebase SMS và không trả OTP trong response. Dev/test có thể dùng fake SMS hoặc log OTP để kiểm thử. Backend lưu OTP đăng ký tạm theo `phoneNumber` với TTL 1 phút.
 - FE usage: Lưu `result.phoneNumber` để truyền sang bước verify OTP đăng ký.
 
 #### API-UC01-003: Login existing passenger with password
@@ -449,34 +449,36 @@ POST /auth/phone/check
 }
 ```
 
-- Precondition: Cùng số điện thoại và `purpose = REGISTER` vừa được gửi OTP chưa đủ 60 giây.
+- Precondition: Cùng số điện thoại vừa được gửi OTP chưa đủ 60 giây.
 - Expected response:
 
 ```json
 {
-  "code": 3002,
-  "message": "OTP request limit exceeded. Please try again later.",
+  "code": 3013,
+  "message": "OTP was sent recently. Please try again after 11:30:00 02/06/2026.",
   "result": null
 }
 ```
 
 - HTTP: `429`
+- Message note: Phần thời gian trong `message` là dynamic theo timezone backend, format `HH:mm:ss dd/MM/yyyy`.
 - Side effects: Không gửi SMS và không thay đổi OTP đang còn hiệu lực.
 
-#### API-UC01-010: Daily registration OTP limit by phone number and purpose
+#### API-UC01-010: Daily registration OTP limit by phone number
 
-- Request: Gọi yêu cầu OTP lần thứ 6 trong ngày với cùng số điện thoại và cùng `purpose`.
+- Request: Gọi yêu cầu OTP lần thứ 6 trong ngày với cùng số điện thoại.
 - Expected response:
 
 ```json
 {
-  "code": 3002,
-  "message": "OTP request limit exceeded. Please try again later.",
+  "code": 3013,
+  "message": "OTP request limit reached. You can request up to 5 OTPs within 24 hours. Please try again after 11:30:00 03/06/2026.",
   "result": null
 }
 ```
 
 - HTTP: `429`
+- Message note: Phần thời gian trong `message` là dynamic theo timezone backend, format `HH:mm:ss dd/MM/yyyy`.
 - Side effects: Không gửi SMS.
 
 
@@ -498,7 +500,7 @@ POST /auth/phone/check
 
 #### Cấu hình OTP MVP
 
-Các giới hạn phải nằm trong application config và counter được lưu tạm trong Redis theo `phoneNumber`, IP và `purpose`:
+Các giới hạn phải nằm trong application config và counter được lưu tạm trong Redis theo `phoneNumber`:
 
 ```yaml
 app:
@@ -936,18 +938,19 @@ POST /auth/forgot-password/verify-otp
 
 #### API-UC05-008: Passenger forgot password OTP rate limited
 
-- Request: Gọi yêu cầu OTP reset password lần thứ 6 trong ngày với cùng số điện thoại và `purpose = RESET_PASSWORD`, hoặc yêu cầu lại trước 60 giây.
+- Request: Gọi yêu cầu OTP reset password lần thứ 6 trong ngày với cùng số điện thoại, hoặc yêu cầu lại trước 60 giây.
 - Expected response:
 
 ```json
 {
-  "code": 3002,
-  "message": "OTP request limit exceeded. Please try again later.",
+  "code": 3013,
+  "message": "OTP was sent recently. Please try again after 11:30:00 02/06/2026.",
   "result": null
 }
 ```
 
 - HTTP: `429`
+- Message note: Nếu vượt giới hạn ngày, message là `OTP request limit reached. You can request up to 5 OTPs within 24 hours. Please try again after {HH:mm:ss dd/MM/yyyy}.`
 - Side effects: Không gửi SMS.
 
 ### UC06: Cập nhật hồ sơ cá nhân

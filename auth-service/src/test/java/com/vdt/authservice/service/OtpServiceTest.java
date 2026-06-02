@@ -79,7 +79,7 @@ class OtpServiceTest {
 
         AppException ex = assertThrows(AppException.class, () -> otpService.requestOtp("0900000001"));
 
-        assertEquals(ErrorCode.OTP_RATE_LIMITED, ex.getErrorCode());
+        assertEquals(ErrorCode.OTP_DAILY_LIMIT_REACHED, ex.getErrorCode());
         assertTrue(ex.getMessage().startsWith("OTP request limit reached. You can request up to 5 OTPs within 24 hours."));
         verify(redisUtil, never()).set(startsWith("auth:otp:phone:"), anyString(), anyLong(), any());
         verify(smsService, never()).sendOtp(anyString(), anyString(), anyLong());
@@ -93,7 +93,7 @@ class OtpServiceTest {
 
         AppException ex = assertThrows(AppException.class, () -> otpService.requestOtp("0900000001"));
 
-        assertEquals(ErrorCode.OTP_RATE_LIMITED, ex.getErrorCode());
+        assertEquals(ErrorCode.OTP_RESEND_COOLDOWN, ex.getErrorCode());
         assertTrue(ex.getMessage().startsWith("OTP was sent recently."));
         verify(redisUtil, never()).increment(anyString());
         verify(smsService, never()).sendOtp(anyString(), anyString(), anyLong());
@@ -122,7 +122,7 @@ class OtpServiceTest {
 
         AppException ex = assertThrows(AppException.class, () -> otpService.requestOtp("0900000001"));
 
-        assertEquals(ErrorCode.OTP_RATE_LIMITED, ex.getErrorCode());
+        assertEquals(ErrorCode.OTP_DAILY_LIMIT_REACHED, ex.getErrorCode());
         assertTrue(ex.getMessage().contains("within 24 hours"));
     }
 

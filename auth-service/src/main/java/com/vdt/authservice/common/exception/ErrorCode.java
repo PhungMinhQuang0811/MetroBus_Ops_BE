@@ -41,7 +41,8 @@ public enum ErrorCode {
     PERMISSION_NOT_FOUND(3010, "Permission not found", HttpStatus.NOT_FOUND),
     OTP_INVALID_OR_EXPIRED(3011, "OTP is invalid or expired", HttpStatus.BAD_REQUEST),
     OTP_SEND_FAILED(3012, "Failed to send OTP", HttpStatus.INTERNAL_SERVER_ERROR),
-    OTP_RATE_LIMITED(3013, "OTP request limit reached", HttpStatus.TOO_MANY_REQUESTS),
+    OTP_RESEND_COOLDOWN(3013, "OTP was sent recently", HttpStatus.TOO_MANY_REQUESTS),
+    OTP_DAILY_LIMIT_REACHED(3014, "OTP request limit reached", HttpStatus.TOO_MANY_REQUESTS),
 
     /**
      * Range 4xxx: Security, Authentication & System errors
