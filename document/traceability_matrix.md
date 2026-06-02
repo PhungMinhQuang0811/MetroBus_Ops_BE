@@ -28,13 +28,13 @@
 | `REQ-03` | Quản lý ca kíp | `UC16`, `UC19` | `AC-UC16-*`, `AC-UC19-*` | `API-UC16-*`, `API-UC19-*` | P0 | Check-in/check-out ca trực, phân lịch |
 | `REQ-04` | Quản lý phát hành thẻ vé | `UC07`, `UC08`, `UC11`, `UC15` | `AC-UC07-*`, `AC-UC08-*`, `AC-UC11-*`, `AC-UC15-*` | `API-UC07-*`, `API-UC08-*`, `API-UC11-*`, `API-UC15-*` | P0 | Thẻ cứng, thẻ ảo, đơn hàng |
 | `REQ-05` | Thu hồi, xác minh, loại bỏ vé/thẻ cũ | `UC09`, `UC12`, `UC14` | `AC-UC09-*`, `AC-UC12-*`, `AC-UC14-*` | `API-UC09-*`, `API-UC12-*`, `API-UC14-*` | P0 | Số hóa thẻ, thu hồi, giải khóa |
-| `REQ-06` | Quản lý quy tắc tính tiền giá vé | `UC21`, `UC23` | `AC-UC21-*`, `AC-UC23-*` | `API-UC21-*`, `API-UC23-*` | P0 | Fare policy và khung giá trần |
-| `REQ-07` | Kiểm tra quyền đi lại theo subscription | `UC13`, `UC21` | `AC-UC13-*`, `AC-UC21-*` | `API-UC13-*`, `API-UC21-*` | P0 | Validator, subscription validity, fare policy preview |
+| `REQ-06` | Quản lý quy tắc tính tiền giá vé | `UC21` | `AC-UC21-*` | `API-UC21-*` | P0 | Fare policy gói vé chu kỳ |
+| `REQ-07` | Kiểm tra quyền đi lại theo subscription | `UC13`, `UC21` | `AC-UC13-*`, `AC-UC21-*` | `API-UC13-*`, `API-UC21-*` | P0 | Validator, subscription validity, fare policy package lookup |
 | `REQ-08` | Tính toán phân chia bù trừ doanh thu | `UC17`, `UC18` | `AC-UC17-*`, `AC-UC18-*` | `API-UC17-*`, `API-UC18-*` | P0 | Operator wallet, payout, clearing |
 | `REQ-09` | Hành khách đăng ký và quản lý thẻ vé | `UC07`, `UC08`, `UC09`, `UC10` | `AC-UC07-*`, `AC-UC08-*`, `AC-UC09-*`, `AC-UC10-*` | `API-UC07-*`, `API-UC08-*`, `API-UC09-*`, `API-UC10-*` | P0 | Guest + Passenger |
-| `REQ-10` | Lịch sử chuyến đi, lịch sử vé đã mua | `UC10`, `UC13`, `UC18`, `UC26` | `AC-UC10-*`, `AC-UC13-*`, `AC-UC18-*`, `AC-UC26-*` | `API-UC10-*`, `API-UC13-*`, `API-UC18-*`, `API-UC26-*` | P1 | Lịch sử qua journeys, subscriptions, transactions, logs |
+| `REQ-10` | Lịch sử chuyến đi, lịch sử vé đã mua | `UC10`, `UC13`, `UC18`, `UC25` | `AC-UC10-*`, `AC-UC13-*`, `AC-UC18-*`, `AC-UC25-*` | `API-UC10-*`, `API-UC13-*`, `API-UC18-*`, `API-UC25-*` | P1 | Lịch sử qua journeys, subscriptions, transactions, logs |
 | `REQ-11` | Quản trị tuyến, trạm, đơn vị vận hành | `UC20`, `UC22` | `AC-UC20-*`, `AC-UC22-*` | `API-UC20-*`, `API-UC22-*` | P0 | Multi-tenant route/station |
-| `REQ-12` | Bảo mật, phân quyền, giám sát hệ thống | `UC24`, `UC25`, `UC26` | `AC-UC24-*`, `AC-UC25-*`, `AC-UC26-*` | `API-UC24-*`, `API-UC25-*`, `API-UC26-*` | P0 | Ban/unban, RBAC, logs |
+| `REQ-12` | Bảo mật, phân quyền, giám sát hệ thống | `UC23`, `UC24`, `UC25` | `AC-UC23-*`, `AC-UC24-*`, `AC-UC25-*` | `API-UC23-*`, `API-UC24-*`, `API-UC25-*` | P0 | Ban/unban, RBAC, logs |
 
 ---
 
@@ -64,10 +64,9 @@
 | `UC20` | Route/Station Management | `REQ-11` | `AC-UC20-*` | `API-UC20-*` | Company configures route/station | P0 |
 | `UC21` | Fare Policy | `REQ-06`, `REQ-07` | `AC-UC21-*` | `API-UC21-*` | Company configures fare policy | P0 |
 | `UC22` | Tenant Creation | `REQ-11` | `AC-UC22-*` | `API-UC22-*` | Platform creates tenant | P0 |
-| `UC23` | Fare Ceiling | `REQ-06` | `AC-UC23-*` | `API-UC23-*` | Platform sets fare ceiling | P0 |
-| `UC24` | Ban/Unban | `REQ-12` | `AC-UC24-*` | `API-UC24-*` | Admin bans/unbans account | P0 |
-| `UC25` | Dynamic RBAC | `REQ-12` | `AC-UC25-*` | `API-UC25-*` | Admin changes permission runtime | P0 |
-| `UC26` | System Logs | `REQ-10`, `REQ-12` | `AC-UC26-*` | `API-UC26-*` | Admin searches/export logs | P1 |
+| `UC23` | Ban/Unban | `REQ-12` | `AC-UC23-*` | `API-UC23-*` | Admin bans/unbans account | P0 |
+| `UC24` | Dynamic RBAC | `REQ-12` | `AC-UC24-*` | `API-UC24-*` | Admin changes permission runtime | P0 |
+| `UC25` | System Logs | `REQ-10`, `REQ-12` | `AC-UC25-*` | `API-UC25-*` | Admin searches/export logs | P1 |
 
 ---
 
@@ -80,8 +79,8 @@
 | `E2E-03 PSC incident` | `UC16`, `UC14` | `AC-UC16-*`, `AC-UC14-*` | `API-UC16-*`, `API-UC14-*` | Staff mở ca, xử lý sự cố, đóng ca |
 | `E2E-04 Staff card operations` | `UC11`, `UC12`, `UC15` | `AC-UC11-*`, `AC-UC12-*`, `AC-UC15-*` | `API-UC11-*`, `API-UC12-*`, `API-UC15-*` | Staff quản lý phôi thẻ, thu hồi, xử lý order |
 | `E2E-05 Company setup` | `UC19`, `UC20`, `UC21` | `AC-UC19-*`, `AC-UC20-*`, `AC-UC21-*` | `API-UC19-*`, `API-UC20-*`, `API-UC21-*` | Company Manager tạo staff, tuyến/trạm, biểu giá |
-| `E2E-06 Platform settlement` | `UC22`, `UC23`, `UC18`, `UC17` | `AC-UC22-*`, `AC-UC23-*`, `AC-UC18-*`, `AC-UC17-*` | `API-UC22-*`, `API-UC23-*`, `API-UC18-*`, `API-UC17-*` | Platform tạo tenant, set trần giá, clearing, payout |
-| `E2E-07 Admin security` | `UC24`, `UC25`, `UC26` | `AC-UC24-*`, `AC-UC25-*`, `AC-UC26-*` | `API-UC24-*`, `API-UC25-*`, `API-UC26-*` | Admin ban/unban, RBAC, logs |
+| `E2E-06 Platform settlement` | `UC22`, `UC18`, `UC17` | `AC-UC22-*`, `AC-UC18-*`, `AC-UC17-*` | `API-UC22-*`, `API-UC18-*`, `API-UC17-*` | Platform tạo tenant, chạy clearing, xử lý payout |
+| `E2E-07 Admin security` | `UC23`, `UC24`, `UC25` | `AC-UC23-*`, `AC-UC24-*`, `AC-UC25-*` | `API-UC23-*`, `API-UC24-*`, `API-UC25-*` | Admin ban/unban, RBAC, logs |
 
 ---
 
@@ -94,7 +93,7 @@
 | Soát vé & quầy ga | 4 | P0 | Validator, PSC, shift |
 | Tài chính & thanh toán | 2 | P0 | Payout, clearing |
 | Quản trị đơn vị | 3 | P0 | Staff, route/station, fare policy |
-| Quản trị nền tảng | 2 | P0 | Tenant, fare ceiling |
+| Quản trị nền tảng | 1 | P0 | Tenant |
 | Bảo mật & logs | 3 | P0/P1 | Ban/unban, RBAC, logs |
 
 ---

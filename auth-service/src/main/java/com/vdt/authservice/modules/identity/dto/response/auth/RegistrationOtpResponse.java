@@ -3,17 +3,12 @@ package com.vdt.authservice.modules.identity.dto.response.auth;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.util.Set;
-
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AuthResponse {
-    String id;
-    String username;
-    String phoneNumber;
-    Set<String> roles;
-    Set<String> permissions;
+public class RegistrationOtpResponse {
+    String registrationToken;
+    String nextStep;
 }

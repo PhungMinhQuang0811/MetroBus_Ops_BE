@@ -63,7 +63,6 @@ graph LR
     PlatManager --> UC06
     PlatManager --> UC22["UC22: Khởi tạo Tenant & Cấp tài khoản"]
     PlatManager --> UC17
-    PlatManager --> UC23["UC23: Cấu hình Khung giá trần hệ thống"]
 
     %% Admin Use Cases
     Admin --> UC02
@@ -71,9 +70,9 @@ graph LR
     Admin --> UC04
     Admin --> UC05
     Admin --> UC06
-    Admin --> UC24["UC24: Ban/Unban khóa tài khoản khẩn cấp"]
-    Admin --> UC25["UC25: Cấu hình phân quyền động Dynamic RBAC"]
-    Admin --> UC26["UC26: Giám sát kỹ thuật & Tra cứu System Logs"]
+    Admin --> UC23["UC23: Ban/Unban khóa tài khoản khẩn cấp"]
+    Admin --> UC24["UC24: Cấu hình phân quyền động Dynamic RBAC"]
+    Admin --> UC25["UC25: Giám sát kỹ thuật & Tra cứu System Logs"]
 
     %% System Use Cases
     System --> UC18["UC18: Chạy đối soát Clearing hằng đêm"]
@@ -92,8 +91,8 @@ graph LR
 | **Module 3: Soát vé & Vận hành quầy ga**     | 4 | UC13, UC14, UC15, UC16 |
 | **Module 4: Tài chính**                      | 2 | UC17, UC18 |
 | **Module 5: Quản trị vận hành đơn vị**       | 3 | UC19, UC20, UC21 |
-| **Module 6: Quản trị nền tảng hệ thống**     | 2 | UC22, UC23 |
-| **Module 7: Giám sát, Bảo mật & Phân quyền** | 3 | UC24, UC25, UC26 |
+| **Module 6: Quản trị nền tảng hệ thống**     | 1 | UC22 |
+| **Module 7: Giám sát, Bảo mật & Phân quyền** | 3 | UC23, UC24, UC25 |
 
 ---
 
@@ -415,7 +414,7 @@ graph LR
 *   **Exc 8c - Thất bại khi sinh mã card_uid duy nhất (Trùng lặp key):**
     *   Tại Bước 7, khi thực hiện insert bản ghi thẻ mới vào bảng `cards`, CSDL báo lỗi vi phạm ràng buộc duy nhất (Unique Constraint Violation) của trường `card_uid`.
     *   Hệ thống tự động thực hiện cơ chế thử lại (Retry Mechanism) tối đa 3 lần bằng cách sinh mã `card_uid` mới và thực thi lại. Nếu sau 3 lần vẫn trùng lặp mã (xác suất cực kỳ thấp), hệ thống rollback giao dịch, trả về lỗi `CardUidGenerationFailedException`.
-    *   Giao diện hiển thị lỗi: "Hệ thống đang bận xử lý yêu cầu phát hành thẻ ảo. Vui lòng thử lại sau ít phút!". snapshot lỗi được đẩy sang MongoDB `system_errors` kèm cảnh báo hệ thống (UC26).
+    *   Giao diện hiển thị lỗi: "Hệ thống đang bận xử lý yêu cầu phát hành thẻ ảo. Vui lòng thử lại sau ít phút!". snapshot lỗi được đẩy sang MongoDB `system_errors` kèm cảnh báo hệ thống (UC25).
 *   **Exc 8d - Thanh toán thất bại hoặc hết hạn:**
     *   Payment provider trả trạng thái thất bại/hết hạn hoặc backend không xác thực được callback.
     *   Backend không tạo card/subscription dở dang, transaction chuyển `FAILED` hoặc `EXPIRED`.
@@ -883,35 +882,33 @@ graph LR
 ---
 
 ### UC21: Thiết lập Cấu hình Biểu giá tuyến của đơn vị (Company Manager)
-*   **Mô tả:** Quản lý công ty vận hành (`COMPANY_MANAGER`) cấu hình công thức tính giá cước đi lại, thiết lập giá vé đồng giá (cho xe bus) hoặc cấu hình giá chặng lũy tiến theo số ga (cho Metro) của đơn vị mình để hệ thống tự động trừ tiền cước.
+*   **Mô tả:** Quản lý công ty vận hành (`COMPANY_MANAGER`) cấu hình các gói vé chu kỳ/subscription của đơn vị mình, gồm mã gói, tên gói, loại phương tiện, thời hạn, giá bán, tuyến áp dụng nếu có và trạng thái hiệu lực. Dữ liệu được lưu trong bảng `fare_policies` của `ticket_db` và có thể đồng bộ sang cache/resource đọc nhanh cho API danh mục và Fare Engine.
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
 | **Mã Use Case** | **UC21** |
 | **Tác nhân chính** | Quản lý đơn vị / Company Manager |
 | **Tiền điều kiện** | Company Manager đăng nhập Portal Doanh nghiệp thành công và được xác thực `company_id`. |
-| **Hậu điều kiện** | Biểu giá cước mới được lưu thành công trong backend resource `fare_policies.json`, nạp vào RAM và được Fare Engine sử dụng khi kiểm thử hoặc triển khai MVP. |
+| **Hậu điều kiện** | Gói vé chu kỳ được lưu thành công trong bảng `fare_policies`, cache/resource đọc nhanh được đồng bộ và UC08/UC10 dùng dữ liệu mới khi tạo thanh toán/subscription. |
 | **Tác nhân kích hoạt** | Quản lý chọn phân hệ "Cấu hình Biểu giá cước" trên Portal Doanh nghiệp. |
 
 #### Luồng xử lý chính (Basic Flow):
 1. **Bước 1:** Quản lý truy cập phân hệ "Cấu hình Biểu giá cước" trên Portal Doanh nghiệp.
-2. **Bước 2:** Quản lý lựa chọn Tuyến cụ thể và chọn Loại hình áp dụng giá cước:
-   * *Cấu hình Đồng giá (Flat Fare - Xe bus):* Nhập mức giá vé cứng duy nhất (ví dụ: 7,000 VNĐ/lượt).
-   * *Cấu hình Lũy tiến (Distance-based Fare - Metro):* Nhập biểu phí cơ bản khởi điểm (`base_fare`, ví dụ: 8,000 VNĐ cho 5 ga đầu) và đơn giá tăng thêm cho mỗi ga vượt mức (`step_fare`, ví dụ: 1,000 VNĐ/ga tiếp theo).
-3. **Bước 3:** Quản lý nhấn chọn nút **"Lưu biểu giá"**.
-4. **Bước 4:** Backend tiếp nhận cấu hình biểu giá dưới định dạng JSON, chạy engine kiểm toán cước giả lập để đảm bảo tính đúng đắn và kiểm tra xem mức giá cấu hình có vượt quá **Khung giá trần** do Sở Giao thông ban hành (UC23) hay không.
-5. **Bước 5:** Hệ thống lưu cấu hình vào resource `fare_policies.json` đính kèm `company_id`; backend MVP nạp cấu hình này vào `ConcurrentHashMap` để chạy Fare Engine, không tạo bảng SQL `fare_policies` riêng.
-6. **Bước 6:** Portal hiển thị thông báo "Cấu hình chính sách biểu giá cước mới thành công!". snapshot chính sách cước cũ và mới được ghi nhận vào collection `audit_logs` của MongoDB phục vụ thanh tra tài chính.
+2. **Bước 2:** Quản lý nhập thông tin gói vé chu kỳ: `package_code`, `package_name`, `subscription_type`, `duration_days`, `price`, `currency`, `route_id` nếu gói chỉ áp dụng một tuyến, `effective_from`, `effective_to` và `status`.
+3. **Bước 3:** Quản lý nhấn chọn nút **"Lưu gói vé"**.
+4. **Bước 4:** Backend tiếp nhận request, xác thực tenant isolation theo `operator_id`, validate mã gói không trùng trong cùng operator, `price > 0`, `duration_days > 0` và thời gian hiệu lực hợp lệ.
+5. **Bước 5:** Hệ thống ghi dữ liệu vào bảng `fare_policies` trong `ticket_db`, sau đó đồng bộ bản ghi sang cache/resource đọc nhanh theo key `policy_id`, `package_code` hoặc composite `operator_id:package_code`.
+6. **Bước 6:** Portal hiển thị thông báo "Cấu hình gói vé thành công!". Snapshot dữ liệu cũ và mới được ghi nhận vào collection `audit_logs`.
 
 #### Luồng ngoại lệ (Exception Flows):
-*   **Exc 22a - Giá cấu hình vượt khung giá trần vĩ mô:** Nếu Company Manager thiết lập mức giá cước vượt quá mức trần tối đa cho phép do Platform Manager (Sở Giao thông) quy định, backend lập tức chặn lại và ném ra ngoại lệ `FareLimitExceededException`, hiển thị lỗi: "Mức giá vé cấu hình đã vượt quá khung giá trần quy định của thành phố. Vui lòng thiết lập lại cước phí hợp lệ!".
+*   **Exc 21a - Gói vé không hợp lệ:** Nếu Company Manager nhập giá nhỏ hơn hoặc bằng 0, thời hạn nhỏ hơn hoặc bằng 0, hoặc `package_code` trùng trong cùng operator và thời gian hiệu lực, backend từ chối lưu và trả lỗi validation.
 
 ---
 
 
 ## Module 6: Quản trị nền tảng hệ thống
 
-*Công cụ dành cho Platform Manager (Sở Giao thông / Viettel VTS): khởi tạo Tenant, quản lý các công ty vận hành thành viên và ban hành khung giá trần vĩ mô.*
+*Công cụ dành cho Platform Manager (Sở Giao thông / Viettel VTS): khởi tạo Tenant và quản lý các công ty vận hành thành viên.*
 
 ### UC22: Khởi tạo Tenant & Cấp tài khoản Company Manager (Platform Manager)
 *   **Mô tả:** Quản lý nền tảng (`PLATFORM_MANAGER` - đại diện Sở Giao Thông / Viettel VTS) thực hiện khởi tạo hồ sơ, kích hoạt Tenant mới (các công ty vận hành tham gia mạng lưới như VinBus, Metro Hà Nội) và tự động sinh tài khoản Quản lý đơn vị (`COMPANY_MANAGER`) cùng số dư ví nội bộ doanh nghiệp để sẵn sàng vận hành kỹ thuật và hạch toán tài chính.
@@ -937,46 +934,20 @@ graph LR
 6. **Bước 6:** Portal hiển thị thông báo "Khởi tạo đơn vị thành viên mới thành công!". Bản ghi logs snapshot lưu vết nghiệp vụ được ghi nhận vào `audit_logs` của MongoDB.
 
 #### Luồng ngoại lệ (Exception Flows):
-*   **Exc 23a - Trùng lặp MST hoặc Email đại diện doanh nghiệp:** Backend phát hiện mã số thuế hoặc email người đại diện đã được đăng ký trước đó trong hệ thống. Backend từ chối khởi tạo, giữ nguyên dữ liệu cũ và thông báo lỗi chi tiết cho Platform Manager trên Portal.
+*   **Exc 22a - Trùng lặp MST hoặc Email đại diện doanh nghiệp:** Backend phát hiện mã số thuế hoặc email người đại diện đã được đăng ký trước đó trong hệ thống. Backend từ chối khởi tạo, giữ nguyên dữ liệu cũ và thông báo lỗi chi tiết cho Platform Manager trên Portal.
 
 ---
-
-### UC23: Cấu hình Khung giá trần toàn hệ thống (Platform Manager)
-*   **Mô tả:** Quản lý nền tảng (`PLATFORM_MANAGER` - đại diện Sở Giao Thông / Viettel VTS) truy cập Portal Quản trị Trung tâm, thiết lập khung giá trần vé tháng/vé chu kỳ áp dụng cho toàn bộ các công ty vận hành thành viên trong mạng lưới nhằm bảo vệ lợi ích công cộng và điều tiết vĩ mô. Khung giá vé lượt không thuộc MVP.
-
-| Thuộc tính | Chi tiết đặc tả |
-| :--- | :--- |
-| **Mã Use Case** | **UC23** |
-| **Tác nhân chính** | Quản lý nền tảng / Platform Manager |
-| **Tiền điều kiện** | Platform Manager đăng nhập thành công Portal Quản trị Trung tâm. |
-| **Hậu điều kiện** | Khung giá trần mới được ghi nhận trong backend resource `system_configs.json`. Mọi thay đổi chính sách cước của các doanh nghiệp thành viên sau thời điểm này đều bị cưỡng bức đối chiếu theo khung giá mới. |
-| **Tác nhân kích hoạt** | Platform Manager chọn phân hệ "Cấu hình Chính sách & Khung giá trần" trên Web Portal. |
-
-#### Luồng xử lý chính (Basic Flow):
-1. **Bước 1:** Platform Manager truy cập phân hệ "Cấu hình Chính sách & Khung giá trần" trên Web Portal.
-2. **Bước 2:** Hệ thống hiển thị bảng khung giá trần hiện hành toàn thành phố cho từng loại hình phương tiện: Xe bus thường, Xe bus điện nhanh BRT, Tàu điện trên cao Metro.
-3. **Bước 3:** Platform Manager thực hiện điều chỉnh giá trị mức giá trần tối đa (ví dụ: Đặt giá trần xe bus = 15,000 VNĐ/lượt, Giá trần chặng mở cửa Metro = 20,000 VNĐ).
-4. **Bước 4:** Platform Manager nhấn nút **"Lưu & Áp dụng Khung giá trần"**.
-5. **Bước 5:** Backend tiếp nhận yêu cầu, xác thực tài khoản có thẩm quyền cấp cao (`ROLE_PLATFORM_MANAGER`) và cập nhật các tham số tương ứng trong resource `system_configs.json`; backend MVP không tạo bảng SQL `system_configs` riêng.
-6. **Bước 6:** Hệ thống hiển thị thông báo "Áp dụng khung giá trần toàn hệ thống thành công!".
-7. **Bước 7:** Hệ thống tự động gửi thông báo điện tử (Notification) tới Company Manager của tất cả các công ty vận hành thành viên để họ nắm bắt được khung cước điều tiết mới. snapshot tác vụ được lưu vết vào `audit_logs` của MongoDB.
-
-#### Luồng ngoại lệ (Exception Flows):
-*   **Exc 24a - Giá trần cấu hình âm hoặc không hợp lý:** Nếu Platform Manager nhập giá trị âm hoặc bằng 0, backend từ chối ghi nhận, hiển thị cảnh báo lỗi: "Mức giá trị trần cấu hình không hợp lệ. Vui lòng nhập số dương lớn hơn 0!".
-
----
-
 
 ## Module 7: Giám sát, Bảo mật & Phân quyền
 
 *Công cụ dành cho Admin tối cao: khóa/mở khóa tài khoản vi phạm, cấu hình ma trận phân quyền động (Dynamic RBAC) và giám sát toàn bộ nhật ký vận hành hệ thống.*
 
-### UC24: Khóa và Mở khóa tài khoản vi phạm khẩn cấp - Ban/Unban Account (Admin)
+### UC23: Khóa và Mở khóa tài khoản vi phạm khẩn cấp - Ban/Unban Account (Admin)
 *   **Mô tả:** Khi phát hiện hành khách hoặc nhân viên ga có hành vi cố ý phá hoại vật chất hệ thống, gian lận tài chính nghiêm trọng (ví dụ: bám đuôi soát vé trốn cước liên tục) hoặc vi phạm nghiêm trọng quy chế vận hành, Quản trị viên tối cao (`ADMIN`) thực hiện tra cứu và **Khóa (Ban) hoặc Mở khóa (Unban) tài khoản khẩn cấp tại Runtime (thời điểm chạy)** nhằm bảo vệ an ninh hệ thống và ngăn chặn tổn thất.
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
-| **Mã Use Case** | **UC24** |
+| **Mã Use Case** | **UC23** |
 | **Tác nhân chính** | Quản trị tối cao / Admin |
 | **Tiền điều kiện** | Tài khoản `ADMIN` đăng nhập thành công vào Portal Bảo mật kỹ thuật. |
 | **Hậu điều kiện** | **Kịch bản Khóa (Ban):** Trường `accounts.is_active` cập nhật thành `FALSE` trong `auth_db`, JWT token đang hoạt động của người dùng bị thu hồi Runtime (chặn soát vé tại Gate và chặn gọi API trên app tức thời). **Kịch bản Mở khóa (Unban):** Trường `accounts.is_active` cập nhật thành `TRUE`, mở khóa quyền sử dụng hệ thống bình thường. |
@@ -1003,12 +974,12 @@ graph LR
 
 ---
 
-### UC25: Cấu hình phân quyền động - Dynamic RBAC Configuration (Admin)
+### UC24: Cấu hình phân quyền động - Dynamic RBAC Configuration (Admin)
 *   **Mô tả:** Quản trị viên tối cao (`ADMIN`) thực hiện gán hoặc tước quyền hạn (Permissions) đối với các vai trò (Roles) trong hệ thống trực tiếp trên giao diện ma trận phân quyền. Cấu hình được áp dụng động (Dynamic RBAC) ngay tức khắc tại thời điểm thực tế (Runtime) trực tiếp trên database mà không cần phải biên dịch lại mã nguồn hay restart server.
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
-| **Mã Use Case** | **UC25** |
+| **Mã Use Case** | **UC24** |
 | **Tác nhân chính** | Quản trị tối cao / Admin |
 | **Tiền điều kiện** | Tài khoản `ADMIN` đăng nhập thành công vào Portal Bảo mật kỹ thuật. |
 | **Hậu điều kiện** | Phân quyền của vai trò bất kỳ được thay đổi động trực tiếp trên DB, thay đổi quyền hạn có hiệu lực lập tức kể từ giây tiếp theo đối với tất cả tài khoản thuộc vai trò đó. |
@@ -1032,12 +1003,12 @@ graph LR
 
 ---
 
-### UC26: Giám sát kỹ thuật & Tra cứu System Logs (Admin)
+### UC25: Giám sát kỹ thuật & Tra cứu System Logs (Admin)
 *   **Mô tả:** Quản trị viên tối cao (`ADMIN`) truy cập giao diện giám sát an ninh Portal, thực hiện tra cứu, tìm kiếm và lọc các nhật ký vận hành hệ thống từ các kho lưu trữ MongoDB thời gian thực để phân tích rủi ro hạ tầng và giám sát hoạt động tài chính, soát vé.
 
 | Thuộc tính | Chi tiết đặc tả |
 | :--- | :--- |
-| **Mã Use Case** | **UC26** |
+| **Mã Use Case** | **UC25** |
 | **Tác nhân chính** | Quản trị tối cao / Admin |
 | **Tiền điều kiện** | Tài khoản `ADMIN` đăng nhập thành công vào Portal Bảo mật kỹ thuật. |
 | **Hậu điều kiện** | Logs hệ thống được tra cứu, hiển thị cấu trúc JSON chi tiết, phân tích và xuất dữ liệu báo cáo thành công ra định dạng Excel/CSV. |
@@ -1069,7 +1040,7 @@ graph LR
 
 ## 3. DUY TRÌ TÍNH NHẤT QUÁN & BẢO MẬT HỆ THỐNG
 * **Sửa lỗi Sơ đồ Mermaid:** Toàn bộ sơ đồ UML Use Case đã được tối ưu cú pháp `graph LR` chuẩn mực, cam kết hiển thị hoàn mỹ 100% trên các trình xem Markdown hỗ trợ Mermaid mà không gặp bất kỳ lỗi biên dịch nào.
-* **100% Độc lập và Chi tiết:** Tài liệu được viết đầy đủ kịch bản cho từng Use Case MVP đang hoạt động trong dải mã UC01 đến UC26, không sử dụng liên kết tham chiếu hoặc nội dung tóm tắt rút gọn. Passenger không có luồng rút tiền; UC17 chỉ áp dụng cho yêu cầu giải ngân ví doanh nghiệp và không tích hợp chuyển khoản ngân hàng tự động.
+* **100% Độc lập và Chi tiết:** Tài liệu được viết đầy đủ kịch bản cho từng Use Case MVP đang hoạt động trong dải mã UC01 đến UC25, không sử dụng liên kết tham chiếu hoặc nội dung tóm tắt rút gọn. Passenger không có luồng rút tiền; UC17 chỉ áp dụng cho yêu cầu giải ngân ví doanh nghiệp và không tích hợp chuyển khoản ngân hàng tự động.
 
 * **Ràng buộc Stateless:** Tất cả các luồng đăng nhập nội bộ và hành khách đều sinh JWT token lưu tại client, giúp Backend xác thực không trạng thái cực kỳ nhẹ và bảo mật cao.
 

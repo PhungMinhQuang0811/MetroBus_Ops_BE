@@ -85,8 +85,7 @@ Dưới đây là ma trận ánh xạ chi tiết giữa các Vai trò và các h
 | | **Khóa/Mở tài khoản (Ban/Unban User)** | **X** | | | | | |
 | | **Cấu hình quyền động hệ thống (Dynamic RBAC)** | **X** | | | | | |
 | | Xem nhật ký hệ thống toàn cục (System Logs) | **X** | | | | | |
-| **Giá vé & Cấu hình** | Cấu hình giá trần toàn mạng lưới (Fare Ceiling) | | **X** | | | | |
-| | Cấu hình biểu giá nội bộ tuyến/chặng | | | **X** | | | |
+| **Giá vé & Cấu hình** | Cấu hình gói vé chu kỳ trong `fare_policies` | | | **X** | | | |
 | **Nhân sự & Ca trực** | Tạo tài khoản/phân quyền nhân viên `STAFF` | | | **X** | | | |
 | | Lập lịch phân ca trực (`shift_id`) | | | **X** | | | |
 | | Đăng nhập bắt buộc gắn `shift_id` để làm việc | | | | **X** | | |

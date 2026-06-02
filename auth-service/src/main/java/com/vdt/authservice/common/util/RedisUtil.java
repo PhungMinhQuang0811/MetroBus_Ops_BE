@@ -14,6 +14,10 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class RedisUtil {
+    private static final String OTP_KEY_PREFIX = "auth:otp:phone:";
+    private static final String OTP_COOLDOWN_KEY_PREFIX = "auth:otp:cooldown:phone:";
+    private static final String OTP_PHONE_RATE_LIMIT_KEY_PREFIX = "auth:otp:rate:phone:day:";
+    private static final String OTP_VERIFY_ATTEMPT_KEY_PREFIX = "auth:otp:verify-attempt:phone:";
 
     RedisTemplate<String, String> redisTemplate;
 
@@ -23,6 +27,18 @@ public class RedisUtil {
 
     public String get(String key) {
         return redisTemplate.opsForValue().get(key);
+    }
+
+    public Long increment(String key) {
+        return redisTemplate.opsForValue().increment(key);
+    }
+
+    public void expire(String key, long timeout, TimeUnit unit) {
+        redisTemplate.expire(key, timeout, unit);
+    }
+
+    public Long getExpire(String key, TimeUnit unit) {
+        return redisTemplate.getExpire(key, unit);
     }
 
     public void addSet(String key, java.util.Collection<String> values, long timeout, TimeUnit unit) {
@@ -42,6 +58,22 @@ public class RedisUtil {
 
     public boolean hasKey(String key) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+
+    public String buildOtpKey(String phoneNumber) {
+        return OTP_KEY_PREFIX + phoneNumber;
+    }
+
+    public String buildOtpCooldownKey(String phoneNumber) {
+        return OTP_COOLDOWN_KEY_PREFIX + phoneNumber;
+    }
+
+    public String buildOtpPhoneRateLimitKey(String phoneNumber) {
+        return OTP_PHONE_RATE_LIMIT_KEY_PREFIX + phoneNumber;
+    }
+
+    public String buildOtpVerifyAttemptKey(String phoneNumber) {
+        return OTP_VERIFY_ATTEMPT_KEY_PREFIX + phoneNumber;
     }
 
     public void deleteByPrefix(String prefix) {

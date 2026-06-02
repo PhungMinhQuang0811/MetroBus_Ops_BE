@@ -51,17 +51,23 @@ app:
   domain-name: localhost
   email: ${APPLICATION_EMAIL}
   timezone: ${APP_TIMEZONE}
+  otp:
+    expiration-ms: 60000 # 1 minute
+    resend-cooldown-seconds: 60
+    max-requests-per-phone-per-day: 5
+    max-verification-attempts: 5
   security:
-    public-endpoints:
-      - /auth/login
-      - /auth/request-otp
-      - /auth/verify-otp
-      - /auth/forgot-password
-      - /auth/reset-password
-      - /auth/refresh-token
-      - /users/register
-      - /users/verify-registration
-      - /users/resend-verification
+    public-endpoints: >
+      "/auth/phone/check",
+      "/auth/login",
+      "/auth/register/verify-otp",
+      "/auth/register/set-password",
+      "/auth/forgot-password",
+      "/auth/reset-password",
+      "/auth/refresh-token",
+      "/users/register",
+      "/users/verify-registration",
+      "/users/resend-verification"
     csrf-header-name: X-CSRF-TOKEN
     csrf-cookie-name: XSRF-TOKEN
     refresh-path: /vdt/auth/refresh-token
@@ -76,5 +82,3 @@ app:
 #      refresh-token-expiration: 60000 #~1 minute
       access-token-cookie-name: accessToken
       refresh-token-cookie-name: refreshToken
-    otp:
-      expiration: 120000 # 2 minutes

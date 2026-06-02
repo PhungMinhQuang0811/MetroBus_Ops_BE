@@ -5,6 +5,7 @@ import com.vdt.authservice.modules.identity.security.auth.JwtAuthenticationFilte
 import com.vdt.authservice.modules.identity.security.repository.CustomCsrfTokenRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
@@ -36,12 +37,12 @@ import java.util.List;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class SecurityConfig {
 
     JwtAuthenticationFilter jwtAuthenticationFilter;
     CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     CustomAccessDeniedHandler customAccessDeniedHandler;
-    SecurityProperties securityProperties;
 
     @NonFinal
     @Value("${app.security.cors-allowed-origins}")
@@ -64,8 +65,12 @@ public class SecurityConfig {
     long refreshTokenExpiration;
 
     @NonFinal
-    @Value("${server.servlet.context-path:/}")
+    @Value("${server.servlet.context-path}")
     String contextPath;
+
+    @NonFinal
+    @Value("${app.security.public-endpoints}")
+    String[] publicEndpoints;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -125,10 +130,12 @@ public class SecurityConfig {
     }
 
     private String[] publicEndpointPatterns() {
-        return securityProperties.getPublicEndpoints().stream()
-                .map(String::trim)
-                .filter(endpoint -> !endpoint.isBlank())
-                .toArray(String[]::new);
-    }
 
+        String[] patterns = new String[publicEndpoints.length];
+        for (int i = 0; i < publicEndpoints.length; i++) {
+            patterns[i] = publicEndpoints[i].trim().replace("\"", "");
+        }
+
+        return patterns;
+    }
 }

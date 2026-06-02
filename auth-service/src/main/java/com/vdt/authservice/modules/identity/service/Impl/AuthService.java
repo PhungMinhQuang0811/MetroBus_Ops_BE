@@ -1,10 +1,16 @@
 package com.vdt.authservice.modules.identity.service.Impl;
 
 import com.nimbusds.jwt.SignedJWT;
+import com.vdt.authservice.common.util.PhoneNumberUtil;
+import com.vdt.authservice.modules.identity.constant.AuthNextStep;
 import com.vdt.authservice.modules.identity.dto.request.auth.LoginRequest;
+import com.vdt.authservice.modules.identity.dto.request.auth.PhoneCheckRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.ResetPasswordRequest;
+import com.vdt.authservice.modules.identity.dto.request.auth.SetPasswordRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.VerifyOtpRequest;
 import com.vdt.authservice.modules.identity.dto.response.auth.AuthResponse;
+import com.vdt.authservice.modules.identity.dto.response.auth.PhoneCheckResponse;
+import com.vdt.authservice.modules.identity.dto.response.auth.RegistrationOtpResponse;
 import com.vdt.authservice.modules.identity.constant.PredefinedRole;
 import com.vdt.authservice.modules.identity.entity.Account;
 import com.vdt.authservice.common.notification.email.IEmailService;
@@ -18,10 +24,6 @@ import com.vdt.authservice.modules.identity.security.service.IAccountTokenServic
 import com.vdt.authservice.modules.identity.security.util.JwtUtil;
 import com.vdt.authservice.modules.identity.service.IAuthService;
 import com.vdt.authservice.modules.identity.service.IOtpService;
-import com.vdt.authservice.modules.wallet.constant.WalletStatus;
-import com.vdt.authservice.modules.wallet.constant.WalletType;
-import com.vdt.authservice.modules.wallet.entity.Wallet;
-import com.vdt.authservice.modules.wallet.repository.WalletRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -39,7 +41,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.Set;
 
 
@@ -50,7 +51,6 @@ import java.util.Set;
 public class AuthService implements IAuthService {
     AccountRepository accountRepository;
     RoleRepository roleRepository;
-    WalletRepository walletRepository;
     AuthMapper authMapper;
     PasswordEncoder passwordEncoder;
     AuthenticationManager authenticationManager;
@@ -97,6 +97,61 @@ public class AuthService implements IAuthService {
     String domain;
 
     @Override
+    public PhoneCheckResponse checkPhone(PhoneCheckRequest request) {
+        String phoneNumber = PhoneNumberUtil.normalize(request.getPhoneNumber());
+        var existingAccount = accountRepository.findByPhoneNumber(phoneNumber);
+
+        if (existingAccount.isPresent()) {
+            validateAccountStatus(existingAccount.get());
+            return PhoneCheckResponse.builder()
+                    .exists(true)
+                    .nextStep(AuthNextStep.PASSWORD_LOGIN)
+                    .phoneNumber(phoneNumber)
+                    .build();
+        }
+
+        otpService.requestOtp(phoneNumber);
+        return PhoneCheckResponse.builder()
+                .exists(false)
+                .nextStep(AuthNextStep.REGISTER_OTP)
+                .phoneNumber(phoneNumber)
+                .build();
+    }
+
+    @Override
+    public RegistrationOtpResponse verifyRegistrationOtp(VerifyOtpRequest request) {
+        String phoneNumber = PhoneNumberUtil.normalize(request.getPhoneNumber());
+        if (accountRepository.existsByPhoneNumber(phoneNumber)) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        otpService.verifyOtp(phoneNumber, request.getOtp());
+
+        return RegistrationOtpResponse.builder()
+                .registrationToken(accountTokenService.generateRegistrationToken(phoneNumber))
+                .nextStep(AuthNextStep.SET_PASSWORD)
+                .build();
+    }
+
+    @Transactional
+    @Override
+    public AuthResponse completeRegistration(SetPasswordRequest request, HttpServletResponse response) {
+        String phoneNumber = accountTokenService.getPhoneNumberByRegistrationToken(request.getRegistrationToken());
+        if (phoneNumber == null) {
+            throw new AppException(ErrorCode.INVALID_ONETIME_TOKEN);
+        }
+        if (accountRepository.existsByPhoneNumber(phoneNumber)) {
+            throw new AppException(ErrorCode.USER_EXISTED);
+        }
+
+        Account account = createPassengerAccount(phoneNumber, request.getPassword());
+        accountTokenService.deleteRegistrationToken(request.getRegistrationToken());
+        setTokenCookies(response, account);
+
+        return authMapper.toAuthResponse(account);
+    }
+
+    @Override
     public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
         Account account = accountRepository.findByIdentifier(request.getIdentifier())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
@@ -107,28 +162,6 @@ public class AuthService implements IAuthService {
                 new UsernamePasswordAuthenticationToken(request.getIdentifier(), request.getPassword())
         );
 
-        setTokenCookies(response, account);
-
-        return authMapper.toAuthResponse(account);
-    }
-
-    @Transactional
-    @Override
-    public AuthResponse verifyOtp(VerifyOtpRequest request, HttpServletResponse response) {
-        String phoneNumber = otpService.normalizePhoneNumber(request.getPhoneNumber());
-        otpService.verifyOtp(phoneNumber, request.getOtp());
-
-        Account account = accountRepository.findByPhoneNumber(phoneNumber)
-                .orElseGet(() -> createPassengerAccount(phoneNumber));
-
-        validateAccountStatus(account);
-
-        if (!account.isPhoneVerified()) {
-            account.setPhoneVerified(true);
-            account = accountRepository.save(account);
-        }
-
-        ensurePassengerWallet(account);
         setTokenCookies(response, account);
 
         return authMapper.toAuthResponse(account);
@@ -228,34 +261,19 @@ public class AuthService implements IAuthService {
         }
     }
 
-    private Account createPassengerAccount(String phoneNumber) {
+    private Account createPassengerAccount(String phoneNumber, String password) {
         var passengerRole = roleRepository.findByName(PredefinedRole.PASSENGER)
                 .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
         Account account = Account.builder()
                 .phoneNumber(phoneNumber)
+                .password(passwordEncoder.encode(password))
                 .isActive(true)
                 .isPhoneVerified(true)
                 .roles(Set.of(passengerRole))
                 .build();
 
         return accountRepository.save(account);
-    }
-
-
-    private void ensurePassengerWallet(Account account) {
-        if (walletRepository.existsByAccountIdAndWalletType(account.getId(), WalletType.PASSENGER)) {
-            return;
-        }
-
-        Wallet wallet = Wallet.builder()
-                .account(account)
-                .walletType(WalletType.PASSENGER)
-                .balance(BigDecimal.ZERO)
-                .status(WalletStatus.ACTIVE)
-                .build();
-
-        walletRepository.save(wallet);
     }
 
     private void setTokenCookies(HttpServletResponse response, Account account) {

@@ -16,8 +16,18 @@ management:
 
 app:
   security:
-    public-endpoints:
-      - /v3/api-docs/**
-      - /swagger-ui/**
-      - /swagger-ui.html
-      - /actuator/**
+    public-endpoints: >
+      "/auth/phone/check",
+      "/auth/login",
+      "/auth/register/verify-otp",
+      "/auth/register/set-password",
+      "/auth/forgot-password",
+      "/auth/reset-password",
+      "/auth/refresh-token",
+      "/users/register",
+      "/users/verify-registration",
+      "/users/resend-verification",
+      "/v3/api-docs/**",
+      "/swagger-ui/**",
+      "/swagger-ui.html",
+      "/actuator/**"

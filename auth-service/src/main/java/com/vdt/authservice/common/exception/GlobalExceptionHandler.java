@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
         ApiResponse<?> apiResponse = new ApiResponse<>();
 
         apiResponse.setCode(errorCode.getCode());
-        apiResponse.setMessage(errorCode.getMessage());
+        apiResponse.setMessage(exception.getMessage());
 
         return ResponseEntity.status(errorCode.getHttpStatusCode()).body(apiResponse);
     }

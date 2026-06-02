@@ -1,18 +1,16 @@
 package com.vdt.authservice.modules.wallet.constant;
 
 public class WalletType {
-    // 1. Ví dành cho Hành khách (Passenger)
-    public static final String PASSENGER = "PASSENGER";
 
-    // 2. Các loại ví dành cho Doanh nghiệp vận hành (Operator)
+    // 1. Các loại ví dành cho Doanh nghiệp vận hành (Operator)
     public static final String OPERATOR_REVENUE = "OPERATOR_REVENUE";     // Ví Doanh thu (Ghi sổ thu hộ)
     public static final String OPERATOR_DEPOSIT = "OPERATOR_DEPOSIT";     // Ví Ký quỹ (Đóng băng bảo lãnh)
     public static final String OPERATOR_OPERATING = "OPERATOR_OPERATING"; // Ví Vận hành (Chi phí, hoàn tiền)
 
-    // 3. Ví dành cho Cơ quan quản lý hệ thống trung tâm (Platform - Sở GTVT)
+    // 2. Ví dành cho Cơ quan quản lý hệ thống trung tâm (Platform - Sở GTVT)
     public static final String PLATFORM = "PLATFORM";
 
-    // 4. Ví dành cho Admin
+    // 3. Ví dành cho Admin
     public static final String ADMIN = "ADMIN";
 
 

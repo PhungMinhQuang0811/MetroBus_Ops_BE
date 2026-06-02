@@ -19,7 +19,7 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     @Query("SELECT a FROM Account a " +
             "LEFT JOIN FETCH a.roles r " +
             "LEFT JOIN FETCH r.permissions " +
-            "WHERE a.email = :identifier OR a.username = :identifier")
+            "WHERE a.email = :identifier OR a.username = :identifier OR a.phoneNumber = :identifier")
     Optional<Account> findByIdentifier(@Param("identifier") String identifier);
 
     @Query("SELECT a FROM Account a " +

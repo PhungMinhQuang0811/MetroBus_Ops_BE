@@ -20,7 +20,9 @@ public class AccountTokenService implements IAccountTokenService {
     static final String VERIFICATION_PREFIX = "verification:";
     static final String VERIFICATION_USER_PREFIX = "verification_user:";
     static final String RESET_PASSWORD_PREFIX = "reset-password:";
+    static final String REGISTRATION_PREFIX = "registration:";
     static final long TOKEN_TTL_DAYS = 1;
+    static final long REGISTRATION_TOKEN_TTL_MINUTES = 10;
 
     @Override
     public String generateVerificationToken(String accountId) {
@@ -64,5 +66,22 @@ public class AccountTokenService implements IAccountTokenService {
     @Override
     public void deleteResetPasswordToken(String token) {
         redisUtil.delete(RESET_PASSWORD_PREFIX + token);
+    }
+
+    @Override
+    public String generateRegistrationToken(String phoneNumber) {
+        String token = UUID.randomUUID().toString();
+        redisUtil.set(REGISTRATION_PREFIX + token, phoneNumber, REGISTRATION_TOKEN_TTL_MINUTES, TimeUnit.MINUTES);
+        return token;
+    }
+
+    @Override
+    public String getPhoneNumberByRegistrationToken(String token) {
+        return redisUtil.get(REGISTRATION_PREFIX + token);
+    }
+
+    @Override
+    public void deleteRegistrationToken(String token) {
+        redisUtil.delete(REGISTRATION_PREFIX + token);
     }
 }

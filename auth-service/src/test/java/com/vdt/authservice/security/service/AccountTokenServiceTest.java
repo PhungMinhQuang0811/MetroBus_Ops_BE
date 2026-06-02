@@ -79,4 +79,29 @@ class AccountTokenServiceTest {
         accountTokenService.deleteResetPasswordToken(token);
         verify(redisUtil).delete("reset-password:" + token);
     }
+
+    @Test
+    void generateRegistrationToken_Success() {
+        String phoneNumber = "0900000001";
+
+        String result = accountTokenService.generateRegistrationToken(phoneNumber);
+
+        assertNotNull(result);
+        verify(redisUtil).set(contains("registration:"), eq(phoneNumber), eq(10L), eq(TimeUnit.MINUTES));
+    }
+
+    @Test
+    void getPhoneNumberByRegistrationToken_Success() {
+        String phoneNumber = "0900000001";
+        when(redisUtil.get("registration:" + token)).thenReturn(phoneNumber);
+
+        assertEquals(phoneNumber, accountTokenService.getPhoneNumberByRegistrationToken(token));
+    }
+
+    @Test
+    void deleteRegistrationToken_Success() {
+        accountTokenService.deleteRegistrationToken(token);
+
+        verify(redisUtil).delete("registration:" + token);
+    }
 }

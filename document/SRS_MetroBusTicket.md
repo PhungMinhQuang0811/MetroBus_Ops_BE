@@ -23,7 +23,7 @@ Hệ thống PFC được thiết kế theo mô hình **Thu soát vé tự độ
 | :--- | :--- | :--- |
 | Hành khách (`PASSENGER`) | Đăng ký bằng SĐT/OTP, đăng nhập bằng SĐT/mật khẩu, quản lý hồ sơ, đăng ký/gia hạn vé chu kỳ, phát hành thẻ ảo, số hóa thẻ cứng, xem lịch sử chuyến đi/lịch sử vé đã mua, dùng Dynamic QR để soát vé. | Không có ví Passenger; không nạp/rút ví; không mua thẻ cứng trên PWA; không mua vé lượt lẻ; không nạp tiền hoặc trừ tiền tại validator. |
 | Đơn vị vận hành (`OPERATOR` / `COMPANY_MANAGER`) | Theo dõi ví doanh nghiệp, lịch sử cộng tiền đối soát, gửi yêu cầu giải ngân thủ công, quản lý tuyến/trạm/nhân sự/biểu giá trong phạm vi tenant. | Hệ thống không chuyển khoản ngân hàng tự động; Platform Manager chỉ duyệt/từ chối yêu cầu trên hệ thống. |
-| Quản trị nền tảng (`PLATFORM_MANAGER`) | Quản lý tenant, khung giá trần, clearing, giám sát dòng tiền và duyệt/từ chối yêu cầu giải ngân doanh nghiệp. | Không tự động thay thế quy trình kế toán/ngân hàng ngoài đời. |
+| Quản trị nền tảng (`PLATFORM_MANAGER`) | Quản lý tenant, clearing, giám sát dòng tiền và duyệt/từ chối yêu cầu giải ngân doanh nghiệp. | Không tự động thay thế quy trình kế toán/ngân hàng ngoài đời. |
 | Staff/quầy ga (`STAFF`) | Khởi tạo phôi thẻ, in/giao/thu hồi thẻ cứng, mở ca/kết ca, hỗ trợ xử lý kẹt ga/quên check-out. | Webcam Gate Simulator không đọc RFID/thẻ cứng; không xử lý bù chặng vé lượt trong MVP. |
 | Validator Gate Simulator | Quét Dynamic QR của thẻ điện tử, kiểm tra trạng thái subscription và ghi nhận journey. | Không hỗ trợ vé giấy/token vật lý/RFID/vé lượt lẻ trong MVP. |
 | Thành phần hệ thống | Web Hành khách PWA, Portal vận hành, Validator Gate giả lập, `identity-service`, `ticket-service`, PostgreSQL và MongoDB audit/log. | Các tích hợp AFC phần cứng thật để future phase. |
@@ -94,8 +94,8 @@ Các nhóm chức năng MVP được khóa theo 27 use case trong `use_case_spec
 
 OTP SMS chỉ dùng cho đăng ký tài khoản Passenger mới và quên mật khẩu, không dùng cho đăng nhập thường. OTP có 6 chữ số, TTL 2 phút; OTP mới ghi đè OTP cũ cùng `phoneNumber` và `purpose`. Backend áp dụng cooldown 60 giây giữa hai lần gửi, tối đa 5 OTP/ngày cho mỗi số điện thoại và `purpose`, tối đa 20 OTP/giờ cho mỗi IP, tối đa 5 lần nhập sai cho mỗi OTP. Vượt giới hạn gửi OTP trả HTTP `429 Too Many Requests`. Các giới hạn được cấu hình trong application config và counter được lưu tạm trong Redis.
 | Quản trị vận hành đơn vị | UC19-UC21 | Company Manager quản lý nhân sự, tuyến/trạm và biểu giá trong phạm vi operator/tenant của mình. |
-| Quản trị nền tảng | UC22-UC23 | Platform Manager quản lý tenant và khung giá trần toàn hệ thống. |
-| Giám sát, bảo mật & phân quyền | UC24-UC26 | Admin quản trị kỹ thuật, ban/unban, RBAC và system logs; không tự ý can thiệp tài chính nếu không có audit flow. |
+| Quản trị nền tảng | UC22 | Platform Manager quản lý tenant/operator. |
+| Giám sát, bảo mật & phân quyền | UC23-UC25 | Admin quản trị kỹ thuật, ban/unban, RBAC và system logs; không tự ý can thiệp tài chính nếu không có audit flow. |
 
 ### 3.2. Business Rules Giữ Lại Trong SRS
 
@@ -104,14 +104,14 @@ OTP SMS chỉ dùng cho đăng ký tài khoản Passenger mới và quên mật 
 - **Thẻ vật lý:** Staff khởi tạo/bán/giao/in/quản lý thẻ cứng; Guest mua thẻ cứng qua Web Portal Guest Checkout; Passenger trên PWA chỉ số hóa thẻ cứng sang thẻ điện tử. Webcam Gate Simulator không hỗ trợ RFID/thẻ cứng.
 - **Validator:** Cổng soát vé chỉ xác thực Dynamic QR của thẻ/vé điện tử đã mua trước, không nạp tiền/trừ tiền tại thời điểm quét.
 - **Biểu giá/tuyến/ga:** Các bộ dữ liệu Hanoi/HCM trong tài liệu là seed/demo data theo operator/tenant, không phải giới hạn địa bàn của hệ thống.
-- **Dữ liệu cấu hình resource:** `fare_policies`, `system_configs`, `route_stations`, `tenants/companies` được lưu thành các file JSON trong `src/main/resources` của backend, nạp vào `ConcurrentHashMap` khi khởi động để Fare Engine và API danh mục truy xuất O(1). Backend MVP không tạo thêm các bảng SQL này; dữ liệu lõi vẫn bám theo schema tối giản gồm `operators`, `routes`, `stations` và các bảng vé/giao dịch liên quan.
+- **Dữ liệu cấu hình resource/cache:** `fare_policies` là bảng SQL trong `ticket_db` để lưu dữ liệu động cho gói vé chu kỳ. Backend có thể đồng bộ dữ liệu này sang cache/resource đọc nhanh để API danh mục và Fare Engine truy xuất O(1). Các resource `system_configs`, `route_stations`, `tenants/companies` vẫn có thể dùng JSON/seed data trong MVP nếu chưa cần CRUD runtime.
 - **Fare Engine:** Công thức tính giá vé cụ thể được giữ trong SRS ở mục 3.4 bên dưới. Luồng soát vé/tính cự ly chi tiết xem UC13 và luồng cấu hình biểu giá tuyến xem UC21 trong [use_case_specifications.md](use_case_specifications.md).
 - **Role & scope:** Ma trận quyền, ranh giới dữ liệu theo role và tenant isolation lấy theo [role_and_scope_analysis.md](role_and_scope_analysis.md).
 - **Vận hành đoàn tàu:** Không triển khai module vận hành đoàn tàu trong MVP; các khái niệm headway, dwell time, turnaround, train set, service calendar chỉ là future phase nếu mở rộng ngoài ticketing/AFC.
 
-### 3.3. Cấu Trúc Backend Resource JSON Cho Dữ Liệu Cấu Hình/Mock
+### 3.3. Cấu Trúc Backend Resource/Cache Cho Dữ Liệu Cấu Hình/Mock
 
-Các nhóm dữ liệu dưới đây được đặt ở backend dưới dạng file JSON resource, ví dụ `src/main/resources/config/route_stations.json`, `fare_policies.json`, `system_configs.json`, `tenants.json`. Khi ứng dụng khởi động, backend đọc toàn bộ file vào `ConcurrentHashMap` trong RAM để phục vụ Fare Engine và các API danh mục với độ phức tạp truy xuất theo key là O(1). Đây **không phải schema SQL backend MVP**. Khi triển khai production thật, từng nhóm có thể được tách thành bảng hoặc API quản trị riêng nếu phát sinh nhu cầu audit, phân quyền sửa đổi và lịch sử hiệu lực phức tạp hơn.
+Các nhóm dữ liệu dưới đây được backend nạp vào `ConcurrentHashMap` trong RAM để phục vụ Fare Engine và các API danh mục với độ phức tạp truy xuất theo key là O(1). Với `fare_policies`, **SQL là source of truth** vì UC21 cần cập nhật dữ liệu động; resource/cache chỉ là bản đồng bộ đọc nhanh. Các nhóm cấu hình còn lại có thể dùng JSON seed/resource trong MVP nếu chưa cần CRUD runtime.
 
 #### 3.3.1. Nguyên tắc sử dụng
 
@@ -119,7 +119,7 @@ Các nhóm dữ liệu dưới đây được đặt ở backend dưới dạng 
 | :--- | :--- | :--- | :--- |
 | `tenants` / `companies` | `tenants.json` | `operator_id` hoặc `company_code` | Bảng `operators` là source of truth backend. |
 | `route_stations` | `route_stations.json` | `route_id`, `station_id`, hoặc composite `route_id:station_order` | Bảng `routes`, `stations`; `stations.route_id` và `stations.station_order` lưu quan hệ tuyến-trạm. |
-| `fare_policies` | `fare_policies.json` | `policy_id` hoặc composite `operator_id:transport_type` | Không tạo bảng riêng; backend dùng resource config và Fare Engine trong MVP. |
+| `fare_policies` | Đồng bộ từ bảng `fare_policies` hoặc seed `fare_policies.json` ban đầu | `policy_id`, `package_code` hoặc composite `operator_id:package_code` | Bảng `fare_policies` là source of truth backend cho gói vé chu kỳ. |
 | `system_configs` | `system_configs.json` | `config_key` | Không tạo bảng riêng; backend dùng resource config/environment config trong MVP. |
 
 #### 3.3.2. Cấu trúc file `tenants.json`
@@ -165,39 +165,37 @@ Các nhóm dữ liệu dưới đây được đặt ở backend dưới dạng 
 ]
 ```
 
-#### 3.3.4. Cấu trúc file `fare_policies.json`
+#### 3.3.4. Cấu trúc cache/resource `fare_policies`
 
 ```json
 [
   {
-    "policy_id": "FARE_HN_METRO_2025",
+    "policy_id": "POLICY_HN_MONTHLY_METRO_2026",
     "operator_id": 1,
-    "transport_type": "METRO",
-    "calculation_model": "STATION_COUNT",
-    "effective_from": "2025-01-01",
+    "route_id": null,
+    "package_code": "MONTHLY_METRO_ALL_ROUTE",
+    "package_name": "Vé tháng Metro toàn tuyến",
+    "subscription_type": "METRO",
+    "duration_days": 30,
+    "price": 200000,
+    "currency": "VND",
+    "effective_from": "2026-06-01",
     "effective_to": null,
-    "status": "ACTIVE",
-    "formula": {
-      "base_fare": 8000,
-      "step_fare": 1000,
-      "min_fare": 9000
-    }
+    "status": "ACTIVE"
   },
   {
-    "policy_id": "FARE_HN_BUS_2025_FLAT",
+    "policy_id": "POLICY_HN_MONTHLY_BUS_2026",
     "operator_id": 2,
-    "transport_type": "BUS",
-    "calculation_model": "ROUTE_FLAT_FARE",
-    "effective_from": "2025-01-01",
+    "route_id": null,
+    "package_code": "MONTHLY_BUS_ALL_ROUTE",
+    "package_name": "Vé tháng Bus toàn tuyến",
+    "subscription_type": "BUS",
+    "duration_days": 30,
+    "price": 150000,
+    "currency": "VND",
+    "effective_from": "2026-06-01",
     "effective_to": null,
-    "status": "ACTIVE",
-    "tiers_config": [
-      { "max_route_length_km": 15.0, "fare": 8000 },
-      { "max_route_length_km": 25.0, "fare": 10000 },
-      { "max_route_length_km": 30.0, "fare": 12000 },
-      { "max_route_length_km": 40.0, "fare": 15000 },
-      { "max_route_length_km": 999.0, "fare": 20000 }
-    ]
+    "status": "ACTIVE"
   }
 ]
 ```
@@ -235,16 +233,16 @@ Các nhóm dữ liệu dưới đây được đặt ở backend dưới dạng 
 
 #### 3.3.6. Quy ước nạp RAM và cung cấp API
 
-- Khi backend khởi động, `ResourceConfigLoader` đọc các file JSON resource, validate schema tối thiểu và nạp vào `ConcurrentHashMap`.
-- Validator Check-in/out gọi API backend; Fare Engine lấy `fare_policies`, `route_stations`, `system_configs` trực tiếp từ RAM qua key id/composite key để tính tiền và cự ly với độ phức tạp O(1).
+- Khi backend khởi động, `ResourceConfigLoader` đọc các file JSON resource, đồng thời nạp bảng `fare_policies` đang hiệu lực từ SQL vào `ConcurrentHashMap`.
+- UC08/UC10 gọi API backend để lấy gói vé chu kỳ; Fare Engine lấy `fare_policies` từ RAM qua key id/composite key để lấy `price`, `duration_days` và `package_code` với độ phức tạp O(1). Validator chỉ kiểm tra subscription còn hiệu lực, không tính cước tại cổng.
 - Portal UI gọi API danh mục của backend, ví dụ `GET /api/config/tenants`, `GET /api/config/route-stations`, `GET /api/config/fare-policies`, `GET /api/config/system-configs`; frontend cache kết quả một lần khi load trang để giảm băng thông.
 - `operator_id`, `route_id`, `station_id` trong resource JSON phải khớp với seed dữ liệu backend nếu demo chạy cùng API thật.
 - Nếu cùng một dữ liệu tồn tại ở cả SQL và resource JSON, SQL/backend là nguồn đúng cho trạng thái nghiệp vụ; resource JSON chỉ là cấu hình/cache đọc nhanh cho danh mục và Fare Engine.
-- Khi một nhóm cấu hình bắt đầu cần audit lịch sử, phân quyền chỉnh sửa runtime hoặc hiệu lực theo thời gian phức tạp, lúc đó mới tách khỏi resource JSON thành bảng/API quản trị riêng.
+- `fare_policies` đã được tách thành bảng/API quản trị riêng trong MVP vì cần cập nhật runtime từ UC21.
 
-### 3.4. Công Thức Tính Giá Vé Chu Kỳ (Fare Engine Formula)
+### 3.4. Cấu Hình Giá Vé Chu Kỳ
 
-Biểu giá dưới đây là **seed/demo fare rule theo operator/tenant** để backend có công thức cụ thể khi triển khai MVP. MVP chỉ triển khai vé chu kỳ/vé tháng gắn với thẻ; vé lượt Metro/Bus theo chặng lẻ nằm ngoài phạm vi MVP.
+Biểu giá trong MVP là **gói vé chu kỳ theo operator/tenant** được lưu trong bảng `fare_policies`. Backend dùng dữ liệu này để hiển thị danh sách gói vé, tạo phiên thanh toán UC08/UC10 và sinh subscription sau khi thanh toán thành công. MVP chỉ triển khai vé chu kỳ/vé tháng gắn với thẻ; vé lượt Metro/Bus theo chặng lẻ nằm ngoài phạm vi MVP.
 
 #### 3.4.1. Vé lượt Metro theo số ga (Out of MVP)
 
@@ -434,11 +432,32 @@ CREATE TABLE cards (
     CONSTRAINT uq_card_uid_medium UNIQUE (card_uid, card_medium) -- Đảm bảo một mã UID chỉ có tối đa 1 thẻ vật lý và 1 thẻ ảo đồng thời trong DB
 );
 
--- 4. BẢNG SUBSCRIPTIONS: Quản lý các gói đăng ký vé tháng/chu kỳ đang chạy
+-- 4. BẢNG FARE_POLICIES: Cấu hình gói vé chu kỳ động theo operator/route
+-- =========================================================================
+CREATE TABLE fare_policies (
+    policy_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    operator_id INT REFERENCES operators(operator_id) ON DELETE CASCADE,
+    route_id INT REFERENCES routes(route_id) ON DELETE SET NULL, -- NULL nếu gói toàn mạng/liên tuyến trong phạm vi operator
+    package_code VARCHAR(50) NOT NULL,
+    package_name VARCHAR(100) NOT NULL,
+    subscription_type VARCHAR(30) NOT NULL, -- 'BUS', 'METRO', 'MULTIMODAL'
+    duration_days INT NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(10) NOT NULL DEFAULT 'VND',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', -- 'ACTIVE', 'INACTIVE'
+    effective_from DATE NOT NULL,
+    effective_to DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_fare_policy_package UNIQUE (operator_id, package_code, effective_from)
+);
+
+-- 5. BẢNG SUBSCRIPTIONS: Quản lý các gói đăng ký vé tháng/chu kỳ đang chạy
 -- =========================================================================
 CREATE TABLE subscriptions (
     subscription_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     card_id UUID REFERENCES cards(card_id) ON DELETE CASCADE,
+    fare_policy_id UUID REFERENCES fare_policies(policy_id) ON DELETE SET NULL,
     package_code VARCHAR(50) NOT NULL, -- Ví dụ: 'MONTHLY_ALL_ROUTE', 'DAILY_METRO'
     package_name VARCHAR(100) NOT NULL,
     duration_days INT NOT NULL, -- Số ngày hiệu lực (ví dụ: 1 ngày, 30 ngày)
@@ -454,7 +473,7 @@ CREATE TABLE subscriptions (
 );
 
 -- =========================================================================
--- 5. BẢNG ORDERS: Đơn hàng đăng ký mua thẻ cứng/vé tháng trực tuyến
+-- 6. BẢNG ORDERS: Đơn hàng đăng ký mua thẻ cứng/vé tháng trực tuyến
 -- =========================================================================
 CREATE TABLE orders (
     order_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -484,7 +503,7 @@ CREATE TABLE orders (
 );
 
 -- =========================================================================
--- 6. BẢNG STAFF_SHIFTS: Quản lý phân ca trực kíp nhân viên nhà ga
+-- 7. BẢNG STAFF_SHIFTS: Quản lý phân ca trực kíp nhân viên nhà ga
 -- =========================================================================
 CREATE TABLE staff_shifts (
     shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -496,7 +515,7 @@ CREATE TABLE staff_shifts (
 );
 
 -- =========================================================================
--- 7. BẢNG JOURNEYS: Lịch sử và trạng thái các chuyến đi của hành khách
+-- 8. BẢNG JOURNEYS: Lịch sử và trạng thái các chuyến đi của hành khách
 -- =========================================================================
 CREATE TABLE journeys (
     journey_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -512,7 +531,7 @@ CREATE TABLE journeys (
 );
 
 -- =========================================================================
--- 8. BẢNG TRANSACTIONS: Nhật ký giao dịch tài chính
+-- 9. BẢNG TRANSACTIONS: Nhật ký giao dịch tài chính
 -- =========================================================================
 CREATE TABLE transactions (
     transaction_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -719,7 +738,7 @@ Lưu trữ nhật ký các sự cố xảy ra tại trạm ga (như mất điệ
 ```
 
 ##### 4. Collection `system_errors` (Nhật ký lỗi kỹ thuật và exception)
-Lưu các lỗi kỹ thuật phát sinh trong backend, các lỗi retry thất bại, lỗi sinh mã định danh, lỗi callback thanh toán hoặc lỗi tích hợp ngoài. Collection này phục vụ UC26 tra cứu system logs và không lưu trạng thái nghiệp vụ hiện hành.
+Lưu các lỗi kỹ thuật phát sinh trong backend, các lỗi retry thất bại, lỗi sinh mã định danh, lỗi callback thanh toán hoặc lỗi tích hợp ngoài. Collection này phục vụ UC25 tra cứu system logs và không lưu trạng thái nghiệp vụ hiện hành.
 ```json
 {
   "_id": "ObjectId",

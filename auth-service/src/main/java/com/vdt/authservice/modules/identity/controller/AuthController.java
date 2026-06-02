@@ -3,12 +3,14 @@ package com.vdt.authservice.modules.identity.controller;
 import com.vdt.authservice.common.ApiResponse;
 import com.vdt.authservice.modules.identity.dto.request.auth.ForgotPasswordRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.LoginRequest;
-import com.vdt.authservice.modules.identity.dto.request.auth.OtpRequest;
+import com.vdt.authservice.modules.identity.dto.request.auth.PhoneCheckRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.ResetPasswordRequest;
+import com.vdt.authservice.modules.identity.dto.request.auth.SetPasswordRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.VerifyOtpRequest;
 import com.vdt.authservice.modules.identity.dto.response.auth.AuthResponse;
+import com.vdt.authservice.modules.identity.dto.response.auth.PhoneCheckResponse;
+import com.vdt.authservice.modules.identity.dto.response.auth.RegistrationOtpResponse;
 import com.vdt.authservice.modules.identity.service.IAuthService;
-import com.vdt.authservice.modules.identity.service.IOtpService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -25,7 +27,13 @@ import org.springframework.web.bind.annotation.*;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AuthController {
     IAuthService authService;
-    IOtpService otpService;
+
+    @PostMapping("/phone/check")
+    public ApiResponse<PhoneCheckResponse> checkPhone(@Valid @RequestBody PhoneCheckRequest request) {
+        return ApiResponse.<PhoneCheckResponse>builder()
+                .result(authService.checkPhone(request))
+                .build();
+    }
 
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
@@ -34,17 +42,17 @@ public class AuthController {
                 .build();
     }
 
-    @PostMapping("/request-otp")
-    public ApiResponse<Void> requestOtp(@Valid @RequestBody OtpRequest request) {
-        otpService.requestOtp(request.getPhoneNumber());
-        return ApiResponse.<Void>builder()
+    @PostMapping("/register/verify-otp")
+    public ApiResponse<RegistrationOtpResponse> verifyRegistrationOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        return ApiResponse.<RegistrationOtpResponse>builder()
+                .result(authService.verifyRegistrationOtp(request))
                 .build();
     }
 
-    @PostMapping("/verify-otp")
-    public ApiResponse<AuthResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request, HttpServletResponse response) {
+    @PostMapping("/register/set-password")
+    public ApiResponse<AuthResponse> completeRegistration(@Valid @RequestBody SetPasswordRequest request, HttpServletResponse response) {
         return ApiResponse.<AuthResponse>builder()
-                .result(authService.verifyOtp(request, response))
+                .result(authService.completeRegistration(request, response))
                 .build();
     }
 

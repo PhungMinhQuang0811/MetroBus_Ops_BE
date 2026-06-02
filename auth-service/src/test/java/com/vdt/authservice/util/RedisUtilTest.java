@@ -49,6 +49,28 @@ class RedisUtilTest {
     }
 
     @Test
+    void increment_Success() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(key)).thenReturn(1L);
+
+        assertEquals(1L, redisUtil.increment(key));
+    }
+
+    @Test
+    void expire_Success() {
+        redisUtil.expire(key, 1, TimeUnit.DAYS);
+
+        verify(redisTemplate).expire(key, 1, TimeUnit.DAYS);
+    }
+
+    @Test
+    void getExpire_Success() {
+        when(redisTemplate.getExpire(key, TimeUnit.MILLISECONDS)).thenReturn(1000L);
+
+        assertEquals(1000L, redisUtil.getExpire(key, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
     void addSet_Success() {
         when(redisTemplate.opsForSet()).thenReturn(setOperations);
         java.util.List<String> values = java.util.List.of("v1", "v2");
@@ -77,6 +99,16 @@ class RedisUtilTest {
     void hasKey_ReturnsTrue() {
         when(redisTemplate.hasKey(key)).thenReturn(true);
         assertTrue(redisUtil.hasKey(key));
+    }
+
+    @Test
+    void buildOtpKeys_ReturnExpectedKeys() {
+        String phoneNumber = "0900000001";
+
+        assertEquals("auth:otp:phone:0900000001", redisUtil.buildOtpKey(phoneNumber));
+        assertEquals("auth:otp:cooldown:phone:0900000001", redisUtil.buildOtpCooldownKey(phoneNumber));
+        assertEquals("auth:otp:rate:phone:day:0900000001", redisUtil.buildOtpPhoneRateLimitKey(phoneNumber));
+        assertEquals("auth:otp:verify-attempt:phone:0900000001", redisUtil.buildOtpVerifyAttemptKey(phoneNumber));
     }
 
     @Test

@@ -3,9 +3,13 @@ package com.vdt.authservice.service;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import com.vdt.authservice.modules.identity.dto.request.auth.LoginRequest;
+import com.vdt.authservice.modules.identity.dto.request.auth.PhoneCheckRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.ResetPasswordRequest;
+import com.vdt.authservice.modules.identity.dto.request.auth.SetPasswordRequest;
 import com.vdt.authservice.modules.identity.dto.request.auth.VerifyOtpRequest;
 import com.vdt.authservice.modules.identity.dto.response.auth.AuthResponse;
+import com.vdt.authservice.modules.identity.dto.response.auth.PhoneCheckResponse;
+import com.vdt.authservice.modules.identity.dto.response.auth.RegistrationOtpResponse;
 import com.vdt.authservice.modules.identity.entity.Account;
 import com.vdt.authservice.modules.identity.entity.Role;
 import com.vdt.authservice.common.exception.AppException;
@@ -19,9 +23,6 @@ import com.vdt.authservice.modules.identity.repository.RoleRepository;
 import com.vdt.authservice.modules.identity.security.service.IAccountTokenService;
 import com.vdt.authservice.modules.identity.security.service.ITokenManagementService;
 import com.vdt.authservice.modules.identity.security.util.JwtUtil;
-import com.vdt.authservice.modules.wallet.constant.WalletType;
-import com.vdt.authservice.modules.wallet.entity.Wallet;
-import com.vdt.authservice.modules.wallet.repository.WalletRepository;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -48,7 +49,6 @@ class AuthServiceTest {
 
     @Mock private AccountRepository accountRepository;
     @Mock private RoleRepository roleRepository;
-    @Mock private WalletRepository walletRepository;
     @Mock private AuthMapper authMapper;
     @Mock private AuthenticationManager authenticationManager;
     @Mock private JwtUtil jwtUtil;
@@ -266,98 +266,132 @@ class AuthServiceTest {
     }
 
     @Test
-    void verifyOtp_NewPhone_CreatesPassengerAccountWalletAndTokens() {
+    void checkPhone_ExistingAccount_ReturnsPasswordLoginAndDoesNotSendOtp() {
+        mockAccount.setPhoneNumber("0900000001");
+        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.of(mockAccount));
+
+        PhoneCheckResponse result = authService.checkPhone(new PhoneCheckRequest("+84900000001"));
+
+        assertTrue(result.isExists());
+        assertEquals("PASSWORD_LOGIN", result.getNextStep());
+        assertEquals("0900000001", result.getPhoneNumber());
+        verify(otpService, never()).requestOtp(anyString());
+    }
+
+    @Test
+    void checkPhone_NewAccount_SendsOtpAndReturnsRegisterOtp() {
+        when(accountRepository.findByPhoneNumber("0900000002")).thenReturn(Optional.empty());
+
+        PhoneCheckResponse result = authService.checkPhone(new PhoneCheckRequest("0900000002"));
+
+        assertFalse(result.isExists());
+        assertEquals("REGISTER_OTP", result.getNextStep());
+        assertEquals("0900000002", result.getPhoneNumber());
+        verify(otpService).requestOtp("0900000002");
+    }
+
+    @Test
+    void checkPhone_DisabledExistingAccount_ThrowsException() {
+        mockAccount.setActive(false);
+        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.of(mockAccount));
+
+        AppException ex = assertThrows(AppException.class, () -> authService.checkPhone(new PhoneCheckRequest("0900000001")));
+
+        assertEquals(ErrorCode.ACCOUNT_DISABLED, ex.getErrorCode());
+        verify(otpService, never()).requestOtp(anyString());
+    }
+
+    @Test
+    void verifyRegistrationOtp_NewPhone_ReturnsRegistrationToken() {
         VerifyOtpRequest req = VerifyOtpRequest.builder()
-                .phoneNumber("+84900000001")
+                .phoneNumber("0900000002")
                 .otp("123456")
+                .build();
+
+        when(accountRepository.existsByPhoneNumber("0900000002")).thenReturn(false);
+        when(accountTokenService.generateRegistrationToken("0900000002")).thenReturn("registration-token");
+
+        RegistrationOtpResponse result = authService.verifyRegistrationOtp(req);
+
+        assertEquals("registration-token", result.getRegistrationToken());
+        assertEquals("SET_PASSWORD", result.getNextStep());
+        verify(otpService).verifyOtp("0900000002", "123456");
+    }
+
+    @Test
+    void verifyRegistrationOtp_ExistingPhone_ThrowsException() {
+        VerifyOtpRequest req = VerifyOtpRequest.builder()
+                .phoneNumber("0900000001")
+                .otp("123456")
+                .build();
+
+        when(accountRepository.existsByPhoneNumber("0900000001")).thenReturn(true);
+
+        AppException ex = assertThrows(AppException.class, () -> authService.verifyRegistrationOtp(req));
+
+        assertEquals(ErrorCode.USER_EXISTED, ex.getErrorCode());
+        verify(otpService, never()).verifyOtp(anyString(), anyString());
+    }
+
+    @Test
+    void completeRegistration_ValidToken_CreatesPassengerAccountAndTokensWithoutWallet() {
+        SetPasswordRequest req = SetPasswordRequest.builder()
+                .registrationToken("registration-token")
+                .password("P@ssword123")
                 .build();
         Role passengerRole = Role.builder().name("PASSENGER").build();
         Account savedAccount = Account.builder()
                 .id("passenger-id")
-                .phoneNumber("0900000001")
+                .phoneNumber("0900000002")
                 .isActive(true)
                 .isPhoneVerified(true)
                 .roles(Set.of(passengerRole))
                 .build();
         AuthResponse authResponse = new AuthResponse();
 
-        when(otpService.normalizePhoneNumber("+84900000001")).thenReturn("0900000001");
-        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.empty());
+        when(accountTokenService.getPhoneNumberByRegistrationToken("registration-token")).thenReturn("0900000002");
+        when(accountRepository.existsByPhoneNumber("0900000002")).thenReturn(false);
         when(roleRepository.findByName("PASSENGER")).thenReturn(Optional.of(passengerRole));
+        when(passwordEncoder.encode("P@ssword123")).thenReturn("encoded-password");
         when(accountRepository.save(any(Account.class))).thenReturn(savedAccount);
-        when(walletRepository.existsByAccountIdAndWalletType("passenger-id", WalletType.PASSENGER)).thenReturn(false);
         when(jwtUtil.generateToken(savedAccount)).thenReturn("at");
         when(jwtUtil.generateRefreshToken(savedAccount)).thenReturn("rt");
         when(authMapper.toAuthResponse(savedAccount)).thenReturn(authResponse);
 
-        AuthResponse result = authService.verifyOtp(req, response);
+        AuthResponse result = authService.completeRegistration(req, response);
 
         assertSame(authResponse, result);
-        verify(otpService).verifyOtp("0900000001", "123456");
-        verify(walletRepository).save(any(Wallet.class));
+        verify(accountTokenService).deleteRegistrationToken("registration-token");
         verify(response, times(3)).addHeader(eq("Set-Cookie"), anyString());
+        verify(accountRepository).save(argThat(account ->
+                "0900000002".equals(account.getPhoneNumber())
+                        && "encoded-password".equals(account.getPassword())
+                        && account.isActive()
+                        && account.isPhoneVerified()
+        ));
     }
 
     @Test
-    void verifyOtp_ExistingPhoneWithoutVerified_SetsPhoneVerifiedAndSkipsExistingWallet() {
-        VerifyOtpRequest req = VerifyOtpRequest.builder()
-                .phoneNumber("0900000001")
-                .otp("123456")
-                .build();
-        Account existing = Account.builder()
-                .id("passenger-id")
-                .phoneNumber("0900000001")
-                .isActive(true)
-                .isPhoneVerified(false)
-                .build();
+    void completeRegistration_InvalidToken_ThrowsException() {
+        when(accountTokenService.getPhoneNumberByRegistrationToken("invalid")).thenReturn(null);
 
-        when(otpService.normalizePhoneNumber("0900000001")).thenReturn("0900000001");
-        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.of(existing));
-        when(accountRepository.save(existing)).thenReturn(existing);
-        when(walletRepository.existsByAccountIdAndWalletType("passenger-id", WalletType.PASSENGER)).thenReturn(true);
-        when(jwtUtil.generateToken(existing)).thenReturn("at");
-        when(jwtUtil.generateRefreshToken(existing)).thenReturn("rt");
-        when(authMapper.toAuthResponse(existing)).thenReturn(new AuthResponse());
+        AppException ex = assertThrows(AppException.class,
+                () -> authService.completeRegistration(SetPasswordRequest.builder().registrationToken("invalid").build(), response));
 
-        authService.verifyOtp(req, response);
-
-        assertTrue(existing.isPhoneVerified());
-        verify(accountRepository).save(existing);
-        verify(walletRepository, never()).save(any());
+        assertEquals(ErrorCode.INVALID_ONETIME_TOKEN, ex.getErrorCode());
     }
 
     @Test
-    void verifyOtp_ExistingDisabledAccount_ThrowsException() {
-        VerifyOtpRequest req = VerifyOtpRequest.builder()
-                .phoneNumber("0900000001")
-                .otp("123456")
-                .build();
-        Account existing = Account.builder()
-                .id("passenger-id")
-                .isActive(false)
-                .build();
-
-        when(otpService.normalizePhoneNumber("0900000001")).thenReturn("0900000001");
-        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.of(existing));
-
-        AppException ex = assertThrows(AppException.class, () -> authService.verifyOtp(req, response));
-
-        assertEquals(ErrorCode.ACCOUNT_DISABLED, ex.getErrorCode());
-        verify(walletRepository, never()).save(any());
-    }
-
-    @Test
-    void verifyOtp_NewPhonePassengerRoleMissing_ThrowsException() {
-        VerifyOtpRequest req = VerifyOtpRequest.builder()
-                .phoneNumber("0900000001")
-                .otp("123456")
-                .build();
-
-        when(otpService.normalizePhoneNumber("0900000001")).thenReturn("0900000001");
-        when(accountRepository.findByPhoneNumber("0900000001")).thenReturn(Optional.empty());
+    void completeRegistration_PassengerRoleMissing_ThrowsException() {
+        when(accountTokenService.getPhoneNumberByRegistrationToken("registration-token")).thenReturn("0900000002");
+        when(accountRepository.existsByPhoneNumber("0900000002")).thenReturn(false);
         when(roleRepository.findByName("PASSENGER")).thenReturn(Optional.empty());
 
-        AppException ex = assertThrows(AppException.class, () -> authService.verifyOtp(req, response));
+        AppException ex = assertThrows(AppException.class,
+                () -> authService.completeRegistration(SetPasswordRequest.builder()
+                        .registrationToken("registration-token")
+                        .password("P@ssword123")
+                        .build(), response));
 
         assertEquals(ErrorCode.ROLE_NOT_FOUND, ex.getErrorCode());
     }

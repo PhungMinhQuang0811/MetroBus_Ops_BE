@@ -8,4 +8,7 @@ public interface IAccountTokenService {
     String generateResetPasswordToken(String accountId);
     String getAccountIdByResetPasswordToken(String token);
     void deleteResetPasswordToken(String token);
+    String generateRegistrationToken(String phoneNumber);
+    String getPhoneNumberByRegistrationToken(String token);
+    void deleteRegistrationToken(String token);
 }

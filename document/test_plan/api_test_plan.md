@@ -479,23 +479,8 @@ POST /auth/phone/check
 - HTTP: `429`
 - Side effects: Không gửi SMS.
 
-#### API-UC01-011: Hourly registration OTP limit by IP
 
-- Request: Gọi yêu cầu OTP lần thứ 21 trong 1 giờ từ cùng IP.
-- Expected response:
-
-```json
-{
-  "code": 3002,
-  "message": "OTP request limit exceeded. Please try again later.",
-  "result": null
-}
-```
-
-- HTTP: `429`
-- Side effects: Không gửi SMS.
-
-#### API-UC01-012: Registration OTP invalid after 5 failed verification attempts
+#### API-UC01-011: Registration OTP invalid after 5 failed verification attempts
 
 - Request: Xác minh sai OTP lần thứ 5 rồi thử xác minh lại OTP cũ.
 - Expected response:
@@ -518,10 +503,9 @@ Các giới hạn phải nằm trong application config và counter được lư
 ```yaml
 app:
   otp:
-    expiration-ms: 120000
+    expiration-ms: 60000
     resend-cooldown-seconds: 60
     max-requests-per-phone-per-day: 5
-    max-requests-per-ip-per-hour: 20
     max-verification-attempts: 5
 ```
 
@@ -2523,7 +2507,7 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 ### UC21: Thiết lập cấu hình biểu giá tuyến
 
-#### API-UC21-001: Create/update fare policy
+#### API-UC21-001: Create/update subscription fare policy
 
 - Request:
 
@@ -2534,13 +2518,17 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 ```json
 {
-  "policyId": "FARE_HCM_METRO_2026",
-  "transportType": "METRO",
-  "calculationModel": "STATION_COUNT",
-  "baseFare": 8000,
-  "stepFare": 1000,
-  "maxFare": 20000,
-  "effectiveFrom": "2026-06-01"
+  "policyId": "POLICY_HCM_MONTHLY_METRO_2026",
+  "packageCode": "MONTHLY_METRO_ALL_ROUTE",
+  "packageName": "Vé tháng Metro toàn tuyến",
+  "subscriptionType": "METRO",
+  "routeId": null,
+  "durationDays": 30,
+  "price": 200000,
+  "currency": "VND",
+  "status": "ACTIVE",
+  "effectiveFrom": "2026-06-01",
+  "effectiveTo": null
 }
 ```
 
@@ -2551,7 +2539,8 @@ Cookie: accessToken={{companyManagerAccessToken}}
   "code": 1000,
   "message": "Success",
   "result": {
-    "policyId": "FARE_HCM_METRO_2026",
+    "policyId": "policy_id",
+    "packageCode": "MONTHLY_METRO_ALL_ROUTE",
     "cacheUpdated": true
   }
 }
@@ -2559,36 +2548,28 @@ Cookie: accessToken={{companyManagerAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC21-002: Fare policy exceeds ceiling rejected
+#### API-UC21-002: Invalid fare policy rejected
 
-- Request: giống `API-UC21-001`, truyền `maxFare` vượt khung trần.
+- Request: giống `API-UC21-001`, truyền `price <= 0` hoặc `durationDays <= 0`.
 - Expected response:
 
 ```json
 {
-  "code": 3021,
-  "message": "Fare policy exceeds system ceiling",
+  "code": 2001,
+  "message": "Fare policy is invalid",
   "result": null
 }
 ```
 
 - HTTP: `422`
 
-#### API-UC21-003: Fare preview
+#### API-UC21-003: Fare policy list
 
 - Request:
 
 ```http
-POST /fare-policies/preview-fare
+GET /fare-policies?subscriptionType=METRO&status=ACTIVE
 Cookie: accessToken={{companyManagerAccessToken}}
-```
-
-```json
-{
-  "policyId": "FARE_HCM_METRO_2026",
-  "entryStationId": 1001,
-  "exitStationId": 1005
-}
 ```
 
 - Expected response:
@@ -2597,10 +2578,17 @@ Cookie: accessToken={{companyManagerAccessToken}}
 {
   "code": 1000,
   "message": "Success",
-  "result": {
-    "fare": 12000,
-    "currency": "VND"
-  }
+  "result": [
+    {
+      "policyId": "policy_id",
+      "packageCode": "MONTHLY_METRO_ALL_ROUTE",
+      "packageName": "Vé tháng Metro toàn tuyến",
+      "durationDays": 30,
+      "price": 200000,
+      "currency": "VND",
+      "status": "ACTIVE"
+    }
+  ]
 }
 ```
 
@@ -2691,75 +2679,11 @@ Cookie: accessToken={{platformManagerAccessToken}}
 
 - HTTP: `200`
 
-### UC23: Cấu hình khung giá trần toàn hệ thống
-
-#### API-UC23-001: Update fare ceiling
-
-- Request:
-
-```http
-POST /configs/fare-ceiling
-Cookie: accessToken={{platformManagerAccessToken}}
-```
-
-```json
-{
-  "transportType": "METRO",
-  "maxMonthlyPassFare": 300000,
-  "effectiveFrom": "2026-06-01"
-}
-```
-
-- Expected response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "configKey": "fare.ceiling.metro",
-    "cacheUpdated": true
-  }
-}
-```
-
-- HTTP: `200`
-
-#### API-UC23-002: Invalid fare ceiling rejected
-
-- Request: giống `API-UC23-001`, truyền giá trị âm hoặc `0`.
-- Expected response:
-
-```json
-{
-  "code": 2001,
-  "message": "Fare ceiling must be greater than zero",
-  "result": null
-}
-```
-
-- HTTP: `400`
-
-#### API-UC23-003: Company Manager cannot update fare ceiling
-
-- Request: gọi `/configs/fare-ceiling` bằng `companyManagerToken`.
-- Expected response:
-
-```json
-{
-  "code": 4003,
-  "message": "Access denied",
-  "result": null
-}
-```
-
-- HTTP: `403`
-
 ## Module 7: Giám Sát, Bảo Mật & Phân Quyền
 
-### UC24: Khóa và mở khóa tài khoản khẩn cấp
+### UC23: Khóa và mở khóa tài khoản khẩn cấp
 
-#### API-UC24-001: Ban account
+#### API-UC23-001: Ban account
 
 - Request:
 
@@ -2790,7 +2714,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC24-002: Banned account blocked
+#### API-UC23-002: Banned account blocked
 
 - Request: login hoặc gọi API bằng account đã bị ban.
 - Expected response:
@@ -2805,7 +2729,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `401` hoặc `403`
 
-#### API-UC24-003: Unban account
+#### API-UC23-003: Unban account
 
 - Request:
 
@@ -2836,7 +2760,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC24-004: Admin self-ban rejected
+#### API-UC23-004: Admin self-ban rejected
 
 - Request: gọi `/admin/ban-account` với `accountId` của chính admin đang đăng nhập.
 - Expected response:
@@ -2851,9 +2775,9 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `422`
 
-### UC25: Cấu hình phân quyền động
+### UC24: Cấu hình phân quyền động
 
-#### API-UC25-001: Update role permissions
+#### API-UC24-001: Update role permissions
 
 - Request:
 
@@ -2886,7 +2810,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC25-002: Revoke permission effect
+#### API-UC24-002: Revoke permission effect
 
 - Request: remove permission khỏi role rồi gọi API tương ứng bằng user thuộc role đó.
 - Expected response:
@@ -2901,7 +2825,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `403`
 
-#### API-UC25-003: Revoke core admin permission rejected
+#### API-UC24-003: Revoke core admin permission rejected
 
 - Request:
 
@@ -2930,9 +2854,9 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `422`
 
-### UC26: Giám sát kỹ thuật và tra cứu system logs
+### UC25: Giám sát kỹ thuật và tra cứu system logs
 
-#### API-UC26-001: Search system logs
+#### API-UC25-001: Search system logs
 
 - Request:
 
@@ -2962,7 +2886,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC26-002: Export system logs
+#### API-UC25-002: Export system logs
 
 - Request:
 
@@ -2979,7 +2903,7 @@ Content-Type: text/csv hoặc application/vnd.openxmlformats-officedocument.spre
 
 - HTTP: `200`
 
-#### API-UC26-003: Critical incident alert
+#### API-UC25-003: Critical incident alert
 
 - Request:
 
@@ -3011,7 +2935,7 @@ Cookie: accessToken={{adminAccessToken}}
 
 - HTTP: `200`
 
-#### API-UC26-004: Non-admin cannot access system logs
+#### API-UC25-004: Non-admin cannot access system logs
 
 - Request: gọi `/admin/logs` bằng `companyManagerToken`, `staffToken` hoặc `passengerToken`.
 - Expected response:
@@ -3054,10 +2978,9 @@ Nên tạo folder trong Postman theo đúng thứ tự:
 20. `UC20 - Route & Station`
 21. `UC21 - Fare Policy`
 22. `UC22 - Tenant`
-23. `UC23 - Fare Ceiling`
-24. `UC24 - Ban/Unban`
-25. `UC25 - RBAC`
-26. `UC26 - Logs`
+23. `UC23 - Ban/Unban`
+24. `UC24 - RBAC`
+25. `UC25 - Logs`
 
 ---
 

@@ -133,7 +133,6 @@ Gợi ý route FE:
 
 /platform
 /platform/tenants
-/platform/fare-ceiling
 /platform/clearing
 /platform/payouts
 
@@ -153,7 +152,7 @@ Gợi ý route FE:
 | `PASSENGER` | Mobile PWA | Đăng ký bằng SĐT/OTP, đăng nhập bằng SĐT/mật khẩu, quản lý hồ sơ, thẻ ảo, QR, lịch sử |
 | `STAFF` | Staff Portal | Mở/kết ca, xử lý PSC, phôi thẻ, order thẻ cứng |
 | `COMPANY_MANAGER` | Company Portal | Quản lý staff, ca trực, tuyến/trạm, biểu giá, payout |
-| `PLATFORM_MANAGER` | Platform Portal | Tenant, khung giá trần, clearing, payout approval |
+| `PLATFORM_MANAGER` | Platform Portal | Tenant, clearing, payout approval |
 | `ADMIN` | Admin Portal | Ban/unban, RBAC, system logs |
 | `Validator` | Gate Simulator Web | Quét QR, hiển thị kết quả vào/ra, lỗi soát vé |
 
@@ -683,22 +682,25 @@ UI elements:
 
 - Fare policy list
 - Policy form:
+  - Package code
+  - Package name
   - Transport type
-  - Calculation model
-  - Base fare
-  - Step fare
-  - Max fare
+  - Route selector optional
+  - Duration days
+  - Price
+  - Currency
+  - Status
   - Effective from
-- Fare preview panel:
-  - Entry station
-  - Exit station
-  - Calculated fare
+- Package preview panel:
+  - Package name
+  - Duration
+  - Price
 - Warning if exceeds ceiling
 
 API mapping:
 
 - `POST /fare-policies`
-- `POST /fare-policies/preview-fare`
+- `GET /fare-policies`
 
 ### COMPANY-04: Payout Request
 
@@ -747,24 +749,7 @@ API mapping:
 - `POST /tenants`
 - `GET /tenants`
 
-### PLATFORM-02: Fare Ceiling Config
-
-**Use cases:** `UC23`
-
-UI elements:
-
-- Fare ceiling config form:
-  - Transport type
-  - Max monthly pass fare
-  - Effective from
-- Current config card
-- Save confirmation modal
-
-API mapping:
-
-- `POST /configs/fare-ceiling`
-
-### PLATFORM-03: Clearing Dashboard
+### PLATFORM-02: Clearing Dashboard
 
 **Use cases:** `UC18`
 
@@ -812,7 +797,7 @@ API mapping:
 
 ### ADMIN-01: Account Ban/Unban
 
-**Use cases:** `UC24`
+**Use cases:** `UC23`
 
 UI elements:
 
@@ -832,7 +817,7 @@ API mapping:
 
 ### ADMIN-02: Dynamic RBAC
 
-**Use cases:** `UC25`
+**Use cases:** `UC24`
 
 UI elements:
 
@@ -849,7 +834,7 @@ API mapping:
 
 ### ADMIN-03: System Logs
 
-**Use cases:** `UC26`
+**Use cases:** `UC25`
 
 UI elements:
 
@@ -913,9 +898,8 @@ Screens:
 Screens:
 
 1. `PLATFORM-01 Tenant Management`
-2. `PLATFORM-02 Fare Ceiling Config`
-3. `PLATFORM-03 Clearing Dashboard`
-4. `PLATFORM-04 Payout Approval`
+2. `PLATFORM-02 Clearing Dashboard`
+3. `PLATFORM-03 Payout Approval`
 
 ### Flow F: Admin Security
 

@@ -200,10 +200,10 @@
 
 ### UC21: Thiết lập Cấu hình Biểu giá tuyến
 
-- [ ] **AC-UC21-01 [P0]** Given Company Manager cấu hình giá hợp lệ cho tenant của mình, when lưu, then policy được cập nhật trong `fare_policies.json` và nạp lại vào cache RAM.
-- [ ] **AC-UC21-02 [P0]** Given policy bus đồng giá hoặc Metro lũy tiến theo số ga, when Fare Engine tính giá, then kết quả đúng công thức trong SRS.
-- [ ] **AC-UC21-03 [P0]** Given mức giá vượt khung trần, when lưu policy, then backend từ chối với lỗi nghiệp vụ.
-- [ ] **AC-UC21-04 [P0]** Given policy mới có hiệu lực, when mua/gia hạn vé hoặc tính chênh lệch tại PSC, then hệ thống dùng policy mới mà không cần restart.
+- [ ] **AC-UC21-01 [P0]** Given Company Manager cấu hình gói vé chu kỳ hợp lệ cho tenant của mình, when lưu, then policy được ghi vào bảng `fare_policies` và đồng bộ lại cache/resource đọc nhanh.
+- [ ] **AC-UC21-02 [P0]** Given policy đang `ACTIVE` và trong thời gian hiệu lực, when UC08/UC10 tạo phiên thanh toán, then backend dùng đúng `price`, `duration_days`, `package_code` từ `fare_policies`.
+- [ ] **AC-UC21-03 [P0]** Given giá hoặc thời hạn không hợp lệ, when lưu policy, then backend từ chối với lỗi validation.
+- [ ] **AC-UC21-04 [P0]** Given policy mới có hiệu lực, when mua/gia hạn vé, then hệ thống dùng policy mới mà không cần restart.
 - [ ] **AC-UC21-05 [P0]** Given Company Manager cố sửa policy tenant khác, when gọi API, then backend từ chối.
 
 ---
@@ -217,40 +217,31 @@
 - [ ] **AC-UC22-03 [P0]** Given MST hoặc email đại diện đã tồn tại, when khởi tạo, then backend từ chối và không tạo dữ liệu dở dang.
 - [ ] **AC-UC22-04 [P0]** Given user không phải Platform Manager, when gọi API khởi tạo tenant, then backend từ chối.
 
-### UC23: Cấu hình Khung giá trần toàn hệ thống
-
-- [ ] **AC-UC23-01 [P0]** Given Platform Manager nhập mức trần dương hợp lệ, when lưu, then giá trị được cập nhật trong `system_configs.json` và nạp lại vào cache.
-- [ ] **AC-UC23-02 [P0]** Given khung trần mới có hiệu lực, when Company Manager lưu policy vượt trần, then backend từ chối.
-- [ ] **AC-UC23-03 [P0]** Given giá trị trần nhỏ hơn hoặc bằng `0`, when lưu, then backend từ chối.
-- [ ] **AC-UC23-04 [P0]** Given user không phải Platform Manager, when sửa khung trần, then backend từ chối.
-
----
-
 ## 8. Module 7: Giám sát, Bảo mật & Phân quyền
 
-### UC24: Khóa và Mở khóa tài khoản khẩn cấp
+### UC23: Khóa và Mở khóa tài khoản khẩn cấp
 
-- [ ] **AC-UC24-01 [P0]** Given Admin khóa tài khoản hợp lệ, when thao tác hoàn tất, then `accounts.is_active = FALSE` và token đang hoạt động bị vô hiệu hóa.
-- [ ] **AC-UC24-02 [P0]** Given tài khoản đã bị khóa, when đăng nhập, gọi API hoặc quét vé, then hệ thống từ chối.
-- [ ] **AC-UC24-03 [P0]** Given Admin mở khóa tài khoản, when thao tác hoàn tất, then `accounts.is_active = TRUE` và người dùng có thể đăng nhập lại.
-- [ ] **AC-UC24-04 [P0]** Given Admin cố tự khóa chính mình, when gửi yêu cầu, then backend từ chối.
-- [ ] **AC-UC24-05 [P0]** Given khóa hoặc mở khóa, when kiểm tra audit, then hệ thống lưu admin thao tác, tài khoản mục tiêu, thời gian và lý do.
+- [ ] **AC-UC23-01 [P0]** Given Admin khóa tài khoản hợp lệ, when thao tác hoàn tất, then `accounts.is_active = FALSE` và token đang hoạt động bị vô hiệu hóa.
+- [ ] **AC-UC23-02 [P0]** Given tài khoản đã bị khóa, when đăng nhập, gọi API hoặc quét vé, then hệ thống từ chối.
+- [ ] **AC-UC23-03 [P0]** Given Admin mở khóa tài khoản, when thao tác hoàn tất, then `accounts.is_active = TRUE` và người dùng có thể đăng nhập lại.
+- [ ] **AC-UC23-04 [P0]** Given Admin cố tự khóa chính mình, when gửi yêu cầu, then backend từ chối.
+- [ ] **AC-UC23-05 [P0]** Given khóa hoặc mở khóa, when kiểm tra audit, then hệ thống lưu admin thao tác, tài khoản mục tiêu, thời gian và lý do.
 
-### UC25: Cấu hình Phân quyền động
+### UC24: Cấu hình Phân quyền động
 
-- [ ] **AC-UC25-01 [P0]** Given Admin gán permission cho role, when lưu cấu hình, then quyền có hiệu lực runtime mà không restart server.
-- [ ] **AC-UC25-02 [P0]** Given Admin tước permission khỏi role, when user thuộc role gọi API tương ứng, then backend từ chối ngay theo cấu hình mới.
-- [ ] **AC-UC25-03 [P0]** Given Admin cố tước quyền cốt lõi như `CONFIG_RBAC` hoặc `MANAGE_USERS` khỏi role `ADMIN`, when lưu, then backend từ chối.
-- [ ] **AC-UC25-04 [P0]** Given user không phải Admin, when sửa RBAC, then backend từ chối.
-- [ ] **AC-UC25-05 [P0]** Given RBAC thay đổi, when kiểm tra audit, then hệ thống lưu cấu hình trước/sau và admin thao tác.
+- [ ] **AC-UC24-01 [P0]** Given Admin gán permission cho role, when lưu cấu hình, then quyền có hiệu lực runtime mà không restart server.
+- [ ] **AC-UC24-02 [P0]** Given Admin tước permission khỏi role, when user thuộc role gọi API tương ứng, then backend từ chối ngay theo cấu hình mới.
+- [ ] **AC-UC24-03 [P0]** Given Admin cố tước quyền cốt lõi như `CONFIG_RBAC` hoặc `MANAGE_USERS` khỏi role `ADMIN`, when lưu, then backend từ chối.
+- [ ] **AC-UC24-04 [P0]** Given user không phải Admin, when sửa RBAC, then backend từ chối.
+- [ ] **AC-UC24-05 [P0]** Given RBAC thay đổi, when kiểm tra audit, then hệ thống lưu cấu hình trước/sau và admin thao tác.
 
-### UC26: Giám sát kỹ thuật & Tra cứu System Logs
+### UC25: Giám sát kỹ thuật & Tra cứu System Logs
 
-- [ ] **AC-UC26-01 [P0]** Given Admin truy cập Portal giám sát, when lọc theo thời gian, loại log hoặc mức độ, then hệ thống trả đúng dữ liệu log trong phạm vi truy vấn.
-- [ ] **AC-UC26-02 [P0]** Given log có dữ liệu chi tiết, when mở bản ghi, then Portal hiển thị cấu trúc JSON và metadata cần thiết.
-- [ ] **AC-UC26-03 [P1]** Given kết quả truy vấn log, when Admin xuất báo cáo, then hệ thống tạo file CSV hoặc Excel tải được.
-- [ ] **AC-UC26-04 [P1]** Given phát sinh `incident_logs` mức `CRITICAL`, when backend ghi nhận, then hệ thống hiển thị cảnh báo trên Portal và gửi webhook đến kênh kỹ thuật đã cấu hình.
-- [ ] **AC-UC26-05 [P0]** Given user không phải Admin, when truy cập system logs toàn cục, then backend từ chối.
+- [ ] **AC-UC25-01 [P0]** Given Admin truy cập Portal giám sát, when lọc theo thời gian, loại log hoặc mức độ, then hệ thống trả đúng dữ liệu log trong phạm vi truy vấn.
+- [ ] **AC-UC25-02 [P0]** Given log có dữ liệu chi tiết, when mở bản ghi, then Portal hiển thị cấu trúc JSON và metadata cần thiết.
+- [ ] **AC-UC25-03 [P1]** Given kết quả truy vấn log, when Admin xuất báo cáo, then hệ thống tạo file CSV hoặc Excel tải được.
+- [ ] **AC-UC25-04 [P1]** Given phát sinh `incident_logs` mức `CRITICAL`, when backend ghi nhận, then hệ thống hiển thị cảnh báo trên Portal và gửi webhook đến kênh kỹ thuật đã cấu hình.
+- [ ] **AC-UC25-05 [P0]** Given user không phải Admin, when truy cập system logs toàn cục, then backend từ chối.
 
 ---
 
@@ -272,7 +263,7 @@
 
 - [ ] **AC-CROSS-07 [P0]** Các thao tác nhạy cảm gồm ban/unban, RBAC, giải khóa thẻ, đóng ca, clearing và payout đều lưu audit.
 - [ ] **AC-CROSS-08 [P0]** Toàn hệ thống dùng múi giờ `Asia/Ho_Chi_Minh` cho nghiệp vụ, log và scheduler.
-- [ ] **AC-CROSS-09 [P0]** Các file cấu hình `fare_policies.json`, `system_configs.json`, `route_stations.json`, `tenants.json` được nạp vào cache RAM khi backend khởi động và có cơ chế cập nhật cache khi thay đổi.
+- [ ] **AC-CROSS-09 [P0]** Bảng `fare_policies` và các resource cấu hình `system_configs.json`, `route_stations.json`, `tenants.json` được nạp/đồng bộ vào cache RAM khi backend khởi động và có cơ chế cập nhật cache khi thay đổi.
 
 ---
 

@@ -29,7 +29,7 @@ public class Account {
     @Column(unique = true, length = 50)
     private String username;
 
-    @Column(length = 100)
+    @Column(length = 100, nullable = false)
     private String password;
 
     @Column(name = "phone_number", unique = true, length = 10)
