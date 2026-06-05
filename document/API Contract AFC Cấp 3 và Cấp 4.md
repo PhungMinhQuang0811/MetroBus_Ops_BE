@@ -1,0 +1,1961 @@
+# API Contract AFC Cấp 3 Và Cấp 4
+
+Tài liệu này mô tả API contract tạm chốt cho scope AFC Cấp 3/Cấp 4, bám theo:
+
+- `document/Use Case Spec AFC Cấp 3 và Cấp 4.md`
+- `document/Draft Schema auth_db và afc_ops_db.md`
+
+Mục tiêu là đủ rõ để triển khai `auth-ops-service`, `afc-ops-service`, FE vận hành, mock Cấp 2 và mock Cấp 5.
+
+## 1. Quy Ước Chung
+
+### 1.1. Service Và Base Path
+
+| Service | Base path | Vai trò |
+| --- | --- | --- |
+| `auth-ops-service` | `/auth` | Đăng nhập, refresh token, account nội bộ, đổi/reset mật khẩu |
+| `afc-ops-service` | `/afc-ops` | Master data, thiết bị, transaction, control package, batch, dashboard và dữ liệu card/ticket/entitlement đồng bộ từ Cấp 5 |
+
+### 1.1.1. Quy Ước Đặt Tên API
+
+API trong tài liệu này dùng kiểu **action-based endpoint** để dễ đọc và dễ ghép FE/mock, không cố ép RESTful resource path.
+
+Ví dụ:
+
+- Dùng `/auth/create-account` thay vì `POST /auth/accounts`.
+- Dùng `/afc-ops/create-route` thay vì `POST /afc-ops/routes`.
+- Dùng `/afc-ops/submit-tap-event` thay vì `POST /afc-ops/device-api/tap-events`.
+
+### 1.2. Response Chuẩn
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {}
+}
+```
+
+Response lỗi:
+
+```json
+{
+  "code": 4001,
+  "message": "Invalid request",
+  "result": null
+}
+```
+
+### 1.3. Header Chung
+
+| Header | Bắt buộc | Dùng cho | Ghi chú |
+| --- | --- | --- | --- |
+| `Authorization: Bearer <accessToken>` hoặc access token cookie | Có với API nội bộ | FE, staff API | Giữ theo cơ chế hiện tại của `auth-ops-service`; token không trả trong response body |
+| `X-Device-Code` | Có với API thiết bị | Cấp 2/mock device | Mã thiết bị đã đăng ký |
+| `X-Device-Secret` | Có với API thiết bị | Cấp 2/mock device | MVP có thể dùng shared secret |
+| `X-Level5-Client-Id` | Có với API Cấp 5 inbound | Cấp 5/mock | Xác thực nguồn Cấp 5 |
+| `X-Level5-Signature` | Có với API Cấp 5 inbound | Cấp 5/mock | MVP có thể mock signature |
+| `X-External-User-Id` | Có với API Passenger App trong MVP | App/mock App | Định danh hành khách từ hệ ngoài/C5; không phải account trong `auth_db` |
+| `X-Request-Id` | Khuyến nghị | Tất cả | Trace request |
+
+### 1.4. Pagination
+
+Request query:
+
+| Query | Default | Ghi chú |
+| --- | --- | --- |
+| `page` | `0` | Zero-based |
+| `size` | `20` | Max đề xuất `100` |
+| `sort` | tùy API | Ví dụ `createdAt,desc` |
+
+Response page:
+
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 20,
+  "totalElements": 0,
+  "totalPages": 0
+}
+```
+
+### 1.5. Enum Chính
+
+| Nhóm | Giá trị |
+| --- | --- |
+| Role | `OPERATOR_ADMIN`, `OPERATOR_MANAGER`, `STATION_OPERATOR` |
+| Device type | `QR_SCANNER_SIMULATOR` |
+| Device direction | `ENTRY`, `EXIT`, `BOTH` |
+| Device status | `ACTIVE`, `OFFLINE`, `MAINTENANCE`, `DISABLED` |
+| Transport type | `METRO`, `BUS` |
+| Media type | `VIRTUAL_QR` |
+| Card type | `VIRTUAL_QR`, `PHYSICAL` |
+| Card status | `ACTIVE`, `INACTIVE`, `CANCELLED`, `BLACKLISTED` |
+| Ticket type | `METRO_SINGLE_RIDE` |
+| Ticket usage status | `UNUSED`, `IN_USE`, `USED`, `EXPIRED`, `CANCELLED` |
+| Tap type | `TAP_IN`, `TAP_OUT`, `CHECK` |
+| Transaction decision | `OPEN_GATE`, `DENY`, `ACCEPTED_FOR_FORWARDING` |
+| Transaction reason | `VALID`, `DEVICE_DISABLED`, `INVALID_DIRECTION`, `MEDIA_BLACKLISTED`, `CARD_INACTIVE`, `CARD_CANCELLED`, `UNKNOWN_MEDIA`, `QR_EXPIRED`, `QR_INVALID_SIGNATURE`, `QR_REPLAYED`, `ENTITLEMENT_EXPIRED`, `ENTITLEMENT_INACTIVE`, `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_ALREADY_USED`, `TICKET_SCOPE_INVALID`, `ACTIVE_PRODUCT_CONFLICT` |
+| Transaction sync status | `PENDING`, `SYNCED`, `FAILED` |
+| Ticket processing status | `PENDING`, `CONFIRMED`, `FAILED` |
+| Package type | `DEVICE_CONFIG`, `MEDIA_ACCESS_RULES` |
+| Package source type | `LEVEL4_CREATED`, `LEVEL5_SYNCED` |
+| Package status | `CREATED`, `PUBLISHED`, `REVOKED` |
+| Station sync status | `PENDING`, `APPLIED`, `FAILED` |
+| Batch status | `CREATED`, `SUBMITTED`, `ACCEPTED`, `REJECTED`, `FAILED` |
+| Entitlement status | `ACTIVE`, `INACTIVE`, `CANCELLED` |
+| Pass period | `MONTH` |
+| Pass scope | `SINGLE_ROUTE`, `INTERLINE` |
+
+Ghi chú: `TIME_SYNC` không đưa vào package type chính của MVP. Đồng bộ thời gian xem là yêu cầu hạ tầng/NTP hoặc validate timestamp ở backend.
+
+## 2. Auth-Ops Service APIs
+
+### UC01 - Đăng Nhập
+
+#### API-AUTH-001 - Login
+
+`POST /auth/login`
+
+Permission: Public.
+
+Request:
+
+```json
+{
+  "username": "manager01",
+  "password": "Password@123"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": "uuid",
+    "username": "manager01",
+    "roles": ["OPERATOR_MANAGER"],
+    "permissions": ["MASTER_DATA_READ", "DASHBOARD_READ"],
+    "mustChangePassword": false
+  }
+}
+```
+
+Response header:
+
+```http
+Set-Cookie: access_token=jwt-access-token; HttpOnly; Path=/...
+Set-Cookie: refresh_token=jwt-refresh-token; HttpOnly; Path=/auth/refresh-token
+Set-Cookie: refresh_token=jwt-refresh-token; HttpOnly; Path=/auth/logout
+```
+
+Luồng:
+
+1. Kiểm tra username/password.
+2. Kiểm tra `is_active = true`.
+3. Load roles/permissions.
+4. Sinh access token và refresh token, set vào cookie theo cấu hình hiện tại.
+5. Trả `mustChangePassword` để FE biết có cần chuyển user sang màn đổi mật khẩu bắt buộc hay không.
+6. Ghi login event/audit.
+
+Lỗi chính:
+
+| Code | Message | HTTP |
+| --- | --- | --- |
+| `AUTH_INVALID_CREDENTIALS` | Username or password is incorrect | 401 |
+| `ACCOUNT_DISABLED` | Account is disabled | 403 |
+| `ACCOUNT_ROLE_EMPTY` | Account has no assigned role | 403 |
+
+#### API-AUTH-002 - Refresh Token
+
+`POST /auth/refresh-token`
+
+Permission: Public, cần refresh token cookie hợp lệ.
+
+Request body: không có.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": null
+}
+```
+
+Response header:
+
+```http
+Set-Cookie: access_token=new-jwt-access-token; HttpOnly; Path=/...
+Set-Cookie: refresh_token=new-jwt-refresh-token; HttpOnly; Path=/auth/refresh-token
+Set-Cookie: refresh_token=new-jwt-refresh-token; HttpOnly; Path=/auth/logout
+```
+
+#### API-AUTH-003 - Logout
+
+`POST /auth/logout`
+
+Permission: Authenticated.
+
+Request body: không có. System lấy access token/refresh token từ cookie để invalidate và clear cookie.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": null
+}
+```
+
+Response header:
+
+```http
+Set-Cookie: access_token=; HttpOnly; Max-Age=0; Path=/...
+Set-Cookie: refresh_token=; HttpOnly; Max-Age=0; Path=/auth/refresh-token
+Set-Cookie: refresh_token=; HttpOnly; Max-Age=0; Path=/auth/logout
+```
+
+### UC02 - Quản Lý Tài Khoản Nhân Sự
+
+#### API-AUTH-004 - List Accounts
+
+`GET /auth/list-accounts?keyword=&role=&isActive=&page=0&size=20`
+
+Permission: `ACCOUNT_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": "uuid",
+        "username": "station01",
+        "roles": ["STATION_OPERATOR"],
+        "isActive": true,
+        "mustChangePassword": true,
+        "createdAt": "2026-06-04T10:00:00+07:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### API-AUTH-005 - Create Account
+
+`POST /auth/create-account`
+
+Permission: `ACCOUNT_WRITE`.
+
+Request:
+
+```json
+{
+  "username": "station01",
+  "temporaryPassword": "Temp@123456",
+  "roleNames": ["STATION_OPERATOR"],
+  "isActive": true
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": "uuid",
+    "username": "station01",
+    "roles": ["STATION_OPERATOR"],
+    "isActive": true,
+    "mustChangePassword": true
+  }
+}
+```
+
+Luồng:
+
+1. `OPERATOR_ADMIN` nhập username, mật khẩu tạm và role.
+2. System validate username unique, password policy, role hợp lệ.
+3. Lưu password hash.
+4. Set `mustChangePassword = true`.
+5. Ghi audit.
+
+Lỗi chính:
+
+| Code | Message | HTTP |
+| --- | --- | --- |
+| `ACCOUNT_USERNAME_EXISTS` | Username already exists | 409 |
+| `ROLE_INVALID` | Role is invalid | 400 |
+| `PASSWORD_POLICY_FAILED` | Password does not meet policy | 400 |
+
+#### API-AUTH-006 - Update Account Roles/Status
+
+`POST /auth/update-account/{accountId}`
+
+Permission: `ACCOUNT_WRITE`.
+
+Request:
+
+```json
+{
+  "roleNames": ["OPERATOR_MANAGER"],
+  "isActive": true
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": "uuid",
+    "username": "station01",
+    "roles": ["OPERATOR_MANAGER"],
+    "isActive": true,
+    "mustChangePassword": false
+  }
+}
+```
+
+#### API-AUTH-007 - Import Accounts
+
+`POST /auth/import-accounts`
+
+Permission: `ACCOUNT_WRITE`.
+
+Content-Type: `multipart/form-data`
+
+Form field: `file`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "imported": 10,
+    "errors": []
+  }
+}
+```
+
+Nếu có dòng lỗi thì không import:
+
+```json
+{
+  "code": 4001,
+  "message": "Import file contains invalid rows",
+  "result": {
+    "imported": 0,
+    "errors": [
+      {
+        "row": 3,
+        "field": "username",
+        "message": "Username already exists"
+      }
+    ]
+  }
+}
+```
+
+### UC03 - Đổi Mật Khẩu
+
+#### API-AUTH-008 - Change Password
+
+`POST /auth/change-password`
+
+Permission: Authenticated.
+
+Request:
+
+```json
+{
+  "currentPassword": "Temp@123456",
+  "newPassword": "NewPassword@123",
+  "confirmPassword": "NewPassword@123"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "mustChangePassword": false
+  }
+}
+```
+
+### UC04 - Quên Mật Khẩu
+
+#### API-AUTH-009 - Admin Reset Password
+
+`POST /auth/reset-account-password/{accountId}`
+
+Permission: `ACCOUNT_WRITE`.
+
+Request:
+
+```json
+{
+  "temporaryPassword": "Temp@123456"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "accountId": "uuid",
+    "mustChangePassword": true
+  }
+}
+```
+
+Ghi chú:
+
+- Không gửi email.
+- Không OTP.
+- `OPERATOR_ADMIN` chuyển mật khẩu tạm qua quy trình ngoài hệ thống.
+- User bắt buộc đổi mật khẩu sau khi đăng nhập.
+
+## 3. AFC-Ops Master Data APIs
+
+### UC05 - Quản Lý Tuyến
+
+#### API-AFC-001 - List Routes
+
+`GET /afc-ops/list-routes?keyword=&transportType=&status=&page=0&size=20`
+
+Permission: `MASTER_DATA_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": 1,
+        "routeCode": "METRO-01",
+        "routeName": "Metro Line 1",
+        "transportType": "METRO",
+        "status": "ACTIVE"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### API-AFC-002 - Create Route
+
+`POST /afc-ops/create-route`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Request:
+
+```json
+{
+  "routeCode": "METRO-01",
+  "routeName": "Metro Line 1",
+  "transportType": "METRO",
+  "status": "ACTIVE"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 1,
+    "routeCode": "METRO-01",
+    "routeName": "Metro Line 1",
+    "transportType": "METRO",
+    "status": "ACTIVE",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:00:00+07:00"
+  }
+}
+```
+
+#### API-AFC-003 - Update Route
+
+`POST /afc-ops/update-route/{routeId}`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Request:
+
+```json
+{
+  "routeCode": "METRO-01",
+  "routeName": "Metro Line 1 Updated",
+  "transportType": "METRO",
+  "status": "ACTIVE"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 1,
+    "routeCode": "METRO-01",
+    "routeName": "Metro Line 1 Updated",
+    "transportType": "METRO",
+    "status": "ACTIVE",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:30:00+07:00"
+  }
+}
+```
+
+#### API-AFC-004 - Import Routes
+
+`POST /afc-ops/import-routes`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Content-Type: `multipart/form-data`, field `file`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "imported": 10,
+    "errors": []
+  }
+}
+```
+
+Nếu có dòng lỗi thì không import:
+
+```json
+{
+  "code": 4001,
+  "message": "Import file contains invalid rows",
+  "result": {
+    "imported": 0,
+    "errors": [
+      {
+        "row": 3,
+        "field": "routeCode",
+        "message": "Route code already exists"
+      }
+    ]
+  }
+}
+```
+
+### UC06 - Quản Lý Ga/Trạm
+
+#### API-AFC-005 - List Stations
+
+`GET /afc-ops/list-stations?routeId=&keyword=&status=&page=0&size=20`
+
+Permission: `MASTER_DATA_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": 1,
+        "routeId": 1,
+        "stationCode": "BEN-THANH",
+        "stationName": "Bến Thành",
+        "stationOrder": 1,
+        "status": "ACTIVE",
+        "createdAt": "2026-06-04T10:00:00+07:00",
+        "updatedAt": "2026-06-04T10:00:00+07:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### API-AFC-006 - Create Station
+
+`POST /afc-ops/create-station`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Request:
+
+```json
+{
+  "routeId": 1,
+  "stationCode": "BEN-THANH",
+  "stationName": "Bến Thành",
+  "stationOrder": 1,
+  "status": "ACTIVE"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 1,
+    "routeId": 1,
+    "stationCode": "BEN-THANH",
+    "stationName": "Bến Thành",
+    "stationOrder": 1,
+    "status": "ACTIVE",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:00:00+07:00"
+  }
+}
+```
+
+#### API-AFC-007 - Update Station
+
+`POST /afc-ops/update-station/{stationId}`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Request:
+
+```json
+{
+  "routeId": 1,
+  "stationCode": "BEN-THANH",
+  "stationName": "Bến Thành Updated",
+  "stationOrder": 1,
+  "status": "ACTIVE"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 1,
+    "routeId": 1,
+    "stationCode": "BEN-THANH",
+    "stationName": "Bến Thành Updated",
+    "stationOrder": 1,
+    "status": "ACTIVE",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:30:00+07:00"
+  }
+}
+```
+
+#### API-AFC-008 - Import Stations
+
+`POST /afc-ops/import-stations`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Content-Type: `multipart/form-data`, field `file`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "imported": 10,
+    "errors": []
+  }
+}
+```
+
+Nếu có dòng lỗi thì không import:
+
+```json
+{
+  "code": 4001,
+  "message": "Import file contains invalid rows",
+  "result": {
+    "imported": 0,
+    "errors": [
+      {
+        "row": 3,
+        "field": "stationCode",
+        "message": "Station code already exists in route"
+      }
+    ]
+  }
+}
+```
+
+### UC07 - Quản Lý Danh Mục Thiết Bị AFC
+
+#### API-AFC-009 - List Devices
+
+`GET /afc-ops/list-devices?stationId=&deviceType=&status=&keyword=&page=0&size=20`
+
+Permission: `MASTER_DATA_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": 10,
+        "stationId": 1,
+        "stationName": "Bến Thành",
+        "deviceCode": "QR-BT-001",
+        "deviceType": "QR_SCANNER_SIMULATOR",
+        "direction": "ENTRY",
+        "status": "ACTIVE",
+        "firmwareVersion": "1.0.0",
+        "lastSeenAt": "2026-06-04T10:00:00+07:00",
+        "createdAt": "2026-06-04T10:00:00+07:00",
+        "updatedAt": "2026-06-04T10:00:00+07:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### API-AFC-010 - Create Device
+
+`POST /afc-ops/create-device`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Request:
+
+```json
+{
+  "stationId": 1,
+  "deviceCode": "QR-BT-001",
+  "deviceType": "QR_SCANNER_SIMULATOR",
+  "direction": "ENTRY",
+  "status": "ACTIVE",
+  "firmwareVersion": "1.0.0",
+  "deviceSecret": "mock-secret"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 10,
+    "stationId": 1,
+    "stationName": "Bến Thành",
+    "deviceCode": "QR-BT-001",
+    "deviceType": "QR_SCANNER_SIMULATOR",
+    "direction": "ENTRY",
+    "status": "ACTIVE",
+    "firmwareVersion": "1.0.0",
+    "lastSeenAt": null,
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:00:00+07:00"
+  }
+}
+```
+
+#### API-AFC-011 - Update Device
+
+`POST /afc-ops/update-device/{deviceId}`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Request:
+
+```json
+{
+  "stationId": 1,
+  "deviceType": "QR_SCANNER_SIMULATOR",
+  "direction": "BOTH",
+  "status": "MAINTENANCE",
+  "firmwareVersion": "1.0.1"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 10,
+    "stationId": 1,
+    "stationName": "Bến Thành",
+    "deviceCode": "QR-BT-001",
+    "deviceType": "QR_SCANNER_SIMULATOR",
+    "direction": "BOTH",
+    "status": "MAINTENANCE",
+    "firmwareVersion": "1.0.1",
+    "lastSeenAt": "2026-06-04T10:00:00+07:00",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:30:00+07:00"
+  }
+}
+```
+
+#### API-AFC-012 - Import Devices
+
+`POST /afc-ops/import-devices`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Content-Type: `multipart/form-data`, field `file`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "imported": 10,
+    "errors": []
+  }
+}
+```
+
+Nếu có dòng lỗi thì không import:
+
+```json
+{
+  "code": 4001,
+  "message": "Import file contains invalid rows",
+  "result": {
+    "imported": 0,
+    "errors": [
+      {
+        "row": 3,
+        "field": "deviceCode",
+        "message": "Device code already exists"
+      }
+    ]
+  }
+}
+```
+
+## 4. Device Integration APIs
+
+Các API này dành cho Cấp 2/mock device gọi vào Cấp 3/Cấp 4 service.
+
+### UC08 - Thiết Bị Gửi Tín Hiệu Trạng Thái Định Kỳ
+
+#### API-AFC-013 - Submit Device Heartbeat
+
+`POST /afc-ops/submit-heartbeat`
+
+Auth: `X-Device-Code`, `X-Device-Secret`.
+
+Request:
+
+```json
+{
+  "sentAt": "2026-06-04T10:00:00+07:00",
+  "status": "ACTIVE",
+  "firmwareVersion": "1.0.1",
+  "metrics": {
+    "cpu": 0.31,
+    "memory": 0.52,
+    "network": "OK"
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "deviceCode": "QR-BT-001",
+    "accepted": true,
+    "serverTime": "2026-06-04T10:00:05+07:00"
+  }
+}
+```
+
+Luồng:
+
+1. Xác thực device.
+2. Lưu heartbeat vào MongoDB.
+3. Cập nhật `devices.last_seen_at`, `firmware_version`, trạng thái tổng hợp nếu cần.
+4. Trả server time để device tự đối chiếu.
+
+### UC10 - Ghi Nhận Lượt Quét Tại Thiết Bị Soát Vé
+
+#### API-AFC-014 - Submit Tap Event
+
+`POST /afc-ops/submit-tap-event`
+
+Auth: `X-Device-Code`, `X-Device-Secret`.
+
+Request:
+
+```json
+{
+  "eventId": "QR-BT-001-20260604-000001",
+  "mediaType": "VIRTUAL_QR",
+  "qrPayload": "signed-dynamic-qr-payload",
+  "tapType": "TAP_IN",
+  "occurredAt": "2026-06-04T10:05:00+07:00",
+  "direction": "ENTRY",
+  "rawPayload": {
+    "deviceSequence": 1001
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "transactionId": "uuid",
+    "eventId": "QR-BT-001-20260604-000001",
+    "decision": "OPEN_GATE",
+    "reason": "VALID",
+    "serverTime": "2026-06-04T10:05:01+07:00"
+  }
+}
+```
+
+Luồng:
+
+1. Xác thực device.
+2. Kiểm tra idempotency theo `(deviceCode, eventId)`.
+3. Kiểm tra device active và direction hợp lệ.
+4. Verify chữ ký, TTL và replay của dynamic QR payload.
+5. Resolve `cardId` và đúng một sản phẩm active từ QR session: `ticketId` hoặc `entitlementId`.
+6. Kiểm tra card active/không blacklist, ticket hoặc entitlement active/còn hạn và scope hợp lệ.
+7. Lưu raw payload MongoDB.
+8. Lưu `afc_transactions` RDBMS.
+9. Trả decision cho device.
+
+Lỗi/idempotency:
+
+| Điều kiện | Kết quả |
+| --- | --- |
+| Gửi lại cùng `eventId` và payload giống nhau | Trả lại decision cũ |
+| Gửi lại cùng `eventId` nhưng payload khác | `409 TAP_EVENT_CONFLICT` |
+| Device disabled | Trả `decision = DENY`, `reason = DEVICE_DISABLED` |
+| Card trong blacklist | Trả `decision = DENY`, `reason = MEDIA_BLACKLISTED` |
+| Card inactive/cancelled | Trả `decision = DENY`, `reason = CARD_INACTIVE` hoặc `CARD_CANCELLED` |
+| QR hết hạn, sai chữ ký hoặc bị replay | Trả `decision = DENY` với reason QR tương ứng |
+| Entitlement hết hạn hoặc inactive | Trả `decision = DENY` với reason entitlement tương ứng |
+| Ticket không hợp lệ/hết hạn/đã dùng/sai scope | Trả `decision = DENY` với reason ticket tương ứng |
+| Card có cả ticket và entitlement active trong read model | Trả `decision = DENY`, `reason = ACTIVE_PRODUCT_CONFLICT` |
+
+### UC12 - Ghi Nhận Incident Thiết Bị
+
+#### API-AFC-015 - Submit Device Incident
+
+`POST /afc-ops/submit-device-incident`
+
+Auth: `X-Device-Code`, `X-Device-Secret`.
+
+Request:
+
+```json
+{
+  "incidentType": "GATE_JAMMED",
+  "severity": "HIGH",
+  "occurredAt": "2026-06-04T10:10:00+07:00",
+  "message": "Gate arm jammed",
+  "payload": {
+    "sensor": "ARM_LOCK"
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "accepted": true,
+    "incidentId": "mongo-id"
+  }
+}
+```
+
+## 5. Monitoring Và Tra Cứu APIs
+
+### UC09 - Theo Dõi Trạng Thái Hoạt Động Thiết Bị
+
+#### API-AFC-016 - Device Status Overview
+
+`GET /afc-ops/get-device-status?routeId=&stationId=&status=&page=0&size=20`
+
+Permission: `DEVICE_MONITOR_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "deviceId": 10,
+        "deviceCode": "QR-BT-001",
+        "stationId": 1,
+        "stationName": "Bến Thành",
+        "deviceType": "QR_SCANNER_SIMULATOR",
+        "status": "ACTIVE",
+        "lastSeenAt": "2026-06-04T10:00:00+07:00",
+        "offlineSeconds": 5
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+### UC11 - Tra Cứu Transaction Vận Hành
+
+#### API-AFC-017 - Search Transactions
+
+`GET /afc-ops/search-transactions?from=&to=&routeId=&stationId=&deviceId=&cardId=&ticketId=&entitlementId=&decision=&syncStatus=&ticketProcessingStatus=&page=0&size=20`
+
+Permission: `TRANSACTION_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": "uuid",
+        "eventId": "QR-BT-001-20260604-000001",
+        "routeId": 1,
+        "stationId": 1,
+        "deviceId": 10,
+        "deviceCode": "QR-BT-001",
+        "mediaType": "VIRTUAL_QR",
+        "cardId": "CARD-000001",
+        "ticketId": null,
+        "entitlementId": "ENT-000001",
+        "qrId": "QR-SESSION-000001",
+        "tapType": "TAP_IN",
+        "occurredAt": "2026-06-04T10:05:00+07:00",
+        "decision": "OPEN_GATE",
+        "reason": "VALID",
+        "syncStatus": "PENDING",
+        "ticketProcessingStatus": null,
+        "batchId": null
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### API-AFC-018 - Get Transaction Detail
+
+`GET /afc-ops/get-transaction-detail?transactionId={transactionId}`
+
+Permission: `TRANSACTION_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": "uuid",
+    "eventId": "QR-BT-001-20260604-000001",
+    "operatorId": 1,
+    "routeId": 1,
+    "stationId": 1,
+    "deviceId": 10,
+    "deviceCode": "QR-BT-001",
+    "mediaType": "VIRTUAL_QR",
+    "cardId": "CARD-000001",
+    "ticketId": null,
+    "entitlementId": "ENT-000001",
+    "qrId": "QR-SESSION-000001",
+    "qrPayloadHash": "sha256-qr-payload",
+    "tapType": "TAP_IN",
+    "occurredAt": "2026-06-04T10:05:00+07:00",
+    "receivedAt": "2026-06-04T10:05:01+07:00",
+    "decision": "OPEN_GATE",
+    "reason": "VALID",
+    "syncStatus": "PENDING",
+    "ticketProcessingStatus": null,
+    "batchId": null,
+    "rawEvent": {
+      "deviceSequence": 1001
+    }
+  }
+}
+```
+
+### UC13 - Theo Dõi Incident Thiết Bị
+
+#### API-AFC-019 - Search Incidents
+
+`GET /afc-ops/search-incidents?from=&to=&stationId=&deviceId=&severity=&incidentType=&page=0&size=20`
+
+Permission: `INCIDENT_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": "mongo-id",
+        "deviceId": 10,
+        "deviceCode": "QR-BT-001",
+        "stationId": 1,
+        "incidentType": "GATE_JAMMED",
+        "severity": "HIGH",
+        "message": "Gate arm jammed",
+        "occurredAt": "2026-06-04T10:10:00+07:00",
+        "receivedAt": "2026-06-04T10:10:02+07:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+## 6. Level 5 Và Control Package APIs
+
+### UC14 - Đồng Bộ Dữ Liệu Quản Lý Từ Cấp 5
+
+#### API-AFC-020 - Receive Level 5 Business Sync
+
+`POST /afc-ops/receive-level5-business-sync`
+
+Auth: `X-Level5-Client-Id`, `X-Level5-Signature`.
+
+Request:
+
+```json
+{
+  "syncBatchCode": "L5-BUSINESS-SYNC-20260604-001",
+  "issuedAt": "2026-06-04T09:00:00+07:00",
+  "items": [
+    {
+      "syncType": "CARD_STATUS_CHANGED",
+      "externalId": "CARD-000001",
+      "version": 12,
+      "card": {
+        "cardId": "CARD-000001",
+        "externalUserId": null,
+        "cardType": "VIRTUAL_QR",
+        "status": "BLACKLISTED",
+        "statusReason": "LOST_CARD",
+        "sourceVersion": 12
+      }
+    },
+    {
+      "syncType": "ENTITLEMENT_UPSERT",
+      "externalId": "ENT-000001",
+      "version": 7,
+      "entitlement": {
+        "entitlementId": "ENT-000001",
+        "cardId": "CARD-000001",
+        "fareProductCode": "MONTHLY_PASS",
+        "passPeriod": "MONTH",
+        "passScope": "SINGLE_ROUTE",
+        "operatorRef": "OP-01",
+        "routeRef": "METRO-01",
+        "transportType": "METRO",
+        "passengerType": null,
+        "status": "ACTIVE",
+        "validFrom": "2026-06-05T00:00:00+07:00",
+        "validTo": "2026-07-05T00:00:00+07:00",
+        "sourceVersion": 7
+      }
+    },
+    {
+      "syncType": "TICKET_UPSERT",
+      "externalId": "TICKET-000001",
+      "version": 3,
+      "ticket": {
+        "ticketId": "TICKET-000001",
+        "cardId": "CARD-000002",
+        "ticketType": "METRO_SINGLE_RIDE",
+        "routeScopeType": "SINGLE_ROUTE",
+        "operatorRef": "OP-01",
+        "routeRef": "METRO-01",
+        "transportType": "METRO",
+        "usageStatus": "UNUSED",
+        "validFrom": "2026-06-05T00:00:00+07:00",
+        "validTo": "2026-06-05T23:59:59+07:00",
+        "firstTapAt": null,
+        "usedAt": null,
+        "sourceVersion": 3
+      }
+    }
+  ]
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "syncBatchCode": "L5-BUSINESS-SYNC-20260604-001",
+    "received": 3,
+    "applied": 3,
+    "ignored": 0,
+    "failed": 0
+  }
+}
+```
+
+Luồng:
+
+1. Xác thực nguồn Cấp 5.
+2. Lưu payload gốc vào `level5_business_sync_payloads`.
+3. Upsert `cards`, `tickets`, `entitlements` theo `syncType`.
+4. Bỏ qua item có `sourceVersion` cũ hơn bản ghi hiện tại.
+5. Nếu một card có nhiều hơn một active product, ghi nhận lỗi dữ liệu và không tự chọn sản phẩm ưu tiên.
+6. Refresh Redis runtime cache sau khi commit RDBMS thành công.
+7. Với card status/blacklist, có thể tạo control package `MEDIA_ACCESS_RULES` để phát hành xuống Cấp 3.
+
+Quy ước `syncType` tối thiểu:
+
+| Giá trị | Xử lý tại C4 |
+| --- | --- |
+| `CARD_UPSERT` | Tạo/cập nhật read model card |
+| `CARD_STATUS_CHANGED` | Cập nhật trạng thái card, bao gồm `BLACKLISTED`, `CANCELLED`, `INACTIVE` |
+| `TICKET_UPSERT` | Tạo/cập nhật vé lượt Metro prepaid |
+| `TICKET_STATUS_CHANGED` | Cập nhật `usageStatus` của ticket |
+| `ENTITLEMENT_UPSERT` | Tạo/cập nhật vé tháng |
+| `ENTITLEMENT_STATUS_CHANGED` | Cập nhật trạng thái entitlement |
+
+#### API-AFC-021 - Pull Level 5 Business Sync
+
+`POST /afc-ops/pull-level5-business-sync`
+
+Permission: `CONTROL_PACKAGE_WRITE` hoặc scheduled job nội bộ.
+
+Request:
+
+```json
+{
+  "syncTypes": ["CARD_UPSERT", "CARD_STATUS_CHANGED", "TICKET_UPSERT", "ENTITLEMENT_UPSERT"],
+  "sinceVersion": 11
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "pulled": 2,
+    "applied": 2,
+    "items": [
+      {
+        "syncType": "CARD_STATUS_CHANGED",
+        "externalId": "CARD-000001",
+        "version": 12,
+        "applied": true
+      }
+    ]
+  }
+}
+```
+
+Ghi chú: API này dùng cho dev/mock hoặc khi Cấp 4 chủ động pull Cấp 5.
+
+### UC15 - Tạo Control Package Cấu Hình Vận Hành
+
+#### API-AFC-022 - Create Control Package
+
+`POST /afc-ops/create-control-package`
+
+Permission: `CONTROL_PACKAGE_WRITE`.
+
+Request:
+
+```json
+{
+  "packageType": "DEVICE_CONFIG",
+  "payload": {
+    "maxOfflineSeconds": 60,
+    "allowOfflineValidation": true,
+    "deviceTypes": ["QR_SCANNER_SIMULATOR"]
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 101,
+    "version": 13,
+    "packageType": "DEVICE_CONFIG",
+    "sourceType": "LEVEL4_CREATED",
+    "status": "CREATED",
+    "createdAt": "2026-06-04T10:20:00+07:00"
+  }
+}
+```
+
+Ghi chú:
+
+- Không tạo tay `MEDIA_ACCESS_RULES` toàn mạng ở API này.
+- `MEDIA_ACCESS_RULES` đi từ UC14/API-AFC-020 hoặc API-AFC-021.
+
+#### API-AFC-023 - List Control Packages
+
+`GET /afc-ops/list-control-packages?packageType=&sourceType=&status=&page=0&size=20`
+
+Permission: `CONTROL_PACKAGE_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": 100,
+        "version": 12,
+        "packageType": "MEDIA_ACCESS_RULES",
+        "sourceType": "LEVEL5_SYNCED",
+        "externalPackageCode": "L5-MEDIA-RULES-20260604-001",
+        "status": "CREATED",
+        "publishedAt": null,
+        "createdAt": "2026-06-04T10:20:00+07:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+### UC16 - Phát Hành Control Package Xuống Cấp 3
+
+#### API-AFC-024 - Publish Control Package
+
+`POST /afc-ops/publish-control-package/{packageId}`
+
+Permission: `CONTROL_PACKAGE_WRITE`.
+
+Request:
+
+```json
+{
+  "stationIds": [1, 2, 3]
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "packageId": 100,
+    "status": "PUBLISHED",
+    "stationSyncs": [
+      {
+        "stationId": 1,
+        "syncStatus": "PENDING"
+      }
+    ]
+  }
+}
+```
+
+Luồng:
+
+1. Kiểm tra package `CREATED` hoặc đã publish nhưng chưa có sync tới station đích.
+2. Kiểm tra station active.
+3. Tạo `station_control_syncs = PENDING`.
+4. Cập nhật package `PUBLISHED`.
+5. Ghi audit.
+
+### UC17 - Cấp 3 Nhận Và Áp Dụng Control Package
+
+#### API-AFC-025 - Station Pull Pending Packages
+
+`GET /afc-ops/pull-pending-control-packages?stationCode=BEN-THANH&currentVersion=11`
+
+Auth: Station/device integration credential hoặc service credential nội bộ.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": [
+    {
+      "syncId": 500,
+      "packageId": 100,
+      "version": 12,
+      "packageType": "MEDIA_ACCESS_RULES",
+      "sourceType": "LEVEL5_SYNCED",
+      "payload": {
+        "cardStatusRules": [
+          {
+            "cardId": "CARD-000001",
+            "cardType": "VIRTUAL_QR",
+            "status": "BLACKLISTED",
+            "statusReason": "LOST_CARD",
+            "sourceVersion": 12
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+#### API-AFC-026 - Ack Control Package Apply
+
+`POST /afc-ops/ack-control-package-apply/{syncId}`
+
+Auth: Station/device integration credential hoặc service credential nội bộ.
+
+Request:
+
+```json
+{
+  "syncStatus": "APPLIED",
+  "appliedAt": "2026-06-04T10:30:00+07:00",
+  "errorMessage": null
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "syncId": 500,
+    "syncStatus": "APPLIED"
+  }
+}
+```
+
+## 7. Dashboard APIs
+
+### UC18 - Dashboard Vận Hành Cấp 4
+
+#### API-AFC-027 - Get Operations Dashboard
+
+`GET /afc-ops/get-operations-dashboard?from=&to=&routeId=&stationId=`
+
+Permission: `DASHBOARD_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "deviceSummary": {
+      "active": 10,
+      "offline": 2,
+      "maintenance": 1,
+      "disabled": 0
+    },
+    "transactionSummary": {
+      "total": 1500,
+      "openGate": 1400,
+      "deny": 100
+    },
+    "incidentSummary": {
+      "total": 5,
+      "high": 1
+    },
+    "batchSummary": {
+      "created": 1,
+      "submitted": 2,
+      "failed": 0
+    },
+    "controlSyncSummary": {
+      "pending": 3,
+      "applied": 20,
+      "failed": 1
+    }
+  }
+}
+```
+
+## 8. Batch Và Cấp 5 Outbound APIs
+
+### UC19 - Tạo Batch Dữ Liệu
+
+#### API-AFC-028 - Create Batch
+
+`POST /afc-ops/create-batch`
+
+Permission: `BATCH_WRITE`.
+
+Request:
+
+```json
+{
+  "fromTime": "2026-06-04T00:00:00+07:00",
+  "toTime": "2026-06-04T23:59:59+07:00"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": "uuid",
+    "batchCode": "OP01-20260604-0001",
+    "fromTime": "2026-06-04T00:00:00+07:00",
+    "toTime": "2026-06-04T23:59:59+07:00",
+    "transactionCount": 1500,
+    "status": "CREATED"
+  }
+}
+```
+
+Luồng:
+
+1. Tìm transaction `syncStatus = PENDING` trong khoảng thời gian.
+2. Tạo batch.
+3. Gắn `batch_id` vào transaction.
+4. Không gửi Cấp 5 ở bước này.
+
+#### API-AFC-029 - List Batches
+
+`GET /afc-ops/list-batches?status=&from=&to=&page=0&size=20`
+
+Permission: `BATCH_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": "uuid",
+        "batchCode": "OP01-20260604-0001",
+        "fromTime": "2026-06-04T00:00:00+07:00",
+        "toTime": "2026-06-04T23:59:59+07:00",
+        "transactionCount": 1500,
+        "status": "CREATED",
+        "submittedAt": null,
+        "createdAt": "2026-06-04T23:00:00+07:00",
+        "updatedAt": "2026-06-04T23:00:00+07:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+### UC20 - Gửi Batch Dữ Liệu Lên Cấp 5
+
+#### API-AFC-030 - Submit Batch To Level 5
+
+`POST /afc-ops/submit-batch-to-level5/{batchId}`
+
+Permission: `BATCH_WRITE`.
+
+Request:
+
+```json
+{
+  "forceRetry": false
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "batchId": "uuid",
+    "batchCode": "OP01-20260604-0001",
+    "status": "ACCEPTED",
+    "submittedAt": "2026-06-04T23:00:00+07:00",
+    "level5Response": {
+      "ackCode": "ACK",
+      "message": "Accepted"
+    }
+  }
+}
+```
+
+Luồng:
+
+1. Load batch `CREATED` hoặc `FAILED` retryable.
+2. Build payload gồm transaction đã gắn batch.
+3. Gửi sang Cấp 5/mock.
+4. Lưu request/response vào `integration_exchange_logs`.
+5. Cập nhật batch status.
+6. Cập nhật transaction `syncStatus = SYNCED` nếu Cấp 5 accepted.
+
+Lỗi chính:
+
+| Điều kiện | Kết quả |
+| --- | --- |
+| Cấp 5 unavailable | Batch `FAILED`, giữ transaction chưa `SYNCED` |
+| Cấp 5 reject | Batch `REJECTED`, lưu response |
+| Submit lại batch đã accepted | Trả trạng thái hiện tại hoặc yêu cầu `forceRetry` không được phép |
+
+## 9. Audit APIs
+
+### UC21 - Audit Và Truy Vết
+
+#### API-AFC-031 - Search AFC Audit Logs
+
+`GET /afc-ops/search-audit-logs?from=&to=&accountId=&action=&resourceType=&resourceId=&page=0&size=20`
+
+Permission: `AUDIT_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": "mongo-id",
+        "accountId": "uuid",
+        "action": "CONTROL_PACKAGE_PUBLISHED",
+        "resourceType": "CONTROL_PACKAGE",
+        "resourceId": "100",
+        "result": "SUCCESS",
+        "createdAt": "2026-06-04T10:30:00+07:00",
+        "metadata": {
+          "stationIds": [1, 2, 3]
+        }
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### API-AUTH-010 - Search Auth Audit Logs
+
+`GET /auth/search-audit-logs?from=&to=&accountId=&action=&page=0&size=20`
+
+Permission: `AUDIT_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": "mongo-id",
+        "accountId": "uuid",
+        "username": "manager01",
+        "action": "LOGIN_SUCCESS",
+        "resourceType": "ACCOUNT",
+        "resourceId": "uuid",
+        "result": "SUCCESS",
+        "ipAddress": "127.0.0.1",
+        "userAgent": "Mozilla/5.0",
+        "createdAt": "2026-06-04T10:30:00+07:00",
+        "metadata": {}
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+## 10. Passenger App APIs
+
+Passenger App chỉ gọi trực tiếp `afc-ops-service` để lấy dynamic QR từ card đã được Cấp 5 cấp. Các nghiệp vụ mua vé, gia hạn vé, chuyển card vật lý sang card ảo vẫn thuộc App service/Cấp 5 tùy phân công nhóm.
+
+### UC22 - App Lấy QR Động Từ Card
+
+#### API-AFC-032 - Generate Dynamic QR
+
+`POST /afc-ops/generate-dynamic-qr`
+
+Auth: `X-External-User-Id` trong MVP, production có thể thay bằng token App/C5.
+
+Request:
+
+```json
+{
+  "cardId": "CARD-000001",
+  "productType": "ENTITLEMENT",
+  "ticketId": null,
+  "entitlementId": "ENT-000001"
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "qrId": "QR-SESSION-000001",
+    "cardId": "CARD-000001",
+    "ticketId": null,
+    "entitlementId": "ENT-000001",
+    "qrPayload": "signed-dynamic-qr-payload",
+    "expiresAt": "2026-06-04T10:05:30+07:00",
+    "refreshAfterSeconds": 30
+  }
+}
+```
+
+Luồng:
+
+1. Xác thực App/mock App.
+2. Kiểm tra card tồn tại trong read model, `status = ACTIVE`, không blacklist/cancelled/inactive.
+3. Nếu C5 có đồng bộ `externalUserId`, kiểm tra card thuộc user đang gọi.
+4. Xác định đúng một active product của card: `ticket` vé lượt Metro hoặc `entitlement` vé tháng.
+5. Nếu là ticket, kiểm tra `usageStatus` cho phép hiển thị QR, còn hạn và đúng phạm vi.
+6. Nếu là entitlement, kiểm tra active, còn hạn và đúng phạm vi.
+7. Sinh `qrId`, nonce, TTL 30-60 giây, ký payload và lưu `qr:session:{qrId}` trong Redis.
+8. Trả QR payload để App render.
+
+Lỗi chính:
+
+| Điều kiện | Kết quả |
+| --- | --- |
+| Card không tồn tại hoặc không active | `CARD_NOT_FOUND` hoặc `CARD_INACTIVE` |
+| Card bị blacklist/cancelled | `MEDIA_BLACKLISTED` hoặc `CARD_CANCELLED` |
+| Ticket hết hạn/đã dùng/sai phạm vi | `TICKET_EXPIRED`, `TICKET_ALREADY_USED`, `TICKET_SCOPE_INVALID` |
+| Entitlement hết hạn/inactive | `ENTITLEMENT_EXPIRED`, `ENTITLEMENT_INACTIVE` |
+| Card có nhiều hơn một active product | `ACTIVE_PRODUCT_CONFLICT` |
+| Chưa đồng bộ ticket/entitlement từ C5 | `ACTIVE_PRODUCT_NOT_FOUND` |
+
+Các nghiệp vụ App khác không thuộc `afc-ops-service`. Cấp 3/Cấp 4 chỉ nhận read model từ Cấp 5 qua API-AFC-020/API-AFC-021 gồm:
+
+- `cards`;
+- `tickets`;
+- `entitlements`;
+- trạng thái card/blacklist hiện hành.
+
+Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 scan QR và gọi `POST /afc-ops/submit-tap-event`.
+
+## 11. Luồng API Theo UC
+
+### Luồng A - Login Và Vào Dashboard
+
+1. FE gọi `POST /auth/login`.
+2. Trình duyệt nhận access token và refresh token qua HttpOnly cookie.
+3. FE gọi `GET /afc-ops/get-operations-dashboard`.
+4. FE gọi thêm `GET /afc-ops/get-device-status` nếu cần bảng thiết bị.
+
+### Luồng B - Thiết Bị Gửi Tap Event
+
+1. Mock Cấp 2 gọi `POST /afc-ops/submit-tap-event`.
+2. System xác thực device và ghi transaction.
+3. System trả `OPEN_GATE` hoặc `DENY`.
+4. Cấp 4 có thể tra cứu bằng `GET /afc-ops/search-transactions`.
+
+### Luồng C - Card Status/Blacklist Từ Cấp 5 Xuống Thiết Bị
+
+1. Cấp 5/mock gọi `POST /afc-ops/receive-level5-business-sync` với card status/blacklist hiện hành.
+2. System cập nhật read model `cards` và có thể tạo control package `MEDIA_ACCESS_RULES`, `LEVEL5_SYNCED`, `CREATED`.
+3. Manager gọi `POST /afc-ops/publish-control-package/{packageId}`.
+4. Cấp 3/station gọi `GET /afc-ops/pull-pending-control-packages`.
+5. Cấp 3/station apply rule local và gọi `POST /afc-ops/ack-control-package-apply/{syncId}`.
+6. Tap event sau đó nếu card nằm blacklist thì API-AFC-014 trả `DENY` với `reason = MEDIA_BLACKLISTED`.
+
+### Luồng D - Tạo Và Gửi Batch Lên Cấp 5
+
+1. Manager gọi `POST /afc-ops/create-batch`.
+2. System gom transaction `PENDING` thành batch `CREATED`.
+3. Manager hoặc scheduler gọi `POST /afc-ops/submit-batch-to-level5/{batchId}`.
+4. System gửi payload sang Cấp 5/mock.
+5. Cập nhật batch `ACCEPTED`, `REJECTED` hoặc `FAILED`.
+
+### Luồng E - Tạo Account Nhân Sự
+
+1. `OPERATOR_ADMIN` gọi `POST /auth/create-account`.
+2. System tạo account với `mustChangePassword = true`.
+3. Admin chuyển mật khẩu tạm ngoài hệ thống.
+4. User login bằng mật khẩu tạm.
+5. FE bắt user gọi `POST /auth/change-password`.
+
+### Luồng F - Sử Dụng QR/Card Đã Đồng Bộ Từ Cấp 5
+
+1. App/C5 tạo card, ticket hoặc entitlement ở hệ sở hữu nghiệp vụ.
+2. C5 đồng bộ read model sang C4 qua `POST /afc-ops/receive-level5-business-sync`.
+3. App gọi `POST /afc-ops/generate-dynamic-qr` để lấy QR payload ngắn hạn từ card đã đồng bộ.
+4. Mock C2 scan QR và gọi `POST /afc-ops/submit-tap-event`.
+5. C4 verify QR, card status, ticket/entitlement và blacklist rồi trả `OPEN_GATE` hoặc `DENY`.
+
+## 12. Error Code Đề Xuất
+
+| Error code | HTTP | Ý nghĩa |
+| --- | --- | --- |
+| `UNAUTHENTICATED` | 401 | Thiếu/sai token |
+| `ACCESS_DENIED` | 403 | Không có permission |
+| `VALIDATION_ERROR` | 400 | Request sai định dạng |
+| `RESOURCE_NOT_FOUND` | 404 | Không tìm thấy resource |
+| `DUPLICATE_RESOURCE` | 409 | Trùng unique key |
+| `IDEMPOTENCY_CONFLICT` | 409 | Trùng idempotency key nhưng payload khác |
+| `ACCOUNT_DISABLED` | 403 | Account bị khóa |
+| `DEVICE_AUTH_FAILED` | 401 | Device credential sai |
+| `DEVICE_DISABLED` | 403 | Device bị vô hiệu hóa |
+| `LEVEL5_AUTH_FAILED` | 401 | Xác thực Cấp 5 thất bại |
+| `LEVEL5_UNAVAILABLE` | 502 | Không gọi được Cấp 5 |
+| `PACKAGE_NOT_READY` | 400 | Package chưa sẵn sàng phát hành |
+| `BATCH_NOT_RETRYABLE` | 400 | Batch không được retry/gửi lại |
+| `CARD_NOT_FOUND` | 404 | Không tìm thấy card trong read model C4 |
+| `CARD_INACTIVE` | 400 | Card không active |
+| `CARD_CANCELLED` | 400 | Card đã bị hủy |
+| `MEDIA_BLACKLISTED` | 403 | Card đang nằm trong blacklist |
+| `TICKET_NOT_FOUND` | 404 | Không tìm thấy ticket |
+| `TICKET_INVALID` | 400 | Ticket vé lượt không hợp lệ |
+| `TICKET_EXPIRED` | 400 | Ticket vé lượt đã hết hạn |
+| `TICKET_ALREADY_USED` | 400 | Ticket vé lượt đã được dùng |
+| `TICKET_SCOPE_INVALID` | 400 | Ticket vé lượt không hợp lệ với tuyến/ga hiện tại |
+| `ACTIVE_PRODUCT_CONFLICT` | 409 | Card có nhiều hơn một sản phẩm active trong read model |
+| `ACTIVE_PRODUCT_NOT_FOUND` | 404 | Không tìm thấy ticket/entitlement active cho card |
+| `ENTITLEMENT_NOT_FOUND` | 404 | Không tìm thấy entitlement |
+| `ENTITLEMENT_INACTIVE` | 400 | Entitlement không active |
+| `ENTITLEMENT_EXPIRED` | 400 | Entitlement đã hết hạn |
+| `QR_EXPIRED` | 400 | QR động đã hết hạn |
+| `QR_INVALID_SIGNATURE` | 400 | Chữ ký QR không hợp lệ |
+| `QR_REPLAYED` | 409 | QR/event bị phát hiện replay |
+| `PASS_SCOPE_INVALID` | 400 | Phạm vi vé không hợp lệ |
+
+## 13. Out Of Scope API
+
+- API quản lý passenger identity/profile đầy đủ.
+- API bán vé/mua vé/payment.
+- API đăng ký/gia hạn ticket/entitlement cho Passenger App.
+- API generate dynamic QR cho Passenger App.
+- API chuyển card vật lý sang card ảo.
+- API fare calculation.
+- API clearing/settlement chi tiết.
+- API quản lý source of truth và lịch sử blacklist toàn mạng ở Cấp 5.
+- API whitelist.
+- API QR tĩnh, EMV, biometric và thiết bị đọc card vật lý thật.
+- API email/OTP.
+

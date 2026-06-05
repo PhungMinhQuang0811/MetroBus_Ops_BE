@@ -1,0 +1,58 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /vdt
+
+spring:
+  application:
+    name: auth-ops-service
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true # true for debug
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health, info, metrics"
+  endpoint:
+    health:
+      show-details: when_authorized
+
+app:
+  init:
+    enabled: true
+    admin:
+      password: ${ADMIN_PASSWORD}
+  domain-name: localhost
+  timezone: ${APP_TIMEZONE}
+  security:
+    public-endpoints: >
+      "/auth/login",
+      "/auth/refresh-token"
+    csrf-header-name: X-CSRF-TOKEN
+    csrf-cookie-name: XSRF-TOKEN
+    refresh-path: /vdt/auth/refresh-token
+    logout-path: /vdt/auth/logout
+    cors-allowed-origins: "http://localhost:3000"
+    jwt:
+      access-token-secret-key: ${JWT_ACCESS_SECRET_KEY}
+      refresh-token-secret-key: ${JWT_REFRESH_SECRET_KEY}
+      access-token-expiration: 3600000 # 1 hour
+      refresh-token-expiration: 604800000 # 7 days
+#      access-token-expiration: 15000 #milisecond ~ 15s
+#      refresh-token-expiration: 60000 #~1 minute
+      access-token-cookie-name: accessToken
+      refresh-token-cookie-name: refreshToken

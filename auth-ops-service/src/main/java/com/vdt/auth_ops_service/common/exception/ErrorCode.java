@@ -1,0 +1,57 @@
+package com.vdt.auth_ops_service.common.exception;
+
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.experimental.FieldDefaults;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+
+@Getter
+@AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public enum ErrorCode {
+    /**
+     * Range 1xxx: General / Success
+     */
+    SUCCESS(1000, "Success", HttpStatus.OK),
+
+    /**
+     * Range 2xxx: Validation errors
+     */
+    FIELD_REQUIRED(2000, "{fieldName} is required", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD(2002, "Password must be at least 9 characters and contain both letters and numbers", HttpStatus.BAD_REQUEST),
+    INVALID_ROLE_SELECTION(2003, "Invalid operator role selection", HttpStatus.BAD_REQUEST),
+
+    /**
+     * Range 3xxx: Business logic & Database errors
+     */
+    INVALID_CREDENTIALS(3000, "Username or password is incorrect", HttpStatus.BAD_REQUEST),
+    USER_EXISTED(3002, "Username already exists", HttpStatus.BAD_REQUEST),
+    TOKEN_BLACKLIST_FAILED(3003, "Failed to blacklist token", HttpStatus.INTERNAL_SERVER_ERROR),
+    TOKEN_GENERATION_FAILED(3004, "Failed to generate token", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_TOKEN_FORMAT(3005, "Invalid token format", HttpStatus.BAD_REQUEST),
+    USER_NOT_FOUND(3007, "User not found", HttpStatus.NOT_FOUND),
+    LOGOUT_FAILED(3008, "Failed to log out. Please try again.", HttpStatus.INTERNAL_SERVER_ERROR),
+    ROLE_NOT_FOUND(3009, "Role not found", HttpStatus.NOT_FOUND),
+    PERMISSION_NOT_FOUND(3010, "Permission not found", HttpStatus.NOT_FOUND),
+
+    /**
+     * Range 4xxx: Security, Authentication & System errors
+     */
+    UNCATEGORIZED_EXCEPTION(4000, "There was error happen during run time", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_ERROR_KEY(4001, "The error key could be misspelled", HttpStatus.INTERNAL_SERVER_ERROR),
+    UNAUTHENTICATED(4002, "Unauthenticated access", HttpStatus.UNAUTHORIZED),
+    INVALID_REFRESH_TOKEN(4003, "Invalid refresh token. Please try again.", HttpStatus.UNAUTHORIZED),
+    INVALID_ONETIME_TOKEN(4004, "The token is invalid or this link has expired or has been used.", HttpStatus.BAD_REQUEST),
+    ACCOUNT_DISABLED(4006, "Your account is currently disabled or inactive.", HttpStatus.FORBIDDEN),
+    ACCESS_DENIED(4007, "You do not have permission to access this resource", HttpStatus.FORBIDDEN),
+    TOKEN_EXPIRED_OR_INVALID(4008, "Token is already expired or invalid", HttpStatus.BAD_REQUEST),
+    INVALID_CSRF_TOKEN(4009, "Missing or invalid CSRF token", HttpStatus.FORBIDDEN),
+    ;
+
+    int code;
+    String message;
+    HttpStatusCode httpStatusCode;
+
+}
