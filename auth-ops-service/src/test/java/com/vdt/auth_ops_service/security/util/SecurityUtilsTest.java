@@ -59,6 +59,15 @@ class SecurityUtilsTest {
     }
 
     @Test
+    void getCurrentUsername_Success() {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.isAuthenticated()).thenReturn(true);
+        when(authentication.getPrincipal()).thenReturn(mockUserDetails);
+
+        assertEquals("testuser", SecurityUtils.getCurrentUsername());
+    }
+
+    @Test
     void getCurrentRoles_Success() {
         when(securityContext.getAuthentication()).thenReturn(authentication);
         doReturn(List.of(new SimpleGrantedAuthority("ROLE_OPERATOR_ADMIN"), new SimpleGrantedAuthority("ACCOUNT_READ")))
@@ -70,12 +79,42 @@ class SecurityUtilsTest {
     }
 
     @Test
+    void getCurrentRoles_NoRoleAuthorities_ReturnsEmptyList() {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        doReturn(List.of(new SimpleGrantedAuthority("ACCOUNT_READ"), new SimpleGrantedAuthority("ACCOUNT_WRITE")))
+                .when(authentication).getAuthorities();
+
+        assertTrue(SecurityUtils.getCurrentRoles().isEmpty());
+    }
+
+    @Test
+    void getCurrentAuthorities_Success() {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        doReturn(List.of(new SimpleGrantedAuthority("ROLE_OPERATOR_ADMIN"), new SimpleGrantedAuthority("ACCOUNT_READ")))
+                .when(authentication).getAuthorities();
+
+        List<String> authorities = SecurityUtils.getCurrentAuthorities();
+        assertEquals(2, authorities.size());
+        assertTrue(authorities.contains("ROLE_OPERATOR_ADMIN"));
+        assertTrue(authorities.contains("ACCOUNT_READ"));
+    }
+
+    @Test
     void isAdmin_ReturnsTrue() {
         when(securityContext.getAuthentication()).thenReturn(authentication);
         doReturn(List.of(new SimpleGrantedAuthority("ROLE_OPERATOR_ADMIN")))
                 .when(authentication).getAuthorities();
 
         assertTrue(SecurityUtils.isAdmin());
+    }
+
+    @Test
+    void isAdmin_ReturnsFalse() {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        doReturn(List.of(new SimpleGrantedAuthority("ROLE_OPERATOR_MANAGER")))
+                .when(authentication).getAuthorities();
+
+        assertFalse(SecurityUtils.isAdmin());
     }
 
     @Test

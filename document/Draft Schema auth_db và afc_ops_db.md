@@ -13,7 +13,8 @@ Schema chưa phải bản migration cuối cùng. Mục tiêu là xác định c
 - `auth_db` thuộc `auth-service`.
 - `afc_ops_db` thuộc `afc-ops-service`.
 - Không tạo foreign key vật lý giữa hai database.
-- `afc_ops_db` có thể lưu `created_by_account_id` dạng tham chiếu mềm sang `auth_db.accounts`.
+- Các bảng do nhân sự tạo hoặc thay đổi cấu hình quan trọng lưu `created_by_account_id` để truy vết trực tiếp người tạo. Trong `afc_ops_db`, field này là tham chiếu mềm sang `auth_db.accounts`.
+- Không thêm `created_by_account_id` cho dữ liệu runtime, dữ liệu đồng bộ từ C5 hoặc bản ghi do job hệ thống tự sinh; nguồn tạo của các dữ liệu này được xác định bằng device/source/version/integration log tương ứng.
 - Dữ liệu log, audit, raw payload, heartbeat lịch sử, incident lịch sử và request/response tích hợp không nằm trong hai RDBMS này; dự kiến lưu MongoDB.
 - `afc_ops_db` có thể lưu nhiều đơn vị vận hành trong bảng `operators` để đồng bộ/giám sát dữ liệu liên quan. MVP chỉ chưa làm phân quyền account theo từng operator.
 
@@ -32,7 +33,7 @@ Account tối thiểu chỉ cần:
 - username;
 - password hash;
 - trạng thái active;
-- cờ bắt buộc đổi mật khẩu.
+- trạng thái mật khẩu.
 
 Không cần trong MVP:
 
@@ -78,7 +79,7 @@ erDiagram
         varchar username UK
         varchar password
         boolean is_active
-        boolean must_change_password
+        varchar password_status
         timestamp created_at
         timestamp updated_at
     }
@@ -118,7 +119,7 @@ erDiagram
 | username | VARCHAR(50) | NOT NULL, UNIQUE | Dùng đăng nhập |
 | password | VARCHAR(100) | NOT NULL | Password hash |
 | is_active | BOOLEAN | NOT NULL, DEFAULT TRUE | Khóa/mở account |
-| must_change_password | BOOLEAN | NOT NULL, DEFAULT TRUE | Bắt buộc đổi mật khẩu tạm ở lần đăng nhập đầu tiên hoặc sau reset |
+| password_status | VARCHAR(30) | NOT NULL, DEFAULT NEED_TO_CHANGE | NORMAL, NEED_TO_CHANGE, NEED_TO_RESET |
 | created_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
@@ -290,6 +291,7 @@ erDiagram
         varchar operator_code UK
         varchar operator_name
         varchar status
+        varchar created_by_account_id
         timestamp created_at
         timestamp updated_at
     }
@@ -301,6 +303,7 @@ erDiagram
         varchar route_name
         varchar transport_type
         varchar status
+        varchar created_by_account_id
         timestamp created_at
         timestamp updated_at
     }
@@ -312,6 +315,7 @@ erDiagram
         varchar station_name
         int station_order
         varchar status
+        varchar created_by_account_id
         timestamp created_at
         timestamp updated_at
     }
@@ -325,6 +329,7 @@ erDiagram
         varchar status
         varchar firmware_version
         timestamp last_seen_at
+        varchar created_by_account_id
         timestamp created_at
         timestamp updated_at
     }
@@ -393,6 +398,7 @@ erDiagram
         int transaction_count
         varchar status
         varchar exchange_log_ref
+        varchar created_by_account_id
         timestamp submitted_at
         timestamp created_at
         timestamp updated_at
@@ -409,6 +415,7 @@ erDiagram
 | operator_code | VARCHAR(50) | NOT NULL, UNIQUE | Mã đơn vị vận hành dùng để tích hợp với C5 |
 | operator_name | VARCHAR(255) | NOT NULL |  |
 | status | VARCHAR(30) | NOT NULL | ACTIVE, DISABLED |
+| created_by_account_id | VARCHAR(36) | NULL | Tham chiếu mềm sang auth_db.accounts; null nếu operator được bootstrap/seed |
 | created_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
@@ -424,6 +431,7 @@ erDiagram
 | route_name | VARCHAR(255) | NOT NULL |  |
 | transport_type | VARCHAR(30) | NOT NULL | METRO, BUS |
 | status | VARCHAR(30) | NOT NULL | ACTIVE, DISABLED |
+| created_by_account_id | VARCHAR(36) | NOT NULL | Tham chiếu mềm sang auth_db.accounts; người tạo trực tiếp hoặc xác nhận import |
 | created_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
@@ -439,6 +447,7 @@ Unique đề xuất: `(operator_id, route_code)`.
 | station_name | VARCHAR(255) | NOT NULL |  |
 | station_order | INT | NOT NULL | Thứ tự trên tuyến |
 | status | VARCHAR(30) | NOT NULL | ACTIVE, DISABLED |
+| created_by_account_id | VARCHAR(36) | NOT NULL | Tham chiếu mềm sang auth_db.accounts; người tạo trực tiếp hoặc xác nhận import |
 | created_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
@@ -458,12 +467,13 @@ Trong MVP, `stations` được mô hình theo tuyến để đơn giản hóa ki
 | status | VARCHAR(30) | NOT NULL | ACTIVE, OFFLINE, MAINTENANCE, DISABLED |
 | firmware_version | VARCHAR(100) | NULL |  |
 | last_seen_at | TIMESTAMP | NULL | Heartbeat mới nhất |
+| created_by_account_id | VARCHAR(36) | NOT NULL | Tham chiếu mềm sang auth_db.accounts; người tạo trực tiếp hoặc xác nhận import |
 | created_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
 `devices.status = OFFLINE` là trạng thái vận hành có thể được hệ thống tính từ `last_seen_at` và ngưỡng heartbeat timeout. Trạng thái cấu hình do quản trị đặt chủ yếu là `ACTIVE`, `MAINTENANCE`, `DISABLED`; nếu thiết bị đang `MAINTENANCE` hoặc `DISABLED` thì không xử lý lượt quét dù vẫn có heartbeat.
 
-Các bảng master data không thêm `created_by_account_id`/`updated_by_account_id` trong MVP để tránh phình schema. Thao tác tạo/sửa/xóa mềm được ghi vào `afc_audit_logs` trong MongoDB với `account_id`, `action`, `resource_type`, `resource_id` và metadata thay đổi.
+Các bảng master data lưu `created_by_account_id` vì đây là dữ liệu cấu hình ảnh hưởng trực tiếp đến phạm vi vận hành và xử lý lượt quét. Lịch sử sửa, vô hiệu hóa và giá trị trước/sau thay đổi vẫn được ghi đầy đủ vào `afc_audit_logs` trong MongoDB; chưa thêm `updated_by_account_id` để tránh trùng vai trò với audit log.
 
 ### 3.4. Dữ Liệu Nghiệp Vụ Đồng Bộ Từ Cấp 5
 
@@ -632,11 +642,13 @@ Rule đưa transaction vào batch:
 | created_by_account_id | VARCHAR(36) | NULL | Tham chiếu mềm sang auth_db.accounts; null nếu gói sinh từ dữ liệu Cấp 5 |
 | published_at | TIMESTAMP | NULL |  |
 | created_at | TIMESTAMP | NOT NULL |  |
-| updated_at | TIMESTAMP | NOT NULL | Cập nhật khi publish/revoke hoặc khi đồng bộ trạng thái gói |
+| updated_at | TIMESTAMP | NOT NULL | Cập nhật khi sửa draft, publish/revoke hoặc khi đồng bộ trạng thái gói |
 
 Unique đề xuất: `(operator_id, version)`.
 
 Unique đề xuất thêm cho dữ liệu nhận từ Cấp 5: `(operator_id, source_type, external_package_code)` khi `external_package_code` khác null.
+
+`control_packages` do Cấp 4 tạo được phép update payload/package metadata khi còn là draft, thỏa đồng thời: `source_type = LEVEL4_CREATED`, `status = CREATED`, chưa từng publish và không có `station_control_syncs`. Sau khi publish hoặc đã có sync record, package trở thành bất biến; nếu cần thay đổi thì tạo package/version mới. Job cleanup được phép hard delete metadata và payload của package nháp chỉ khi thỏa thêm điều kiện quá thời gian lưu nháp mặc định 30 ngày. Audit log tạo/sửa/cleanup vẫn được giữ.
 
 #### `station_control_syncs`
 
@@ -669,6 +681,7 @@ Job retry control package sẽ chọn các bản ghi `sync_status IN (PENDING, F
 | transaction_count | INT | NOT NULL |  |
 | status | VARCHAR(30) | NOT NULL | CREATED, SUBMITTED, ACCEPTED, REJECTED, FAILED |
 | exchange_log_ref | VARCHAR(100) | NULL | `_id` MongoDB request/response mới nhất của batch |
+| created_by_account_id | VARCHAR(36) | NULL | Tham chiếu mềm sang auth_db.accounts; người chọn khoảng thời gian/tạo batch, null nếu batch do scheduler tạo |
 | submitted_at | TIMESTAMP | NULL |  |
 | created_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
@@ -722,7 +735,8 @@ RDBMS chỉ lưu khóa chính, trạng thái tổng hợp và `*_ref` trỏ sang
 | `device_incidents` | 180 ngày hoặc lâu hơn nếu cần vận hành | Không cần RDBMS riêng trong MVP |
 | `integration_exchange_logs` | 180 ngày | Quan trọng khi đối chiếu gửi/nhận Cấp 5 |
 | `auth_audit_logs`, `afc_audit_logs` | 1 năm hoặc theo policy bảo mật | Có thể tăng nếu yêu cầu kiểm toán |
-| `control_package_payloads`, `level5_management_payloads` | Không xóa tự động trong MVP | Cần giữ để truy vết version/rule đã phát hành |
+| `control_package_payloads` | Không xóa tự động nếu package đã publish hoặc nhận từ C5; xóa cùng package nháp C4 quá hạn | Thời gian lưu nháp mặc định 30 ngày; chỉ cleanup package chưa từng publish và không có station sync |
+| `level5_management_payloads` | Không xóa tự động trong MVP | Cần giữ để truy vết dữ liệu nhận từ C5 |
 
 ### 4.4. Redis Runtime Cache
 
@@ -750,8 +764,9 @@ Trong `qr:session:{qrId}`, chỉ một trong hai field `ticketId` hoặc `entitl
 | --- | --- | --- |
 | accounts.is_active | `true` | Account được phép đăng nhập |
 | accounts.is_active | `false` | Account bị khóa, không được đăng nhập |
-| accounts.must_change_password | `true` | User bắt buộc đổi mật khẩu sau đăng nhập, dùng cho account mới hoặc reset mật khẩu |
-| accounts.must_change_password | `false` | User đang dùng mật khẩu tự đặt hợp lệ |
+| accounts.password_status | `NORMAL` | User đang dùng mật khẩu hợp lệ |
+| accounts.password_status | `NEED_TO_CHANGE` | User bắt buộc đổi mật khẩu sau đăng nhập, dùng cho account mới hoặc sau khi admin cấp mật khẩu tạm |
+| accounts.password_status | `NEED_TO_RESET` | Account cần được admin reset mật khẩu trước khi dùng lại, ví dụ khi phát hiện rủi ro bảo mật hoặc quên mật khẩu |
 
 ### 5.2. Master Data AFC
 

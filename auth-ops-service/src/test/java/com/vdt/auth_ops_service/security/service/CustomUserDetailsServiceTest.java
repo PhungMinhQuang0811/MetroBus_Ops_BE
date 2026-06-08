@@ -48,7 +48,7 @@ class CustomUserDetailsServiceTest {
     @Test
     void loadUserByUsername_Success() {
         // Given
-        when(accountRepository.findByIdentifier("testuser")).thenReturn(Optional.of(mockAccount));
+        when(accountRepository.findByUsername("testuser")).thenReturn(Optional.of(mockAccount));
 
         // When
         UserDetails userDetails = customUserDetailsService.loadUserByUsername("testuser");
@@ -60,19 +60,19 @@ class CustomUserDetailsServiceTest {
         assertTrue(userDetails.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ACCOUNT_READ")));
         
-        verify(accountRepository, times(1)).findByIdentifier("testuser");
+        verify(accountRepository, times(1)).findByUsername("testuser");
     }
 
     @Test
     void loadUserByUsername_UserNotFound_ThrowsException() {
         // Given
-        when(accountRepository.findByIdentifier("unknown")).thenReturn(Optional.empty());
+        when(accountRepository.findByUsername("unknown")).thenReturn(Optional.empty());
 
         // When & Then
         assertThrows(AppException.class, () -> {
             customUserDetailsService.loadUserByUsername("unknown");
         });
 
-        verify(accountRepository, times(1)).findByIdentifier("unknown");
+        verify(accountRepository, times(1)).findByUsername("unknown");
     }
 }

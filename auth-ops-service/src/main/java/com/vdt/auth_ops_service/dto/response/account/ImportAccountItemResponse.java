@@ -1,4 +1,4 @@
-package com.vdt.auth_ops_service.dto.response.auth;
+package com.vdt.auth_ops_service.dto.response.account;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -10,10 +10,12 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AuthResponse {
+public class ImportAccountItemResponse {
+    Integer row;
     String id;
     String username;
-    String passwordStatus;
     Set<String> roles;
-    Set<String> permissions;
+    Boolean isActive;
+    String passwordStatus;
+    String temporaryPassword;
 }

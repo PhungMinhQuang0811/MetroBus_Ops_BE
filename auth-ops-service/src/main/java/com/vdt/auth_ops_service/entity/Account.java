@@ -33,9 +33,8 @@ public class Account {
     @Builder.Default
     private boolean isActive = false;
 
-    @Column(name = "must_change_password", nullable = false)
-    @Builder.Default
-    private boolean mustChangePassword = true;
+    @Column(name = "password_status", nullable = false, length = 30)
+    private String passwordStatus;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

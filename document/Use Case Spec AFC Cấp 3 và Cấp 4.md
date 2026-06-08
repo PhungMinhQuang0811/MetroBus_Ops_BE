@@ -54,7 +54,7 @@ Nguồn đầu vào:
 | UC12 | Ghi nhận incident thiết bị | DEVICE_GATEWAY, STATION_OPERATOR | P1 |
 | UC13 | Theo dõi incident thiết bị | OPERATOR_MANAGER, STATION_OPERATOR | P1 |
 | UC14 | Đồng bộ card, ticket, entitlement từ Cấp 5 | LEVEL5_SYSTEM, System | P0 |
-| UC15 | Tạo control package cấu hình vận hành | OPERATOR_ADMIN, OPERATOR_MANAGER | P0 |
+| UC15 | Quản lý control package cấu hình vận hành | OPERATOR_ADMIN, OPERATOR_MANAGER | P0 |
 | UC16 | Phát hành control package xuống Cấp 3 | OPERATOR_ADMIN, OPERATOR_MANAGER, System | P0 |
 | UC17 | Cấp 3 nhận và áp dụng control package | STATION_AGENT, System | P0 |
 | UC18 | Dashboard vận hành Cấp 4 | OPERATOR_ADMIN, OPERATOR_MANAGER | P1 |
@@ -730,13 +730,13 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 - Cấp 4 không tự định nghĩa trạng thái chặn toàn mạng trong phạm vi MVP; Cấp 4 chỉ nhận, lưu, giám sát và phân phối xuống Cấp 3.
 - Cấp 4 không lưu wallet/card balance trong MVP.
 
-## UC15 - Tạo Control Package Cấu Hình Vận Hành
+## UC15 - Quản Lý Control Package Cấu Hình Vận Hành
 
 ### Bảng Mô Tả
 
 | Thuộc tính | Nội dung |
 | --- | --- |
-| Mục tiêu | Cấp 4 tạo control package cho các cấu hình vận hành nội bộ của operator |
+| Mục tiêu | Cấp 4 tạo và sửa control package nháp cho các cấu hình vận hành nội bộ của operator |
 | Actor chính | `OPERATOR_MANAGER` |
 | Priority | P1 |
 | Tần suất | Khi thay đổi cấu hình vận hành |
@@ -747,7 +747,7 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 - `OPERATOR_MANAGER` đã đăng nhập.
 - Package type thuộc phạm vi Cấp 4 được phép tạo.
 
-### Luồng Chính
+### Luồng Chính - Tạo Control Package
 
 | Bước | Actor/System | Mô tả |
 | --- | --- | --- |
@@ -759,6 +759,26 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 | 6 | System | Lưu payload lớn vào MongoDB nếu cần |
 | 7 | System | Ghi audit tạo control package |
 
+### Luồng Thay Thế - Sửa Control Package Nháp
+
+| Bước | Actor/System | Mô tả |
+| --- | --- | --- |
+| B1 | OPERATOR_MANAGER | Chọn control package cần sửa |
+| B2 | System | Kiểm tra package do Cấp 4 tạo, đang có `status = CREATED`, chưa từng publish và không có `station_control_syncs` |
+| B3 | OPERATOR_MANAGER | Cập nhật payload cấu hình |
+| B4 | System | Validate lại payload theo schema của package type |
+| B5 | System | Cập nhật metadata/payload package và `updatedAt` |
+| B6 | System | Ghi audit sửa control package |
+
+### Luồng Thay Thế - Dọn Control Package Nháp Quá Hạn
+
+| Bước | Actor/System | Mô tả |
+| --- | --- | --- |
+| A1 | System | Job định kỳ tìm package do Cấp 4 tạo có `status = CREATED` và `createdAt` quá thời gian lưu nháp |
+| A2 | System | Kiểm tra package chưa từng publish và không có bản ghi `station_control_syncs` |
+| A3 | System | Xóa metadata package và payload MongoDB tương ứng |
+| A4 | System | Ghi audit cleanup package |
+
 ### Luồng Thay Thế/Lỗi
 
 | Mã | Điều kiện | Kết quả |
@@ -766,16 +786,23 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 | UC15-E01 | Package type không hợp lệ | Từ chối tạo |
 | UC15-E02 | Payload sai định dạng | Từ chối tạo |
 | UC15-E03 | User không có quyền tạo loại package đó | Từ chối |
+| UC15-E04 | Yêu cầu sửa package đã publish, đã có sync hoặc không phải package do Cấp 4 tạo | Từ chối cập nhật; yêu cầu tạo package/version mới nếu cần thay đổi |
 
 ### Hậu Điều Kiện
 
-- Control package được tạo nhưng chưa được gửi xuống Cấp 3.
+- Control package được tạo hoặc cập nhật khi còn là nháp và chưa được gửi xuống Cấp 3.
 - Việc phát hành xuống Cấp 3 được thực hiện ở UC16.
+- Package nháp không được phát hành trong thời gian lưu nháp sẽ được job hệ thống dọn tự động.
 
 ### Ghi Chú
 
 - UC15 chỉ dành cho package do Cấp 4 tạo.
 - Card status/blacklist không được tạo thủ công ở UC15. Khi cần gửi xuống Cấp 3, UC16 chọn dữ liệu đã đồng bộ từ Cấp 5 ở UC14.
+- Control package do Cấp 4 tạo được phép sửa khi còn là draft: `source_type = LEVEL4_CREATED`, `status = CREATED`, chưa từng publish và không có `station_control_syncs`.
+- Sau khi publish xuống Cấp 3 hoặc đã có sync record, package trở thành bất biến. Khi payload hoặc cấu hình cần thay đổi, actor tạo package/version mới.
+- Thời gian lưu nháp mặc định là 30 ngày và có thể cấu hình.
+- Chỉ hard delete package thỏa đồng thời: `source_type = LEVEL4_CREATED`, `status = CREATED`, quá thời gian lưu nháp, chưa từng publish và không có `station_control_syncs`.
+- Package đã publish, package nhận từ Cấp 5 và audit log không bị xóa bởi cleanup UC15.
 
 ## UC16 - Phát Hành Control Package Xuống Cấp 3
 

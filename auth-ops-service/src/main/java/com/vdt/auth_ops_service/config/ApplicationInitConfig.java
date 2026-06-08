@@ -1,5 +1,6 @@
 package com.vdt.auth_ops_service.config;
 
+import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
 import com.vdt.auth_ops_service.constant.PredefinedPermission;
 import com.vdt.auth_ops_service.constant.PredefinedRole;
 import com.vdt.auth_ops_service.entity.Account;
@@ -113,7 +114,7 @@ public class ApplicationInitConfig {
                             .username(adminUsername)
                             .password(passwordEncoder.encode(adminPassword))
                             .isActive(true)
-                            .mustChangePassword(false)
+                            .passwordStatus(PredefinedPasswordStatus.NORMAL)
                             .roles(Set.of(adminRole))
                             .build();
 

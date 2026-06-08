@@ -3,6 +3,9 @@ package com.vdt.auth_ops_service.security.auth;
 import com.nimbusds.jwt.SignedJWT;
 import com.vdt.auth_ops_service.common.exception.AppException;
 import com.vdt.auth_ops_service.common.exception.ErrorCode;
+import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
+import com.vdt.auth_ops_service.entity.Account;
+import com.vdt.auth_ops_service.repository.AccountRepository;
 import com.vdt.auth_ops_service.security.entity.CustomUserDetails;
 import com.vdt.auth_ops_service.security.service.ITokenManagementService;
 import com.vdt.auth_ops_service.security.service.IUserPermissionService;
@@ -20,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.filter.OncePerRequestFilter;
 import lombok.experimental.NonFinal;
 
@@ -34,6 +38,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     JwtUtil jwtUtil;
     ITokenManagementService tokenManagementService;
     IUserPermissionService userPermissionService;
+    AccountRepository accountRepository;
+    HandlerExceptionResolver handlerExceptionResolver;
 
     @NonFinal
     @Value("${app.security.jwt.access-token-cookie-name}")
@@ -57,6 +63,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SignedJWT signedJWT = jwtUtil.verifyAccessToken(token);
                 String userId = signedJWT.getJWTClaimsSet().getSubject();
                 String username = signedJWT.getJWTClaimsSet().getStringClaim("username");
+                Account account = accountRepository.findById(userId)
+                        .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
+
+                if (PredefinedPasswordStatus.NEED_TO_CHANGE.equals(account.getPasswordStatus())
+                        && !isPasswordChangeAllowedEndpoint(request)) {
+                    throw new AppException(ErrorCode.PASSWORD_CHANGE_REQUIRED);
+                }
 
                 var authorities = userPermissionService.getUserPermissions(userId);
 
@@ -70,11 +83,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
                 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            } catch (AppException e) {
+                SecurityContextHolder.clearContext();
+                handlerExceptionResolver.resolveException(request, response, null, e);
+                return;
             } catch (Exception e) {
-                throw new AppException(ErrorCode.UNAUTHENTICATED);
+                SecurityContextHolder.clearContext();
+                handlerExceptionResolver.resolveException(
+                        request,
+                        response,
+                        null,
+                        new AppException(ErrorCode.UNAUTHENTICATED)
+                );
+                return;
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isPasswordChangeAllowedEndpoint(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return "/auth/login".equals(path)
+                || "/auth/logout".equals(path)
+                || "/auth/change-password".equals(path);
     }
 }

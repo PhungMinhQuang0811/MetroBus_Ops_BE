@@ -20,8 +20,11 @@ public enum ErrorCode {
      * Range 2xxx: Validation errors
      */
     FIELD_REQUIRED(2000, "{fieldName} is required", HttpStatus.BAD_REQUEST),
-    INVALID_PASSWORD(2002, "Password must be at least 9 characters and contain both letters and numbers", HttpStatus.BAD_REQUEST),
-    INVALID_ROLE_SELECTION(2003, "Invalid operator role selection", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD(2001, "Password must be at least 9 characters and contain both letters and numbers", HttpStatus.BAD_REQUEST),
+    INVALID_ROLE_SELECTION(2002, "Invalid operator role selection", HttpStatus.BAD_REQUEST),
+    INVALID_PAGE_REQUEST(2003, "Page must be >= 0 and size must be between 1 and 100", HttpStatus.BAD_REQUEST),
+    INVALID_ACCOUNT_ID(2004, "Account id is invalid", HttpStatus.BAD_REQUEST),
+    INVALID_SEARCH_KEYWORD(2005, "Search keyword is too long", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
@@ -35,6 +38,11 @@ public enum ErrorCode {
     LOGOUT_FAILED(3008, "Failed to log out. Please try again.", HttpStatus.INTERNAL_SERVER_ERROR),
     ROLE_NOT_FOUND(3009, "Role not found", HttpStatus.NOT_FOUND),
     PERMISSION_NOT_FOUND(3010, "Permission not found", HttpStatus.NOT_FOUND),
+    OPERATOR_ADMIN_STATUS_CHANGE_NOT_ALLOWED(3011, "Operator admin account status cannot be changed", HttpStatus.BAD_REQUEST),
+    ACCOUNT_ALREADY_DISABLED(3012, "Account is already disabled", HttpStatus.BAD_REQUEST),
+    ACCOUNT_ALREADY_ENABLED(3013, "Account is already enabled", HttpStatus.BAD_REQUEST),
+    IMPORT_FILE_INVALID(3014, "Import file is invalid", HttpStatus.BAD_REQUEST),
+    IMPORT_FILE_HAS_ERRORS(3015, "Import file contains invalid rows", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 4xxx: Security, Authentication & System errors
@@ -48,6 +56,8 @@ public enum ErrorCode {
     ACCESS_DENIED(4007, "You do not have permission to access this resource", HttpStatus.FORBIDDEN),
     TOKEN_EXPIRED_OR_INVALID(4008, "Token is already expired or invalid", HttpStatus.BAD_REQUEST),
     INVALID_CSRF_TOKEN(4009, "Missing or invalid CSRF token", HttpStatus.FORBIDDEN),
+    PASSWORD_RESET_REQUIRED(4010, "Your account requires an administrator to reset the password.", HttpStatus.FORBIDDEN),
+    PASSWORD_CHANGE_REQUIRED(4011, "You must change your password before using this account.", HttpStatus.FORBIDDEN),
     ;
 
     int code;

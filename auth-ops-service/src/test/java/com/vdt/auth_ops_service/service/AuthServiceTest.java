@@ -69,7 +69,7 @@ class AuthServiceTest {
     @Test
     void login_Success() {
         LoginRequest req = new LoginRequest("testuser", "password");
-        when(accountRepository.findByIdentifier("testuser")).thenReturn(Optional.of(mockAccount));
+        when(accountRepository.findByUsername("testuser")).thenReturn(Optional.of(mockAccount));
         when(jwtUtil.generateToken(mockAccount)).thenReturn("at");
         when(jwtUtil.generateRefreshToken(mockAccount)).thenReturn("rt");
         when(authMapper.toAuthResponse(mockAccount)).thenReturn(new AuthResponse());
@@ -80,7 +80,7 @@ class AuthServiceTest {
     }
     @Test
     void login_UserNotFound_ThrowsException() {
-        when(accountRepository.findByIdentifier(anyString())).thenReturn(Optional.empty());
+        when(accountRepository.findByUsername(anyString())).thenReturn(Optional.empty());
         assertThrows(AppException.class, () -> authService.login(new LoginRequest("no", "pwd"), request, response));
     }
 

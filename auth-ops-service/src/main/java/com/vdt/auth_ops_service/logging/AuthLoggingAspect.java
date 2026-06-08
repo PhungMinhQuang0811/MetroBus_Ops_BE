@@ -19,7 +19,7 @@ public class AuthLoggingAspect {
     public void logAfterLoginSuccess(JoinPoint joinPoint) {
         Object[] args = joinPoint.getArgs();
         if (args.length > 0 && args[0] instanceof LoginRequest request) {
-            log.info("LOGIN_SUCCESS: Account identifier [{}] logged in successfully.", request.getIdentifier());
+            log.info("LOGIN_SUCCESS: Account identifier [{}] logged in successfully.", request.getUsername());
         } else {
             log.info("LOGIN_SUCCESS: Account logged in successfully.");
         }
@@ -29,7 +29,7 @@ public class AuthLoggingAspect {
     public void logAfterLoginFailure(JoinPoint joinPoint, Exception e) {
         Object[] args = joinPoint.getArgs();
         if (args.length > 0 && args[0] instanceof LoginRequest request) {
-            log.warn("LOGIN_FAILED: Identifier [{}] failed to log in. Reason: {}", request.getIdentifier(), e.getMessage());
+            log.warn("LOGIN_FAILED: Identifier [{}] failed to log in. Reason: {}", request.getUsername(), e.getMessage());
         } else {
             log.warn("LOGIN_FAILED: Failed to log in. Reason: {}", e.getMessage());
         }

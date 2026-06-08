@@ -54,7 +54,7 @@ public class AuthMapper {
         return AuthResponse.builder()
                 .id(account.getId())
                 .username(account.getUsername())
-                .mustChangePassword(account.isMustChangePassword())
+                .passwordStatus(account.getPasswordStatus())
                 .roles(roles)
                 .permissions(permissions)
                 .build();

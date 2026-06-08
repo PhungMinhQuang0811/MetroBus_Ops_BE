@@ -1,6 +1,7 @@
 package com.vdt.auth_ops_service.service.Impl;
 
 import com.nimbusds.jwt.SignedJWT;
+import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
 import com.vdt.auth_ops_service.dto.request.auth.LoginRequest;
 import com.vdt.auth_ops_service.dto.response.auth.AuthResponse;
 import com.vdt.auth_ops_service.entity.Account;
@@ -75,15 +76,16 @@ public class AuthService implements IAuthService {
 
     @Override
     public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest, HttpServletResponse response) {
-        Account account = accountRepository.findByIdentifier(request.getIdentifier())
+        Account account = accountRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
         validateAccountStatus(account);
 
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getIdentifier(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
+        validatePasswordStatus(account);
         setTokenCookies(response, account);
 
         return authMapper.toAuthResponse(account);
@@ -152,12 +154,19 @@ public class AuthService implements IAuthService {
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
 
         validateAccountStatus(account);
+        validatePasswordStatus(account);
 
         setTokenCookies(response, account);
     }
     private void validateAccountStatus(Account account) {
         if (!account.isActive()) {
             throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
+    }
+
+    private void validatePasswordStatus(Account account) {
+        if (PredefinedPasswordStatus.NEED_TO_RESET.equals(account.getPasswordStatus())) {
+            throw new AppException(ErrorCode.PASSWORD_RESET_REQUIRED);
         }
     }
 

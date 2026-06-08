@@ -7,13 +7,14 @@ public final class SecurityConstants {
     private SecurityConstants() {}
 
     public static final Map<String, String> ENDPOINT_PERMISSIONS = Map.of(
-            "/auth/list-accounts", PredefinedPermission.ACCOUNT_READ,
-            "/auth/get-account/**", PredefinedPermission.ACCOUNT_READ,
-            "/auth/create-account", PredefinedPermission.ACCOUNT_WRITE,
-            "/auth/update-account/**", PredefinedPermission.ACCOUNT_WRITE,
-            "/auth/disable-account/**", PredefinedPermission.ACCOUNT_WRITE,
-            "/auth/enable-account/**", PredefinedPermission.ACCOUNT_WRITE,
-            "/auth/reset-account-password/**", PredefinedPermission.ACCOUNT_WRITE,
+            "/account/list-accounts", PredefinedPermission.ACCOUNT_READ,
+            "/account/get-account/**", PredefinedPermission.ACCOUNT_READ,
+            "/account/create-account", PredefinedPermission.ACCOUNT_WRITE,
+            "/account/disable-account/**", PredefinedPermission.ACCOUNT_WRITE,
+            "/account/enable-account/**", PredefinedPermission.ACCOUNT_WRITE,
+            "/account/preview-import-accounts", PredefinedPermission.ACCOUNT_WRITE,
+            "/account/confirm-import-accounts", PredefinedPermission.ACCOUNT_WRITE,
+            "/account/reset-account-password/**", PredefinedPermission.ACCOUNT_WRITE,
             "/auth/search-audit-logs", PredefinedPermission.AUDIT_READ
     );
 

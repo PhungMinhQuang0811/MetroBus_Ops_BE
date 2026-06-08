@@ -10,8 +10,8 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class LoginRequest {
-    @RequiredField(fieldName = "Identifier")
-    String identifier;
+    @RequiredField(fieldName = "username")
+    String username;
 
     @RequiredField(fieldName = "Password")
     String password;
