@@ -1,5 +1,7 @@
 package com.vdt.auth_ops_service.controller;
 
+import com.vdt.auth_ops_service.common.exception.AppException;
+import com.vdt.auth_ops_service.common.exception.ErrorCode;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
 import com.vdt.auth_ops_service.dto.response.ApiResponse;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
@@ -13,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/account")
@@ -63,16 +67,28 @@ public class AccountController {
     }
 
     @PostMapping("/preview-import-accounts")
-    public ApiResponse<ImportAccountPreviewResponse> previewImportAccounts(@RequestPart("file") MultipartFile file) {
+    public ApiResponse<ImportAccountPreviewResponse> previewImportAccounts(
+            @RequestPart(value = "file", required = false) List<MultipartFile> files
+    ) {
         return ApiResponse.<ImportAccountPreviewResponse>builder()
-                .result(accountService.previewImportAccounts(file))
+                .result(accountService.previewImportAccounts(resolveSingleImportFile(files)))
                 .build();
     }
 
     @PostMapping("/confirm-import-accounts")
-    public ApiResponse<ImportAccountConfirmResponse> confirmImportAccounts(@RequestPart("file") MultipartFile file) {
+    public ApiResponse<ImportAccountConfirmResponse> confirmImportAccounts(
+            @RequestPart(value = "file", required = false) List<MultipartFile> files
+    ) {
         return ApiResponse.<ImportAccountConfirmResponse>builder()
-                .result(accountService.confirmImportAccounts(file))
+                .result(accountService.confirmImportAccounts(resolveSingleImportFile(files)))
                 .build();
+    }
+
+    private MultipartFile resolveSingleImportFile(List<MultipartFile> files) {
+        if (files == null || files.size() != 1) {
+            throw new AppException(ErrorCode.IMPORT_FILE_INVALID);
+        }
+
+        return files.getFirst();
     }
 }

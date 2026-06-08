@@ -27,12 +27,6 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
 
     @Override
     public CsrfToken generateToken(HttpServletRequest request) {
-        // Thử lấy mã đang có từ Cookie trước
-        Cookie cookie = WebUtils.getCookie(request, cookieName);
-        if (cookie != null && StringUtils.hasLength(cookie.getValue())) {
-            return new DefaultCsrfToken(headerName, "_csrf", cookie.getValue());
-        }
-        // Nếu chưa có tí gì thì mới gen cái mới để dùng lâu dài
         return new DefaultCsrfToken(headerName, "_csrf", UUID.randomUUID().toString());
     }
 

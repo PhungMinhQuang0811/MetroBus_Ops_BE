@@ -38,26 +38,19 @@ class CustomCsrfTokenRepositoryTest {
     }
 
     @Test
-    void generateToken_WithExistingCookie_ShouldReturnExistingValue() {
-        // Arrange
-        Cookie cookie = new Cookie(cookieName, "existing-uuid");
-        when(request.getCookies()).thenReturn(new Cookie[]{cookie});
-
+    void generateToken_WithExistingCookie_ShouldReturnNewUuid() {
         // Act
         CsrfToken token = repository.generateToken(request);
 
         // Assert
         assertNotNull(token);
-        assertEquals("existing-uuid", token.getToken());
+        assertNotEquals("existing-uuid", token.getToken());
+        assertTrue(token.getToken().matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"));
         assertEquals(headerName, token.getHeaderName());
     }
 
     @Test
     void generateToken_WithEmptyCookie_ShouldReturnNewUuid() {
-        // Arrange
-        Cookie cookie = new Cookie(cookieName, "");
-        when(request.getCookies()).thenReturn(new Cookie[]{cookie});
-
         // Act
         CsrfToken token = repository.generateToken(request);
 
@@ -69,15 +62,22 @@ class CustomCsrfTokenRepositoryTest {
 
     @Test
     void generateToken_WithoutCookie_ShouldReturnNewUuid() {
-        // Arrange
-        when(request.getCookies()).thenReturn(null);
-
         // Act
         CsrfToken token = repository.generateToken(request);
 
         // Assert
         assertNotNull(token);
         assertTrue(token.getToken().matches("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"));
+    }
+
+    @Test
+    void generateToken_CalledTwice_ShouldReturnDifferentValues() {
+        // Act
+        CsrfToken firstToken = repository.generateToken(request);
+        CsrfToken secondToken = repository.generateToken(request);
+
+        // Assert
+        assertNotEquals(firstToken.getToken(), secondToken.getToken());
     }
 
     @Test
