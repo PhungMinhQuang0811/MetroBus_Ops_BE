@@ -12,7 +12,8 @@ public final class SecurityConstants {
             "/afc-ops/list-routes", PredefinedAfcPermission.MASTER_DATA_READ,
             "/afc-ops/create-route", PredefinedAfcPermission.MASTER_DATA_WRITE,
             "/afc-ops/update-route/**", PredefinedAfcPermission.MASTER_DATA_WRITE,
-            "/afc-ops/import-routes", PredefinedAfcPermission.MASTER_DATA_WRITE
+            "/afc-ops/import-routes", PredefinedAfcPermission.MASTER_DATA_WRITE,
+            "/afc-ops/sync-operator-manager-role-permissions", PredefinedAfcPermission.MASTER_DATA_WRITE
     );
 
     public static final Map<String, Set<String>> ROLE_AFC_PERMISSIONS = Map.of(

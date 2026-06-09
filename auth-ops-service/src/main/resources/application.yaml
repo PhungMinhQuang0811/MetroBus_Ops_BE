@@ -21,6 +21,11 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASSWORD}
 
 management:
   endpoints:
@@ -38,6 +43,11 @@ app:
       password: ${ADMIN_PASSWORD}
   domain-name: localhost
   timezone: ${APP_TIMEZONE}
+  message-broker:
+    auth-permission-sync:
+      exchange: auth.ops
+      queue: auth.permission-sync
+      routing-key: auth.permission-sync
   security:
     public-endpoints: >
       "/auth/login",

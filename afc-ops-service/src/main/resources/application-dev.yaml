@@ -8,15 +8,7 @@ springdoc:
 app:
   security:
     public-endpoints: >
+      "/sync-operator-manager-role-permissions",
       "/swagger-ui/**",
       "/v3/api-docs/**",
       "/actuator/health"
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-  endpoint:
-    health:
-      show-details: always

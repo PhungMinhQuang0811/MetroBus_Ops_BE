@@ -15,12 +15,17 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: false # true for debug
   data:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USER}
+    password: ${RABBITMQ_PASSWORD}
 
 management:
   endpoints:
@@ -34,6 +39,14 @@ management:
 app:
   domain-name: localhost
   timezone: ${APP_TIMEZONE}
+  init:
+    enabled: true
+    sync-auth-permissions-enabled: true
+  message-broker:
+    auth-permission-sync:
+      exchange: auth.ops
+      queue: auth.permission-sync
+      routing-key: auth.permission-sync
   security:
     csrf-header-name: X-CSRF-TOKEN
     csrf-cookie-name: XSRF-TOKEN

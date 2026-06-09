@@ -88,6 +88,7 @@ Response page:
 | Device type | `QR_SCANNER_SIMULATOR` |
 | Device direction | `ENTRY`, `EXIT`, `BOTH` |
 | Device status | `ACTIVE`, `OFFLINE`, `MAINTENANCE`, `DISABLED` |
+| Master data status | `ACTIVE`, `DISABLED` |
 | Transport type | `METRO`, `BUS` |
 | Media type | `VIRTUAL_QR` |
 | Card type | `VIRTUAL_QR`, `PHYSICAL` |
@@ -1059,9 +1060,20 @@ FE action đề xuất: báo admin rằng account này chưa ở trạng thái c
 
 #### API-AFC-001 - List Routes
 
-`GET /afc-ops/list-routes?keyword=&transportType=&status=&page=0&size=20`
+`GET /afc-ops/list-routes?operatorId=&keyword=&transportType=&status=&page=0&size=20`
 
 Permission: `MASTER_DATA_READ`.
+
+Query params:
+
+| Field | Type | Required | Rule |
+| --- | --- | --- | --- |
+| `operatorId` | number | Yes | Operator phải tồn tại |
+| `keyword` | string | No | Trim trước khi xử lý; tìm theo `routeCode` hoặc `routeName`; tối đa 50 ký tự |
+| `transportType` | string | No | Nếu truyền phải thuộc `METRO`, `BUS` |
+| `status` | string | No | Nếu truyền phải thuộc `ACTIVE`, `DISABLED` |
+| `page` | number | No | Mặc định `0`, phải `>= 0` |
+| `size` | number | No | Mặc định `20`, từ `1` đến `100` |
 
 Response:
 
@@ -1073,6 +1085,7 @@ Response:
     "items": [
       {
         "id": 1,
+        "operatorId": 1,
         "routeCode": "METRO-01",
         "routeName": "Metro Line 1",
         "transportType": "METRO",
@@ -1097,6 +1110,7 @@ Request:
 
 ```json
 {
+  "operatorId": 1,
   "routeCode": "METRO-01",
   "routeName": "Metro Line 1",
   "transportType": "METRO",
@@ -1112,6 +1126,7 @@ Response:
   "message": "Success",
   "result": {
     "id": 1,
+    "operatorId": 1,
     "routeCode": "METRO-01",
     "routeName": "Metro Line 1",
     "transportType": "METRO",
@@ -1132,6 +1147,7 @@ Request:
 
 ```json
 {
+  "operatorId": 1,
   "routeCode": "METRO-01",
   "routeName": "Metro Line 1 Updated",
   "transportType": "METRO",
@@ -1147,6 +1163,7 @@ Response:
   "message": "Success",
   "result": {
     "id": 1,
+    "operatorId": 1,
     "routeCode": "METRO-01",
     "routeName": "Metro Line 1 Updated",
     "transportType": "METRO",
@@ -1164,6 +1181,23 @@ Response:
 Permission: `MASTER_DATA_WRITE`.
 
 Content-Type: `multipart/form-data`, field `file`.
+
+File columns:
+
+| Column | Required | Rule |
+| --- | --- | --- |
+| `operatorId` | Yes | Operator phải tồn tại |
+| `routeCode` | Yes | Tối đa 50 ký tự, trim trước khi xử lý, unique trong cùng `operatorId` |
+| `routeName` | Yes | Tối đa 255 ký tự |
+| `transportType` | Yes | `METRO`, `BUS` |
+| `status` | No | `ACTIVE`, `DISABLED`; nếu bỏ trống mặc định `ACTIVE` |
+
+Import rule:
+
+- API này import all-or-nothing: nếu có bất kỳ dòng lỗi thì không ghi dòng nào.
+- Nếu `routeCode` đã tồn tại trong cùng `operatorId`, backend cập nhật route đó.
+- Nếu `routeCode` chưa tồn tại trong cùng `operatorId`, backend tạo route mới.
+- Backend dùng account hiện tại từ token để set `createdByAccountId` cho route tạo mới hoặc import.
 
 Response:
 
@@ -1196,6 +1230,30 @@ Nếu có dòng lỗi thì không import:
   }
 }
 ```
+
+Validation/error cases:
+
+| Code key | Message | HTTP |
+| --- | --- | --- |
+| `FIELD_REQUIRED` | `{fieldName} is required` | 400 |
+| `INVALID_PAGE_REQUEST` | Page must be >= 0 and size must be between 1 and 100 | 400 |
+| `INVALID_SEARCH_KEYWORD` | Search keyword is too long | 400 |
+| `INVALID_OPERATOR_ID` | Operator id is invalid | 400 |
+| `OPERATOR_NOT_FOUND` | Operator not found | 404 |
+| `INVALID_ROUTE_ID` | Route id is invalid | 400 |
+| `ROUTE_NOT_FOUND` | Route not found | 404 |
+| `ROUTE_CODE_EXISTED` | Route code already exists in operator | 400 |
+| `INVALID_TRANSPORT_TYPE` | Invalid transport type | 400 |
+| `INVALID_MASTER_DATA_STATUS` | Invalid master data status | 400 |
+| `IMPORT_FILE_INVALID` | Import file is invalid | 400 |
+| `IMPORT_FILE_HAS_ERRORS` | Import file contains invalid rows | 400 |
+
+Business notes:
+
+1. `routeCode` unique trong cùng `operatorId`.
+2. `routeCode`, `routeName`, `transportType`, `status` được trim trước khi validate.
+3. `status = DISABLED` dùng để ngừng route, không xóa cứng.
+4. API chưa trả `createdByAccountId`; backend vẫn lưu để audit/truy vết.
 
 ### UC06 - Quản Lý Ga/Trạm
 

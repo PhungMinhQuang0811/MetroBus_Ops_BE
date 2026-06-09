@@ -44,6 +44,21 @@ services:
     networks:
       - app-network
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-ops
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      TZ: ${APP_TIMEZONE}
+    ports:
+      - "${RABBITMQ_PORT}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT}:15672"
+    volumes:
+      - ./data/rabbitmq:/var/lib/rabbitmq
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
