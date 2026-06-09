@@ -2,10 +2,12 @@ package com.vdt.auth_ops_service.controller;
 
 import com.vdt.auth_ops_service.common.exception.AppException;
 import com.vdt.auth_ops_service.common.exception.ErrorCode;
+import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
 import com.vdt.auth_ops_service.dto.response.ApiResponse;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
+import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
 import com.vdt.auth_ops_service.service.IAccountService;
@@ -81,6 +83,15 @@ public class AccountController {
     ) {
         return ApiResponse.<ImportAccountConfirmResponse>builder()
                 .result(accountService.confirmImportAccounts(resolveSingleImportFile(files)))
+                .build();
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<ChangePasswordResponse> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        return ApiResponse.<ChangePasswordResponse>builder()
+                .result(accountService.changePassword(request))
                 .build();
     }
 

@@ -106,6 +106,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         return "/auth/login".equals(path)
                 || "/auth/logout".equals(path)
-                || "/auth/change-password".equals(path);
+                || "/account/change-password".equals(path);
     }
 }

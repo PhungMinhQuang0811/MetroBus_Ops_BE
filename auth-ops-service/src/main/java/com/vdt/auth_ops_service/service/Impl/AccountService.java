@@ -3,11 +3,14 @@ package com.vdt.auth_ops_service.service.Impl;
 import com.vdt.auth_ops_service.common.exception.AppException;
 import com.vdt.auth_ops_service.common.exception.ErrorCode;
 import com.vdt.auth_ops_service.common.util.PasswordUtil;
+import com.vdt.auth_ops_service.common.util.SearchFilterUtil;
 import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
 import com.vdt.auth_ops_service.constant.PredefinedRole;
+import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
+import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
 import com.vdt.auth_ops_service.entity.Account;
@@ -15,6 +18,7 @@ import com.vdt.auth_ops_service.entity.Role;
 import com.vdt.auth_ops_service.mapper.AccountMapper;
 import com.vdt.auth_ops_service.repository.AccountRepository;
 import com.vdt.auth_ops_service.repository.RoleRepository;
+import com.vdt.auth_ops_service.security.util.SecurityUtils;
 import com.vdt.auth_ops_service.service.IAccountService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -46,14 +50,14 @@ public class AccountService implements IAccountService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<AccountResponse> listAccounts(String keyword, String role, Boolean isActive, int page, int size) {
-        String normalizedKeyword = normalize(keyword);
-        String normalizedRole = normalize(role);
+        String normalizedKeyword = SearchFilterUtil.normalize(keyword);
+        String normalizedRole = SearchFilterUtil.normalize(role);
 
         validateListAccountParams(normalizedKeyword, normalizedRole, page, size);
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Account> accounts = accountRepository.searchAccounts(
-                toKeywordPattern(normalizedKeyword),
+                SearchFilterUtil.toKeywordPattern(normalizedKeyword),
                 normalizedRole,
                 isActive,
                 pageable
@@ -84,7 +88,11 @@ public class AccountService implements IAccountService {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
 
-        Set<Role> roles = resolveRoles(request.getRoleNames());
+        Set<Role> roles = roleRepository.findAllByNameIn(request.getRoleNames());
+        if (roles.size() != request.getRoleNames().size()) {
+            throw new AppException(ErrorCode.INVALID_ROLE_SELECTION);
+        }
+
         String temporaryPassword = PasswordUtil.generateTemporaryPassword();
         Account account = Account.builder()
                 .username(request.getUsername())
@@ -139,6 +147,36 @@ public class AccountService implements IAccountService {
         return accountImportService.confirm(file);
     }
 
+    @Override
+    @Transactional
+    public ChangePasswordResponse changePassword(ChangePasswordRequest request) {
+        String accountId = SecurityUtils.getCurrentAccountId();
+        if (accountId == null || accountId.isBlank()) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new AppException(ErrorCode.PASSWORD_CONFIRMATION_MISMATCH);
+        }
+
+        Account account = getAccountEntity(accountId);
+        if (!account.isActive()) {
+            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), account.getPassword())) {
+            throw new AppException(ErrorCode.CURRENT_PASSWORD_INCORRECT);
+        }
+
+        account.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        account.setPasswordStatus(PredefinedPasswordStatus.NORMAL);
+        accountRepository.save(account);
+
+        return ChangePasswordResponse.builder()
+                .passwordStatus(account.getPasswordStatus())
+                .build();
+    }
+
     private Account getAccountEntity(String accountId) {
         return accountRepository.findById(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -170,29 +208,10 @@ public class AccountService implements IAccountService {
         }
     }
 
-    private Set<Role> resolveRoles(Set<String> roleNames) {
-        Set<Role> roles = roleRepository.findAllByNameIn(roleNames);
-        if (roles.size() != roleNames.size()) {
-            throw new AppException(ErrorCode.INVALID_ROLE_SELECTION);
-        }
-        return roles;
-    }
-
     private void validateOperatorAdminStatusNotChanged(Account account) {
-        if (hasRole(account.getRoles(), PredefinedRole.OPERATOR_ADMIN)) {
+        if (account.getRoles() != null && account.getRoles().stream()
+                .anyMatch(role -> PredefinedRole.OPERATOR_ADMIN.equals(role.getName()))) {
             throw new AppException(ErrorCode.OPERATOR_ADMIN_STATUS_CHANGE_NOT_ALLOWED);
         }
-    }
-
-    private boolean hasRole(Set<Role> roles, String roleName) {
-        return roles != null && roles.stream().anyMatch(role -> roleName.equals(role.getName()));
-    }
-
-    private String normalize(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
-
-    private String toKeywordPattern(String keyword) {
-        return keyword == null ? "%" : "%" + keyword.toLowerCase() + "%";
     }
 }

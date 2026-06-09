@@ -4,9 +4,11 @@ import com.vdt.auth_ops_service.common.exception.AppException;
 import com.vdt.auth_ops_service.common.exception.ErrorCode;
 import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
 import com.vdt.auth_ops_service.constant.PredefinedRole;
+import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
+import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
 import com.vdt.auth_ops_service.entity.Account;
@@ -14,8 +16,10 @@ import com.vdt.auth_ops_service.entity.Role;
 import com.vdt.auth_ops_service.mapper.AccountMapper;
 import com.vdt.auth_ops_service.repository.AccountRepository;
 import com.vdt.auth_ops_service.repository.RoleRepository;
+import com.vdt.auth_ops_service.security.entity.CustomUserDetails;
 import com.vdt.auth_ops_service.service.Impl.AccountImportService;
 import com.vdt.auth_ops_service.service.Impl.AccountService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -24,6 +28,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -47,6 +53,11 @@ class AccountServiceTest {
 
     @InjectMocks
     private AccountService accountService;
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void listAccounts_Success_NormalizesFilters() {
@@ -305,6 +316,82 @@ class AccountServiceTest {
         assertSame(expected, accountService.confirmImportAccounts(file));
     }
 
+    @Test
+    void changePassword_Success_SetsPasswordStatusNormal() {
+        String accountId = UUID.randomUUID().toString();
+        Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
+        account.setPassword("encoded-current");
+        account.setPasswordStatus(PredefinedPasswordStatus.NEED_TO_CHANGE);
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("Temp123456")
+                .newPassword("NewPassword123")
+                .confirmPassword("NewPassword123")
+                .build();
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+        when(passwordEncoder.matches("Temp123456", "encoded-current")).thenReturn(true);
+        when(passwordEncoder.encode("NewPassword123")).thenReturn("encoded-new");
+        authenticateAs(accountId);
+
+        ChangePasswordResponse response = accountService.changePassword(request);
+
+        assertEquals(PredefinedPasswordStatus.NORMAL, response.getPasswordStatus());
+        assertEquals(PredefinedPasswordStatus.NORMAL, account.getPasswordStatus());
+        assertEquals("encoded-new", account.getPassword());
+        verify(accountRepository).save(account);
+    }
+
+    @Test
+    void changePassword_ConfirmMismatch_ThrowsException() {
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("Temp123456")
+                .newPassword("NewPassword123")
+                .confirmPassword("OtherPassword123")
+                .build();
+        authenticateAs(UUID.randomUUID().toString());
+
+        AppException exception = assertThrows(AppException.class,
+                () -> accountService.changePassword(request));
+
+        assertEquals(ErrorCode.PASSWORD_CONFIRMATION_MISMATCH, exception.getErrorCode());
+        verify(accountRepository, never()).findById(anyString());
+    }
+
+    @Test
+    void changePassword_WrongCurrentPassword_ThrowsException() {
+        String accountId = UUID.randomUUID().toString();
+        Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
+        account.setPassword("encoded-current");
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("Wrong123456")
+                .newPassword("NewPassword123")
+                .confirmPassword("NewPassword123")
+                .build();
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+        when(passwordEncoder.matches("Wrong123456", "encoded-current")).thenReturn(false);
+        authenticateAs(accountId);
+
+        AppException exception = assertThrows(AppException.class, () -> accountService.changePassword(request));
+
+        assertEquals(ErrorCode.CURRENT_PASSWORD_INCORRECT, exception.getErrorCode());
+        verify(accountRepository, never()).save(any(Account.class));
+    }
+
+    @Test
+    void changePassword_MissingCurrentAccount_ThrowsUnauthenticated() {
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("Temp123456")
+                .newPassword("NewPassword123")
+                .confirmPassword("NewPassword123")
+                .build();
+
+        AppException exception = assertThrows(AppException.class, () -> accountService.changePassword(request));
+
+        assertEquals(ErrorCode.UNAUTHENTICATED, exception.getErrorCode());
+        verify(accountRepository, never()).findById(anyString());
+    }
+
     private Account account(String username, String roleName, boolean active) {
         return Account.builder()
                 .username(username)
@@ -315,5 +402,15 @@ class AccountServiceTest {
 
     private Role role(String roleName) {
         return Role.builder().name(roleName).build();
+    }
+
+    private void authenticateAs(String accountId) {
+        CustomUserDetails userDetails = CustomUserDetails.builder()
+                .id(accountId)
+                .username("station01")
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userDetails, null, List.of())
+        );
     }
 }

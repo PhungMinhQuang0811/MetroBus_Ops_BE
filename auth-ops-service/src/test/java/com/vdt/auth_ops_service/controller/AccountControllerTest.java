@@ -2,9 +2,11 @@ package com.vdt.auth_ops_service.controller;
 
 import com.vdt.auth_ops_service.common.exception.AppException;
 import com.vdt.auth_ops_service.common.exception.ErrorCode;
+import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
+import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
 import com.vdt.auth_ops_service.service.IAccountService;
@@ -157,6 +159,21 @@ class AccountControllerTest {
 
         assertEquals(ErrorCode.IMPORT_FILE_INVALID, exception.getErrorCode());
         verifyNoInteractions(accountService);
+    }
+
+    @Test
+    void changePassword_DelegatesToService() {
+        ChangePasswordRequest request = ChangePasswordRequest.builder()
+                .currentPassword("Temp123456")
+                .newPassword("NewPassword123")
+                .confirmPassword("NewPassword123")
+                .build();
+        ChangePasswordResponse expected = ChangePasswordResponse.builder()
+                .passwordStatus("NORMAL")
+                .build();
+        when(accountService.changePassword(request)).thenReturn(expected);
+
+        assertSame(expected, controller.changePassword(request).getResult());
     }
 
     private MockMultipartFile importFile(String filename) {

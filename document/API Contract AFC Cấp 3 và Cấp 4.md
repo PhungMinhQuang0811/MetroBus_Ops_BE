@@ -561,9 +561,11 @@ Lỗi chính:
 
 #### API-AUTH-010 - Change Password
 
-`POST /auth/change-password`
+`POST /account/change-password`
 
 Permission: Authenticated.
+
+Ghi chú: API đổi mật khẩu thuộc `auth-ops-service` nhưng không đặt dưới `/auth`. Backend lấy account hiện tại từ security context (`SecurityUtils.getCurrentAccountId()`), không nhận `accountId` từ request.
 
 Request:
 
@@ -574,6 +576,14 @@ Request:
   "confirmPassword": "NewPassword@123"
 }
 ```
+
+Validation:
+
+| Field | Type | Required | Validation |
+| --- | --- | --- | --- |
+| `currentPassword` | string | Yes | Không được rỗng |
+| `newPassword` | string | Yes | Không được rỗng; tối thiểu 9 ký tự; có cả chữ và số |
+| `confirmPassword` | string | Yes | Không được rỗng; phải trùng `newPassword` |
 
 Response:
 
@@ -586,6 +596,187 @@ Response:
   }
 }
 ```
+
+Luồng:
+
+1. JWT filter xác thực access token/cookie và set security context.
+2. Nếu account đang có `passwordStatus = NEED_TO_CHANGE`, endpoint `/account/change-password` vẫn được phép gọi để user tự đổi mật khẩu.
+3. Service lấy `accountId` hiện tại từ `SecurityUtils.getCurrentAccountId()`.
+4. Validate request body.
+5. Load account, kiểm tra account còn active.
+6. So khớp `currentPassword` với password hash hiện tại.
+7. Hash `newPassword`, cập nhật password và set `passwordStatus = NORMAL`.
+8. Trả trạng thái mật khẩu mới. API không phát hành lại access token/refresh token trong response.
+
+Lỗi chính:
+
+| Code | Message | HTTP |
+| --- | --- | --- |
+| `UNAUTHENTICATED` | Unauthenticated access | 401 |
+| `FIELD_REQUIRED` | `{fieldName} is required` | 400 |
+| `INVALID_PASSWORD` | Password must be at least 9 characters and contain both letters and numbers | 400 |
+| `PASSWORD_CONFIRMATION_MISMATCH` | New password and confirm password do not match | 400 |
+| `CURRENT_PASSWORD_INCORRECT` | Current password is incorrect | 400 |
+| `ACCOUNT_DISABLED` | Your account is currently disabled or inactive. | 403 |
+| `USER_NOT_FOUND` | User not found | 404 |
+
+Response theo case để FE ghép:
+
+**1. Đổi mật khẩu thành công**
+
+HTTP `200`
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "passwordStatus": "NORMAL"
+  }
+}
+```
+
+FE action đề xuất: đóng form đổi mật khẩu, clear dữ liệu nhập, cho phép user tiếp tục dùng hệ thống. Nếu trước đó user có `passwordStatus = NEED_TO_CHANGE`, FE bỏ trạng thái bắt buộc đổi mật khẩu.
+
+**2. Chưa đăng nhập, thiếu access token hoặc token không set được security context**
+
+HTTP `401`
+
+```json
+{
+  "code": 4002,
+  "message": "Unauthenticated access",
+  "result": null
+}
+```
+
+FE action đề xuất: điều hướng về màn hình login hoặc gọi refresh token nếu flow hiện tại cho phép.
+
+**3. Thiếu `currentPassword`**
+
+HTTP `400`
+
+```json
+{
+  "code": 2000,
+  "message": "currentPassword is required",
+  "result": null
+}
+```
+
+FE action đề xuất: hiển thị lỗi tại field `currentPassword`.
+
+**4. Thiếu `newPassword`**
+
+HTTP `400`
+
+```json
+{
+  "code": 2000,
+  "message": "newPassword is required",
+  "result": null
+}
+```
+
+FE action đề xuất: hiển thị lỗi tại field `newPassword`.
+
+**5. Thiếu `confirmPassword`**
+
+HTTP `400`
+
+```json
+{
+  "code": 2000,
+  "message": "confirmPassword is required",
+  "result": null
+}
+```
+
+FE action đề xuất: hiển thị lỗi tại field `confirmPassword`.
+
+**6. `newPassword` không đạt rule mật khẩu**
+
+HTTP `400`
+
+```json
+{
+  "code": 2001,
+  "message": "Password must be at least 9 characters and contain both letters and numbers",
+  "result": null
+}
+```
+
+FE action đề xuất: hiển thị lỗi tại field `newPassword`. Rule hiện tại: tối thiểu 9 ký tự, có ít nhất 1 chữ và 1 số.
+
+**7. `confirmPassword` không trùng `newPassword`**
+
+HTTP `400`
+
+```json
+{
+  "code": 2006,
+  "message": "New password and confirm password do not match",
+  "result": null
+}
+```
+
+FE action đề xuất: hiển thị lỗi tại field `confirmPassword`.
+
+**8. `currentPassword` không đúng**
+
+HTTP `400`
+
+```json
+{
+  "code": 2007,
+  "message": "Current password is incorrect",
+  "result": null
+}
+```
+
+FE action đề xuất: hiển thị lỗi tại field `currentPassword`; không clear `newPassword`/`confirmPassword` nếu FE muốn giữ trải nghiệm nhập liệu.
+
+**9. Account đã bị khóa hoặc inactive**
+
+HTTP `403`
+
+```json
+{
+  "code": 4006,
+  "message": "Your account is currently disabled or inactive.",
+  "result": null
+}
+```
+
+FE action đề xuất: logout local state và báo user liên hệ quản trị viên.
+
+**10. Account trong token không còn tồn tại**
+
+HTTP `404`
+
+```json
+{
+  "code": 3007,
+  "message": "User not found",
+  "result": null
+}
+```
+
+FE action đề xuất: logout local state và yêu cầu đăng nhập lại.
+
+**11. Thiếu hoặc sai CSRF token**
+
+HTTP `403`
+
+```json
+{
+  "code": 4009,
+  "message": "Missing or invalid CSRF token",
+  "result": null
+}
+```
+
+FE action đề xuất: lấy lại CSRF token theo flow hiện tại rồi submit lại request.
 
 ### UC04 - Quên Mật Khẩu
 

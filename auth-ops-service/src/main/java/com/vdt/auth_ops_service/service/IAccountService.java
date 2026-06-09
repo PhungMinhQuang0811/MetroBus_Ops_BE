@@ -1,8 +1,10 @@
 package com.vdt.auth_ops_service.service;
 
+import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
+import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,4 +23,6 @@ public interface IAccountService {
     ImportAccountPreviewResponse previewImportAccounts(MultipartFile file);
 
     ImportAccountConfirmResponse confirmImportAccounts(MultipartFile file);
+
+    ChangePasswordResponse changePassword(ChangePasswordRequest request);
 }

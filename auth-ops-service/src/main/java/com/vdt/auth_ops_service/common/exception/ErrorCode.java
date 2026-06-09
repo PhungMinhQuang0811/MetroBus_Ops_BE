@@ -25,6 +25,8 @@ public enum ErrorCode {
     INVALID_PAGE_REQUEST(2003, "Page must be >= 0 and size must be between 1 and 100", HttpStatus.BAD_REQUEST),
     INVALID_ACCOUNT_ID(2004, "Account id is invalid", HttpStatus.BAD_REQUEST),
     INVALID_SEARCH_KEYWORD(2005, "Search keyword is too long", HttpStatus.BAD_REQUEST),
+    PASSWORD_CONFIRMATION_MISMATCH(2006, "New password and confirm password do not match", HttpStatus.BAD_REQUEST),
+    CURRENT_PASSWORD_INCORRECT(2007, "Current password is incorrect", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
