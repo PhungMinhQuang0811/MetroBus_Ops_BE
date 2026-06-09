@@ -14,7 +14,7 @@ public final class SecurityConstants {
             "/account/enable-account/**", PredefinedPermission.ACCOUNT_WRITE,
             "/account/preview-import-accounts", PredefinedPermission.ACCOUNT_WRITE,
             "/account/confirm-import-accounts", PredefinedPermission.ACCOUNT_WRITE,
-            "/account/reset-account-password/**", PredefinedPermission.ACCOUNT_WRITE,
+            "/account/reset-password", PredefinedPermission.ACCOUNT_WRITE,
             "/auth/search-audit-logs", PredefinedPermission.AUDIT_READ
     );
 

@@ -4,12 +4,14 @@ import com.vdt.auth_ops_service.common.exception.AppException;
 import com.vdt.auth_ops_service.common.exception.ErrorCode;
 import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
+import com.vdt.auth_ops_service.dto.request.account.ResetAccountPasswordRequest;
 import com.vdt.auth_ops_service.dto.response.ApiResponse;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
 import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
+import com.vdt.auth_ops_service.dto.response.account.ResetAccountPasswordResponse;
 import com.vdt.auth_ops_service.service.IAccountService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -32,11 +34,12 @@ public class AccountController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String role,
             @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) String passwordStatus,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
         return ApiResponse.<PageResponse<AccountResponse>>builder()
-                .result(accountService.listAccounts(keyword, role, isActive, page, size))
+                .result(accountService.listAccounts(keyword, role, isActive, passwordStatus, page, size))
                 .build();
     }
 
@@ -92,6 +95,15 @@ public class AccountController {
     ) {
         return ApiResponse.<ChangePasswordResponse>builder()
                 .result(accountService.changePassword(request))
+                .build();
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<ResetAccountPasswordResponse> resetAccountPassword(
+            @Valid @RequestBody ResetAccountPasswordRequest request
+    ) {
+        return ApiResponse.<ResetAccountPasswordResponse>builder()
+                .result(accountService.resetAccountPassword(request))
                 .build();
     }
 

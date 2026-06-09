@@ -1,6 +1,8 @@
 package com.vdt.auth_ops_service.controller;
 
+import com.vdt.auth_ops_service.dto.request.account.RequestPasswordResetRequest;
 import com.vdt.auth_ops_service.dto.request.auth.LoginRequest;
+import com.vdt.auth_ops_service.dto.response.account.RequestPasswordResetResponse;
 import com.vdt.auth_ops_service.dto.response.auth.AuthResponse;
 import com.vdt.auth_ops_service.service.IAuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -63,5 +65,19 @@ class AuthControllerTest {
         assertNull(controller.refreshToken(httpRequest, httpResponse).getResult());
 
         verify(authService).refreshToken(httpRequest, httpResponse);
+    }
+
+    @Test
+    void forgotPassword_DelegatesToAccountService() {
+        RequestPasswordResetRequest request = RequestPasswordResetRequest.builder()
+                .username("station01")
+                .build();
+        RequestPasswordResetResponse expected = RequestPasswordResetResponse.builder()
+                .username("station01")
+                .passwordStatus("NEED_TO_RESET")
+                .build();
+        when(authService.requestPasswordReset(request)).thenReturn(expected);
+
+        assertSame(expected, controller.forgotPassword(request).getResult());
     }
 }

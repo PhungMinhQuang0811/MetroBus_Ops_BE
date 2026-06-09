@@ -8,11 +8,13 @@ import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
 import com.vdt.auth_ops_service.constant.PredefinedRole;
 import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
+import com.vdt.auth_ops_service.dto.request.account.ResetAccountPasswordRequest;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
 import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
+import com.vdt.auth_ops_service.dto.response.account.ResetAccountPasswordResponse;
 import com.vdt.auth_ops_service.entity.Account;
 import com.vdt.auth_ops_service.entity.Role;
 import com.vdt.auth_ops_service.mapper.AccountMapper;
@@ -49,17 +51,19 @@ public class AccountService implements IAccountService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<AccountResponse> listAccounts(String keyword, String role, Boolean isActive, int page, int size) {
+    public PageResponse<AccountResponse> listAccounts(String keyword, String role, Boolean isActive, String passwordStatus, int page, int size) {
         String normalizedKeyword = SearchFilterUtil.normalize(keyword);
         String normalizedRole = SearchFilterUtil.normalize(role);
+        String normalizedPasswordStatus = SearchFilterUtil.normalize(passwordStatus);
 
-        validateListAccountParams(normalizedKeyword, normalizedRole, page, size);
+        validateListAccountParams(normalizedKeyword, normalizedRole, normalizedPasswordStatus, page, size);
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Account> accounts = accountRepository.searchAccounts(
                 SearchFilterUtil.toKeywordPattern(normalizedKeyword),
                 normalizedRole,
                 isActive,
+                normalizedPasswordStatus,
                 pageable
         );
 
@@ -177,12 +181,34 @@ public class AccountService implements IAccountService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public ResetAccountPasswordResponse resetAccountPassword(ResetAccountPasswordRequest request) {
+        Account account = accountRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        if (!PredefinedPasswordStatus.NEED_TO_RESET.equals(account.getPasswordStatus())) {
+            throw new AppException(ErrorCode.PASSWORD_RESET_NOT_REQUESTED);
+        }
+
+        String temporaryPassword = PasswordUtil.generateTemporaryPassword();
+
+        account.setPassword(passwordEncoder.encode(temporaryPassword));
+        account.setPasswordStatus(PredefinedPasswordStatus.NEED_TO_CHANGE);
+        accountRepository.save(account);
+
+        return ResetAccountPasswordResponse.builder()
+                .username(account.getUsername())
+                .passwordStatus(account.getPasswordStatus())
+                .temporaryPassword(temporaryPassword)
+                .build();
+    }
+
     private Account getAccountEntity(String accountId) {
         return accountRepository.findById(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
-    private void validateListAccountParams(String keyword, String role, int page, int size) {
+    private void validateListAccountParams(String keyword, String role, String passwordStatus, int page, int size) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
             throw new AppException(ErrorCode.INVALID_PAGE_REQUEST);
         }
@@ -193,6 +219,14 @@ public class AccountService implements IAccountService {
 
         if (role != null && !roleRepository.existsByName(role)) {
             throw new AppException(ErrorCode.INVALID_ROLE_SELECTION);
+        }
+
+        if (passwordStatus != null && !Set.of(
+                PredefinedPasswordStatus.NORMAL,
+                PredefinedPasswordStatus.NEED_TO_CHANGE,
+                PredefinedPasswordStatus.NEED_TO_RESET
+        ).contains(passwordStatus)) {
+            throw new AppException(ErrorCode.INVALID_PASSWORD_STATUS);
         }
     }
 

@@ -4,11 +4,13 @@ import com.vdt.auth_ops_service.common.exception.AppException;
 import com.vdt.auth_ops_service.common.exception.ErrorCode;
 import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
+import com.vdt.auth_ops_service.dto.request.account.ResetAccountPasswordRequest;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
 import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
+import com.vdt.auth_ops_service.dto.response.account.ResetAccountPasswordResponse;
 import com.vdt.auth_ops_service.service.IAccountService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,10 +51,10 @@ class AccountControllerTest {
                 .totalElements(1)
                 .totalPages(1)
                 .build();
-        when(accountService.listAccounts("station", "STATION_OPERATOR", true, 0, 20))
+        when(accountService.listAccounts("station", "STATION_OPERATOR", true, "NEED_TO_RESET", 0, 20))
                 .thenReturn(expected);
 
-        assertSame(expected, controller.listAccounts("station", "STATION_OPERATOR", true, 0, 20).getResult());
+        assertSame(expected, controller.listAccounts("station", "STATION_OPERATOR", true, "NEED_TO_RESET", 0, 20).getResult());
     }
 
     @Test
@@ -174,6 +176,21 @@ class AccountControllerTest {
         when(accountService.changePassword(request)).thenReturn(expected);
 
         assertSame(expected, controller.changePassword(request).getResult());
+    }
+
+    @Test
+    void resetAccountPassword_DelegatesToService() {
+        ResetAccountPasswordRequest request = ResetAccountPasswordRequest.builder()
+                .username("station01")
+                .build();
+        ResetAccountPasswordResponse expected = ResetAccountPasswordResponse.builder()
+                .username("station01")
+                .passwordStatus("NEED_TO_CHANGE")
+                .temporaryPassword("A7xQp2Lm9")
+                .build();
+        when(accountService.resetAccountPassword(request)).thenReturn(expected);
+
+        assertSame(expected, controller.resetAccountPassword(request).getResult());
     }
 
     private MockMultipartFile importFile(String filename) {

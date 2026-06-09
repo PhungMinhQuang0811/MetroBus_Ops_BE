@@ -6,11 +6,13 @@ import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
 import com.vdt.auth_ops_service.constant.PredefinedRole;
 import com.vdt.auth_ops_service.dto.request.account.ChangePasswordRequest;
 import com.vdt.auth_ops_service.dto.request.account.CreateAccountRequest;
+import com.vdt.auth_ops_service.dto.request.account.ResetAccountPasswordRequest;
 import com.vdt.auth_ops_service.dto.response.PageResponse;
 import com.vdt.auth_ops_service.dto.response.account.AccountResponse;
 import com.vdt.auth_ops_service.dto.response.account.ChangePasswordResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountConfirmResponse;
 import com.vdt.auth_ops_service.dto.response.account.ImportAccountPreviewResponse;
+import com.vdt.auth_ops_service.dto.response.account.ResetAccountPasswordResponse;
 import com.vdt.auth_ops_service.entity.Account;
 import com.vdt.auth_ops_service.entity.Role;
 import com.vdt.auth_ops_service.mapper.AccountMapper;
@@ -65,7 +67,7 @@ class AccountServiceTest {
         AccountResponse accountResponse = AccountResponse.builder().username("operator").build();
 
         when(roleRepository.existsByName(PredefinedRole.STATION_OPERATOR)).thenReturn(true);
-        when(accountRepository.searchAccounts(eq("%operator%"), eq(PredefinedRole.STATION_OPERATOR), eq(true), any(Pageable.class)))
+        when(accountRepository.searchAccounts(eq("%operator%"), eq(PredefinedRole.STATION_OPERATOR), eq(true), eq(PredefinedPasswordStatus.NEED_TO_RESET), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(account)));
         when(accountMapper.toAccountResponse(account)).thenReturn(accountResponse);
 
@@ -73,6 +75,7 @@ class AccountServiceTest {
                 " operator ",
                 PredefinedRole.STATION_OPERATOR,
                 true,
+                PredefinedPasswordStatus.NEED_TO_RESET,
                 0,
                 20
         );
@@ -83,10 +86,10 @@ class AccountServiceTest {
 
     @Test
     void listAccounts_BlankFilters_SearchesWithoutKeywordOrRole() {
-        when(accountRepository.searchAccounts(eq("%"), isNull(), isNull(), any(Pageable.class)))
+        when(accountRepository.searchAccounts(eq("%"), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        PageResponse<AccountResponse> response = accountService.listAccounts(" ", " ", null, 0, 20);
+        PageResponse<AccountResponse> response = accountService.listAccounts(" ", " ", null, " ", 0, 20);
 
         assertTrue(response.getItems().isEmpty());
         verify(roleRepository, never()).existsByName(anyString());
@@ -95,7 +98,7 @@ class AccountServiceTest {
     @Test
     void listAccounts_InvalidPage_ThrowsException() {
         AppException exception = assertThrows(AppException.class,
-                () -> accountService.listAccounts(null, null, null, -1, 20));
+                () -> accountService.listAccounts(null, null, null, null, -1, 20));
 
         assertEquals(ErrorCode.INVALID_PAGE_REQUEST, exception.getErrorCode());
     }
@@ -103,9 +106,9 @@ class AccountServiceTest {
     @Test
     void listAccounts_InvalidSize_ThrowsException() {
         AppException tooSmall = assertThrows(AppException.class,
-                () -> accountService.listAccounts(null, null, null, 0, 0));
+                () -> accountService.listAccounts(null, null, null, null, 0, 0));
         AppException tooLarge = assertThrows(AppException.class,
-                () -> accountService.listAccounts(null, null, null, 0, 101));
+                () -> accountService.listAccounts(null, null, null, null, 0, 101));
 
         assertEquals(ErrorCode.INVALID_PAGE_REQUEST, tooSmall.getErrorCode());
         assertEquals(ErrorCode.INVALID_PAGE_REQUEST, tooLarge.getErrorCode());
@@ -114,7 +117,7 @@ class AccountServiceTest {
     @Test
     void listAccounts_InvalidKeyword_ThrowsException() {
         AppException exception = assertThrows(AppException.class,
-                () -> accountService.listAccounts("a".repeat(51), null, null, 0, 20));
+                () -> accountService.listAccounts("a".repeat(51), null, null, null, 0, 20));
 
         assertEquals(ErrorCode.INVALID_SEARCH_KEYWORD, exception.getErrorCode());
     }
@@ -124,9 +127,17 @@ class AccountServiceTest {
         when(roleRepository.existsByName("UNKNOWN")).thenReturn(false);
 
         AppException exception = assertThrows(AppException.class,
-                () -> accountService.listAccounts(null, "UNKNOWN", null, 0, 20));
+                () -> accountService.listAccounts(null, "UNKNOWN", null, null, 0, 20));
 
         assertEquals(ErrorCode.INVALID_ROLE_SELECTION, exception.getErrorCode());
+    }
+
+    @Test
+    void listAccounts_InvalidPasswordStatus_ThrowsException() {
+        AppException exception = assertThrows(AppException.class,
+                () -> accountService.listAccounts(null, null, null, "INVALID", 0, 20));
+
+        assertEquals(ErrorCode.INVALID_PASSWORD_STATUS, exception.getErrorCode());
     }
 
     @Test
@@ -390,6 +401,42 @@ class AccountServiceTest {
 
         assertEquals(ErrorCode.UNAUTHENTICATED, exception.getErrorCode());
         verify(accountRepository, never()).findById(anyString());
+    }
+
+    @Test
+    void resetAccountPassword_Success_GeneratesTemporaryPassword() {
+        String accountId = UUID.randomUUID().toString();
+        Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
+        account.setId(accountId);
+        account.setPasswordStatus(PredefinedPasswordStatus.NEED_TO_RESET);
+        when(accountRepository.findByUsername("station01")).thenReturn(Optional.of(account));
+        when(passwordEncoder.encode(anyString())).thenReturn("encoded-temp");
+
+        ResetAccountPasswordResponse response = accountService.resetAccountPassword(
+                ResetAccountPasswordRequest.builder().username("station01").build()
+        );
+
+        assertEquals("station01", response.getUsername());
+        assertEquals(PredefinedPasswordStatus.NEED_TO_CHANGE, response.getPasswordStatus());
+        assertNotNull(response.getTemporaryPassword());
+        assertEquals("encoded-temp", account.getPassword());
+        assertEquals(PredefinedPasswordStatus.NEED_TO_CHANGE, account.getPasswordStatus());
+        verify(accountRepository).save(account);
+    }
+
+    @Test
+    void resetAccountPassword_NotRequested_ThrowsException() {
+        Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
+        account.setPasswordStatus(PredefinedPasswordStatus.NORMAL);
+        when(accountRepository.findByUsername("station01")).thenReturn(Optional.of(account));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> accountService.resetAccountPassword(ResetAccountPasswordRequest.builder()
+                        .username("station01")
+                        .build()));
+
+        assertEquals(ErrorCode.PASSWORD_RESET_NOT_REQUESTED, exception.getErrorCode());
+        verify(accountRepository, never()).save(any(Account.class));
     }
 
     private Account account(String username, String roleName, boolean active) {

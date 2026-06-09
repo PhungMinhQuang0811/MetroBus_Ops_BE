@@ -31,16 +31,19 @@ public interface AccountRepository extends JpaRepository<Account, String> {
                     "LEFT JOIN a.roles r " +
                     "WHERE LOWER(a.username) LIKE :keywordPattern " +
                     "AND (:role IS NULL OR r.name = :role) " +
-                    "AND (:isActive IS NULL OR a.isActive = :isActive)",
+                    "AND (:isActive IS NULL OR a.isActive = :isActive) " +
+                    "AND (:passwordStatus IS NULL OR a.passwordStatus = :passwordStatus)",
             countQuery = "SELECT COUNT(DISTINCT a) FROM Account a " +
                     "LEFT JOIN a.roles r " +
                     "WHERE LOWER(a.username) LIKE :keywordPattern " +
                     "AND (:role IS NULL OR r.name = :role) " +
-                    "AND (:isActive IS NULL OR a.isActive = :isActive)"
+                    "AND (:isActive IS NULL OR a.isActive = :isActive) " +
+                    "AND (:passwordStatus IS NULL OR a.passwordStatus = :passwordStatus)"
     )
     Page<Account> searchAccounts(@Param("keywordPattern") String keywordPattern,
                                  @Param("role") String role,
                                  @Param("isActive") Boolean isActive,
+                                 @Param("passwordStatus") String passwordStatus,
                                  Pageable pageable);
 
     @Query("SELECT COUNT(DISTINCT a) FROM Account a JOIN a.roles r " +

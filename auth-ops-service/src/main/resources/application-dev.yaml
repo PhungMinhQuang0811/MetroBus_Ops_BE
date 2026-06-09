@@ -19,6 +19,7 @@ app:
     public-endpoints: >
       "/auth/login",
       "/auth/refresh-token",
+      "/auth/forgot-password",
       "/v3/api-docs/**",
       "/swagger-ui/**",
       "/swagger-ui.html",

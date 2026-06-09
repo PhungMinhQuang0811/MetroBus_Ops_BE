@@ -41,7 +41,8 @@ app:
   security:
     public-endpoints: >
       "/auth/login",
-      "/auth/refresh-token"
+      "/auth/refresh-token",
+      "/auth/forgot-password"
     csrf-header-name: X-CSRF-TOKEN
     csrf-cookie-name: XSRF-TOKEN
     refresh-path: /vdt/auth/refresh-token

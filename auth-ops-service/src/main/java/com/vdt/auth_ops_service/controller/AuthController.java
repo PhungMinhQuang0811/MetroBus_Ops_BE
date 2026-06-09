@@ -1,7 +1,9 @@
 package com.vdt.auth_ops_service.controller;
 
 import com.vdt.auth_ops_service.dto.response.ApiResponse;
+import com.vdt.auth_ops_service.dto.request.account.RequestPasswordResetRequest;
 import com.vdt.auth_ops_service.dto.request.auth.LoginRequest;
+import com.vdt.auth_ops_service.dto.response.account.RequestPasswordResetResponse;
 import com.vdt.auth_ops_service.dto.response.auth.AuthResponse;
 import com.vdt.auth_ops_service.service.IAuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,6 +41,15 @@ public class AuthController {
     public ApiResponse<Void> refreshToken(HttpServletRequest request, HttpServletResponse response) {
         authService.refreshToken(request, response);
         return ApiResponse.<Void>builder()
+                .build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<RequestPasswordResetResponse> forgotPassword(
+            @Valid @RequestBody RequestPasswordResetRequest request
+    ) {
+        return ApiResponse.<RequestPasswordResetResponse>builder()
+                .result(authService.requestPasswordReset(request))
                 .build();
     }
 }

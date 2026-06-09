@@ -2,7 +2,10 @@ package com.vdt.auth_ops_service.service;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
+import com.vdt.auth_ops_service.dto.request.account.RequestPasswordResetRequest;
 import com.vdt.auth_ops_service.dto.request.auth.LoginRequest;
+import com.vdt.auth_ops_service.dto.response.account.RequestPasswordResetResponse;
 import com.vdt.auth_ops_service.dto.response.auth.AuthResponse;
 import com.vdt.auth_ops_service.entity.Account;
 import com.vdt.auth_ops_service.common.exception.AppException;
@@ -181,6 +184,42 @@ class AuthServiceTest {
 
         AppException ex = assertThrows(AppException.class, () -> authService.refreshToken(request, response));
         assertEquals(ErrorCode.ACCOUNT_DISABLED, ex.getErrorCode());
+    }
+
+    @Test
+    void requestPasswordReset_Success_SetsPasswordStatusNeedToReset() {
+        when(accountRepository.findByUsername("testuser")).thenReturn(Optional.of(mockAccount));
+
+        RequestPasswordResetResponse response = authService.requestPasswordReset(
+                RequestPasswordResetRequest.builder().username("testuser").build()
+        );
+
+        assertEquals("testuser", response.getUsername());
+        assertEquals(PredefinedPasswordStatus.NEED_TO_RESET, response.getPasswordStatus());
+        assertEquals(PredefinedPasswordStatus.NEED_TO_RESET, mockAccount.getPasswordStatus());
+        verify(accountRepository).save(mockAccount);
+    }
+
+    @Test
+    void requestPasswordReset_NotFound_ThrowsException() {
+        when(accountRepository.findByUsername("testuser")).thenReturn(Optional.empty());
+
+        AppException exception = assertThrows(AppException.class,
+                () -> authService.requestPasswordReset(RequestPasswordResetRequest.builder().username("testuser").build()));
+
+        assertEquals(ErrorCode.USER_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    void requestPasswordReset_DisabledAccount_ThrowsException() {
+        mockAccount.setActive(false);
+        when(accountRepository.findByUsername("testuser")).thenReturn(Optional.of(mockAccount));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> authService.requestPasswordReset(RequestPasswordResetRequest.builder().username("testuser").build()));
+
+        assertEquals(ErrorCode.ACCOUNT_DISABLED, exception.getErrorCode());
+        verify(accountRepository, never()).save(any(Account.class));
     }
 
 }

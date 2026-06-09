@@ -2,7 +2,9 @@ package com.vdt.auth_ops_service.service.Impl;
 
 import com.nimbusds.jwt.SignedJWT;
 import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
+import com.vdt.auth_ops_service.dto.request.account.RequestPasswordResetRequest;
 import com.vdt.auth_ops_service.dto.request.auth.LoginRequest;
+import com.vdt.auth_ops_service.dto.response.account.RequestPasswordResetResponse;
 import com.vdt.auth_ops_service.dto.response.auth.AuthResponse;
 import com.vdt.auth_ops_service.entity.Account;
 import com.vdt.auth_ops_service.mapper.AuthMapper;
@@ -26,6 +28,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -158,6 +161,26 @@ public class AuthService implements IAuthService {
 
         setTokenCookies(response, account);
     }
+
+    @Override
+    @Transactional
+    public RequestPasswordResetResponse requestPasswordReset(RequestPasswordResetRequest request) {
+        Account account = accountRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (!account.isActive()) {
+            throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+        }
+
+        account.setPasswordStatus(PredefinedPasswordStatus.NEED_TO_RESET);
+        accountRepository.save(account);
+
+        return RequestPasswordResetResponse.builder()
+                .username(account.getUsername())
+                .passwordStatus(account.getPasswordStatus())
+                .build();
+    }
+
     private void validateAccountStatus(Account account) {
         if (!account.isActive()) {
             throw new AppException(ErrorCode.ACCOUNT_DISABLED);

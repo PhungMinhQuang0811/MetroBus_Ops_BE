@@ -27,6 +27,8 @@ public enum ErrorCode {
     INVALID_SEARCH_KEYWORD(2005, "Search keyword is too long", HttpStatus.BAD_REQUEST),
     PASSWORD_CONFIRMATION_MISMATCH(2006, "New password and confirm password do not match", HttpStatus.BAD_REQUEST),
     CURRENT_PASSWORD_INCORRECT(2007, "Current password is incorrect", HttpStatus.BAD_REQUEST),
+    PASSWORD_RESET_NOT_REQUESTED(2008, "Password reset has not been requested for this account", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD_STATUS(2009, "Invalid password status", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
