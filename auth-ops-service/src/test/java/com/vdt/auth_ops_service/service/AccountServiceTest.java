@@ -19,6 +19,7 @@ import com.vdt.auth_ops_service.mapper.AccountMapper;
 import com.vdt.auth_ops_service.repository.AccountRepository;
 import com.vdt.auth_ops_service.repository.RoleRepository;
 import com.vdt.auth_ops_service.security.entity.CustomUserDetails;
+import com.vdt.auth_ops_service.security.service.AccountStatusRedisService;
 import com.vdt.auth_ops_service.service.Impl.AccountImportService;
 import com.vdt.auth_ops_service.service.Impl.AccountService;
 import org.junit.jupiter.api.AfterEach;
@@ -51,6 +52,7 @@ class AccountServiceTest {
     @Mock private AccountMapper accountMapper;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AccountImportService accountImportService;
+    @Mock private AccountStatusRedisService accountStatusRedisService;
     @Mock private MultipartFile file;
 
     @InjectMocks
@@ -247,6 +249,7 @@ class AccountServiceTest {
 
         assertFalse(account.isActive());
         assertFalse(response.getIsActive());
+        verify(accountStatusRedisService).markDisabled(accountId);
     }
 
     @Test
@@ -283,6 +286,7 @@ class AccountServiceTest {
         AccountResponse response = accountService.disableAccount(accountId);
 
         assertFalse(response.getIsActive());
+        verify(accountStatusRedisService).markDisabled(accountId);
     }
 
     @Test
@@ -299,6 +303,7 @@ class AccountServiceTest {
 
         assertTrue(account.isActive());
         assertTrue(response.getIsActive());
+        verify(accountStatusRedisService).markEnabled(accountId);
     }
 
     @Test

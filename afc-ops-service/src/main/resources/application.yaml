@@ -1,3 +1,43 @@
+server:
+  port: 8082
+  servlet:
+    context-path: /vdt
+
 spring:
   application:
-    name: ticket-service
+    name: afc-ops-service
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:postgresql://${AFC_DB_HOST}:${AFC_DB_PORT}/${AFC_DB_NAME}
+    username: ${AFC_DB_USER}
+    password: ${AFC_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false # true for debug
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health, info, metrics"
+  endpoint:
+    health:
+      show-details: when_authorized
+
+app:
+  domain-name: localhost
+  timezone: ${APP_TIMEZONE}
+  security:
+    csrf-header-name: X-CSRF-TOKEN
+    csrf-cookie-name: XSRF-TOKEN
+    access-token-cookie-name: accessToken
+    access-token-secret-key: ${JWT_ACCESS_SECRET_KEY}
+    access-token-expiration: 3600000
+    cors-allowed-origins: "http://localhost:3000"

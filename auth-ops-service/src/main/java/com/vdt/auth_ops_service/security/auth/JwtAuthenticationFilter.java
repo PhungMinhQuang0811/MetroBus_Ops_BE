@@ -66,6 +66,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Account account = accountRepository.findById(userId)
                         .orElseThrow(() -> new AppException(ErrorCode.UNAUTHENTICATED));
 
+                if (!account.isActive()) {
+                    throw new AppException(ErrorCode.ACCOUNT_DISABLED);
+                }
+
                 if (PredefinedPasswordStatus.NEED_TO_CHANGE.equals(account.getPasswordStatus())
                         && !isPasswordChangeAllowedEndpoint(request)) {
                     throw new AppException(ErrorCode.PASSWORD_CHANGE_REQUIRED);

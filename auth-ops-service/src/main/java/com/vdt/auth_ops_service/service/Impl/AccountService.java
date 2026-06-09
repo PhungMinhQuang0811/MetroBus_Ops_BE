@@ -20,6 +20,7 @@ import com.vdt.auth_ops_service.entity.Role;
 import com.vdt.auth_ops_service.mapper.AccountMapper;
 import com.vdt.auth_ops_service.repository.AccountRepository;
 import com.vdt.auth_ops_service.repository.RoleRepository;
+import com.vdt.auth_ops_service.security.service.AccountStatusRedisService;
 import com.vdt.auth_ops_service.security.util.SecurityUtils;
 import com.vdt.auth_ops_service.service.IAccountService;
 import lombok.AccessLevel;
@@ -48,6 +49,7 @@ public class AccountService implements IAccountService {
     AccountMapper accountMapper;
     PasswordEncoder passwordEncoder;
     AccountImportService accountImportService;
+    AccountStatusRedisService accountStatusRedisService;
 
     @Override
     @Transactional(readOnly = true)
@@ -122,7 +124,9 @@ public class AccountService implements IAccountService {
         }
 
         account.setActive(false);
-        return accountMapper.toAccountResponse(accountRepository.save(account));
+        Account savedAccount = accountRepository.save(account);
+        accountStatusRedisService.markDisabled(accountId);
+        return accountMapper.toAccountResponse(savedAccount);
     }
 
     @Override
@@ -136,7 +140,9 @@ public class AccountService implements IAccountService {
         }
 
         account.setActive(true);
-        return accountMapper.toAccountResponse(accountRepository.save(account));
+        Account savedAccount = accountRepository.save(account);
+        accountStatusRedisService.markEnabled(accountId);
+        return accountMapper.toAccountResponse(savedAccount);
     }
 
     @Override

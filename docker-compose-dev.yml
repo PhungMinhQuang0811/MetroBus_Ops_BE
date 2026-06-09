@@ -1,5 +1,4 @@
 name: metro-bus-ops
-version: '3.8'
 
 services:
   postgres:
@@ -14,6 +13,21 @@ services:
       - "${DB_PORT}:5432"
     volumes:
       - ./data/postgres:/var/lib/postgresql
+    networks:
+      - app-network
+
+  afc-postgres:
+    image: postgres:latest
+    container_name: afc-ops-postgres
+    environment:
+      POSTGRES_USER: ${AFC_DB_USER}
+      POSTGRES_PASSWORD: ${AFC_DB_PASSWORD}
+      POSTGRES_DB: ${AFC_DB_NAME}
+      TZ: ${APP_TIMEZONE}
+    ports:
+      - "${AFC_DB_PORT}:5432"
+    volumes:
+      - ./data/afc-postgres:/var/lib/postgresql
     networks:
       - app-network
 
