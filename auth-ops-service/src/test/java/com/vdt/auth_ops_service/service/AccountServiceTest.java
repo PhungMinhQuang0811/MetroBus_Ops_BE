@@ -69,9 +69,10 @@ class AccountServiceTest {
         AccountResponse accountResponse = AccountResponse.builder().username("operator").build();
 
         when(roleRepository.existsByName(PredefinedRole.STATION_OPERATOR)).thenReturn(true);
-        when(accountRepository.searchAccounts(eq("%operator%"), eq(PredefinedRole.STATION_OPERATOR), eq(true), eq(PredefinedPasswordStatus.NEED_TO_RESET), any(Pageable.class)))
+        when(accountRepository.searchAccounts(eq("HCMC-METRO"), eq("%operator%"), eq(PredefinedRole.STATION_OPERATOR), eq(true), eq(PredefinedPasswordStatus.NEED_TO_RESET), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(account)));
         when(accountMapper.toAccountResponse(account)).thenReturn(accountResponse);
+        authenticateAs(UUID.randomUUID().toString());
 
         PageResponse<AccountResponse> response = accountService.listAccounts(
                 " operator ",
@@ -88,8 +89,9 @@ class AccountServiceTest {
 
     @Test
     void listAccounts_BlankFilters_SearchesWithoutKeywordOrRole() {
-        when(accountRepository.searchAccounts(eq("%"), isNull(), isNull(), isNull(), any(Pageable.class)))
+        when(accountRepository.searchAccounts(eq("HCMC-METRO"), eq("%"), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
+        authenticateAs(UUID.randomUUID().toString());
 
         PageResponse<AccountResponse> response = accountService.listAccounts(" ", " ", null, " ", 0, 20);
 
@@ -164,8 +166,9 @@ class AccountServiceTest {
         Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
         AccountResponse expected = AccountResponse.builder().username("station01").build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.of(account));
         when(accountMapper.toAccountResponse(account)).thenReturn(expected);
+        authenticateAs(UUID.randomUUID().toString());
 
         assertSame(expected, accountService.getAccount(accountId));
     }
@@ -173,11 +176,24 @@ class AccountServiceTest {
     @Test
     void getAccount_NotFound_ThrowsException() {
         String accountId = UUID.randomUUID().toString();
-        when(accountRepository.findById(accountId)).thenReturn(Optional.empty());
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.empty());
+        authenticateAs(UUID.randomUUID().toString());
 
         AppException exception = assertThrows(AppException.class, () -> accountService.getAccount(accountId));
 
         assertEquals(ErrorCode.USER_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    void getAccount_DifferentOperator_ThrowsOperatorAccessDenied() {
+        String accountId = UUID.randomUUID().toString();
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.empty());
+        when(accountRepository.existsById(accountId)).thenReturn(true);
+        authenticateAs(UUID.randomUUID().toString());
+
+        AppException exception = assertThrows(AppException.class, () -> accountService.getAccount(accountId));
+
+        assertEquals(ErrorCode.OPERATOR_ACCESS_DENIED, exception.getErrorCode());
     }
 
     @Test
@@ -193,6 +209,7 @@ class AccountServiceTest {
         when(passwordEncoder.encode(anyString())).thenReturn("encoded");
         when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(accountMapper.toAccountResponse(any(Account.class))).thenReturn(AccountResponse.builder().username("station01").build());
+        authenticateAs(UUID.randomUUID().toString());
 
         AccountResponse response = accountService.createAccount(request);
 
@@ -203,6 +220,7 @@ class AccountServiceTest {
         verify(accountRepository).save(accountCaptor.capture());
         Account savedAccount = accountCaptor.getValue();
         assertTrue(savedAccount.isActive());
+        assertEquals("HCMC-METRO", savedAccount.getOperatorCode());
         assertEquals(PredefinedPasswordStatus.NEED_TO_CHANGE, savedAccount.getPasswordStatus());
         assertEquals(Set.of(role), savedAccount.getRoles());
     }
@@ -214,6 +232,7 @@ class AccountServiceTest {
                 .roleNames(Set.of(PredefinedRole.STATION_OPERATOR))
                 .build();
         when(accountRepository.existsByUsername("station01")).thenReturn(true);
+        authenticateAs(UUID.randomUUID().toString());
 
         AppException exception = assertThrows(AppException.class, () -> accountService.createAccount(request));
 
@@ -229,6 +248,7 @@ class AccountServiceTest {
 
         when(accountRepository.existsByUsername("station01")).thenReturn(false);
         when(roleRepository.findAllByNameIn(request.getRoleNames())).thenReturn(Set.of());
+        authenticateAs(UUID.randomUUID().toString());
 
         AppException exception = assertThrows(AppException.class, () -> accountService.createAccount(request));
 
@@ -241,9 +261,10 @@ class AccountServiceTest {
         Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
         AccountResponse mapped = AccountResponse.builder().isActive(false).build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.of(account));
         when(accountRepository.save(account)).thenReturn(account);
         when(accountMapper.toAccountResponse(account)).thenReturn(mapped);
+        authenticateAs(UUID.randomUUID().toString());
 
         AccountResponse response = accountService.disableAccount(accountId);
 
@@ -255,7 +276,8 @@ class AccountServiceTest {
     @Test
     void disableAccount_Admin_ThrowsException() {
         String accountId = UUID.randomUUID().toString();
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account("admin", PredefinedRole.OPERATOR_ADMIN, true)));
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.of(account("admin", PredefinedRole.OPERATOR_ADMIN, true)));
+        authenticateAs(UUID.randomUUID().toString());
 
         AppException exception = assertThrows(AppException.class, () -> accountService.disableAccount(accountId));
 
@@ -265,7 +287,8 @@ class AccountServiceTest {
     @Test
     void disableAccount_AlreadyDisabled_ThrowsException() {
         String accountId = UUID.randomUUID().toString();
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account("station01", PredefinedRole.STATION_OPERATOR, false)));
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.of(account("station01", PredefinedRole.STATION_OPERATOR, false)));
+        authenticateAs(UUID.randomUUID().toString());
 
         AppException exception = assertThrows(AppException.class, () -> accountService.disableAccount(accountId));
 
@@ -279,9 +302,10 @@ class AccountServiceTest {
         account.setRoles(null);
         AccountResponse mapped = AccountResponse.builder().isActive(false).build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.of(account));
         when(accountRepository.save(account)).thenReturn(account);
         when(accountMapper.toAccountResponse(account)).thenReturn(mapped);
+        authenticateAs(UUID.randomUUID().toString());
 
         AccountResponse response = accountService.disableAccount(accountId);
 
@@ -295,9 +319,10 @@ class AccountServiceTest {
         Account account = account("station01", PredefinedRole.STATION_OPERATOR, false);
         AccountResponse mapped = AccountResponse.builder().isActive(true).build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.of(account));
         when(accountRepository.save(account)).thenReturn(account);
         when(accountMapper.toAccountResponse(account)).thenReturn(mapped);
+        authenticateAs(UUID.randomUUID().toString());
 
         AccountResponse response = accountService.enableAccount(accountId);
 
@@ -309,7 +334,8 @@ class AccountServiceTest {
     @Test
     void enableAccount_AlreadyEnabled_ThrowsException() {
         String accountId = UUID.randomUUID().toString();
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(account("station01", PredefinedRole.STATION_OPERATOR, true)));
+        when(accountRepository.findByIdAndOperatorCode(accountId, "HCMC-METRO")).thenReturn(Optional.of(account("station01", PredefinedRole.STATION_OPERATOR, true)));
+        authenticateAs(UUID.randomUUID().toString());
 
         AppException exception = assertThrows(AppException.class, () -> accountService.enableAccount(accountId));
 
@@ -414,8 +440,9 @@ class AccountServiceTest {
         Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
         account.setId(accountId);
         account.setPasswordStatus(PredefinedPasswordStatus.NEED_TO_RESET);
-        when(accountRepository.findByUsername("station01")).thenReturn(Optional.of(account));
+        when(accountRepository.findByUsernameAndOperatorCode("station01", "HCMC-METRO")).thenReturn(Optional.of(account));
         when(passwordEncoder.encode(anyString())).thenReturn("encoded-temp");
+        authenticateAs(UUID.randomUUID().toString());
 
         ResetAccountPasswordResponse response = accountService.resetAccountPassword(
                 ResetAccountPasswordRequest.builder().username("station01").build()
@@ -433,7 +460,8 @@ class AccountServiceTest {
     void resetAccountPassword_NotRequested_ThrowsException() {
         Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
         account.setPasswordStatus(PredefinedPasswordStatus.NORMAL);
-        when(accountRepository.findByUsername("station01")).thenReturn(Optional.of(account));
+        when(accountRepository.findByUsernameAndOperatorCode("station01", "HCMC-METRO")).thenReturn(Optional.of(account));
+        authenticateAs(UUID.randomUUID().toString());
 
         AppException exception = assertThrows(AppException.class,
                 () -> accountService.resetAccountPassword(ResetAccountPasswordRequest.builder()
@@ -444,9 +472,27 @@ class AccountServiceTest {
         verify(accountRepository, never()).save(any(Account.class));
     }
 
+    @Test
+    void resetAccountPassword_DifferentOperator_ThrowsOperatorAccessDenied() {
+        Account account = account("station01", PredefinedRole.STATION_OPERATOR, true);
+        account.setOperatorCode("HCMC-BUS");
+        when(accountRepository.findByUsernameAndOperatorCode("station01", "HCMC-METRO")).thenReturn(Optional.empty());
+        when(accountRepository.findByUsername("station01")).thenReturn(Optional.of(account));
+        authenticateAs(UUID.randomUUID().toString());
+
+        AppException exception = assertThrows(AppException.class,
+                () -> accountService.resetAccountPassword(ResetAccountPasswordRequest.builder()
+                        .username("station01")
+                        .build()));
+
+        assertEquals(ErrorCode.OPERATOR_ACCESS_DENIED, exception.getErrorCode());
+        verify(accountRepository, never()).save(any(Account.class));
+    }
+
     private Account account(String username, String roleName, boolean active) {
         return Account.builder()
                 .username(username)
+                .operatorCode("HCMC-METRO")
                 .isActive(active)
                 .roles(Set.of(role(roleName)))
                 .build();
@@ -460,6 +506,7 @@ class AccountServiceTest {
         CustomUserDetails userDetails = CustomUserDetails.builder()
                 .id(accountId)
                 .username("station01")
+                .operatorCode("HCMC-METRO")
                 .build();
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userDetails, null, List.of())

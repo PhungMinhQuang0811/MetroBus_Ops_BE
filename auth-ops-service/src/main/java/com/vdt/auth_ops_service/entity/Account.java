@@ -36,6 +36,9 @@ public class Account {
     @Column(name = "password_status", nullable = false, length = 30)
     private String passwordStatus;
 
+    @Column(name = "operator_code", nullable = false, length = 50)
+    private String operatorCode;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

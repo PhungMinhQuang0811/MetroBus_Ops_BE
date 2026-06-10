@@ -59,9 +59,11 @@ public class AccountService implements IAccountService {
         String normalizedPasswordStatus = SearchFilterUtil.normalize(passwordStatus);
 
         validateListAccountParams(normalizedKeyword, normalizedRole, normalizedPasswordStatus, page, size);
+        String operatorCode = SecurityUtils.getRequiredCurrentOperatorCode();
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Account> accounts = accountRepository.searchAccounts(
+                operatorCode,
                 SearchFilterUtil.toKeywordPattern(normalizedKeyword),
                 normalizedRole,
                 isActive,
@@ -84,12 +86,13 @@ public class AccountService implements IAccountService {
     @Transactional(readOnly = true)
     public AccountResponse getAccount(String accountId) {
         validateAccountId(accountId);
-        return accountMapper.toAccountResponse(getAccountEntity(accountId));
+        return accountMapper.toAccountResponse(getAccountEntityInCurrentOperator(accountId));
     }
 
     @Override
     @Transactional
     public AccountResponse createAccount(CreateAccountRequest request) {
+        String operatorCode = SecurityUtils.getRequiredCurrentOperatorCode();
         if (accountRepository.existsByUsername(request.getUsername())) {
             throw new AppException(ErrorCode.USER_EXISTED);
         }
@@ -102,6 +105,7 @@ public class AccountService implements IAccountService {
         String temporaryPassword = PasswordUtil.generateTemporaryPassword();
         Account account = Account.builder()
                 .username(request.getUsername())
+                .operatorCode(operatorCode)
                 .password(passwordEncoder.encode(temporaryPassword))
                 .isActive(true)
                 .passwordStatus(PredefinedPasswordStatus.NEED_TO_CHANGE)
@@ -117,7 +121,7 @@ public class AccountService implements IAccountService {
     @Transactional
     public AccountResponse disableAccount(String accountId) {
         validateAccountId(accountId);
-        Account account = getAccountEntity(accountId);
+        Account account = getAccountEntityInCurrentOperator(accountId);
         validateOperatorAdminStatusNotChanged(account);
         if (!account.isActive()) {
             throw new AppException(ErrorCode.ACCOUNT_ALREADY_DISABLED);
@@ -133,7 +137,7 @@ public class AccountService implements IAccountService {
     @Transactional
     public AccountResponse enableAccount(String accountId) {
         validateAccountId(accountId);
-        Account account = getAccountEntity(accountId);
+        Account account = getAccountEntityInCurrentOperator(accountId);
         validateOperatorAdminStatusNotChanged(account);
         if (account.isActive()) {
             throw new AppException(ErrorCode.ACCOUNT_ALREADY_ENABLED);
@@ -190,8 +194,14 @@ public class AccountService implements IAccountService {
     @Override
     @Transactional
     public ResetAccountPasswordResponse resetAccountPassword(ResetAccountPasswordRequest request) {
-        Account account = accountRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        String operatorCode = SecurityUtils.getRequiredCurrentOperatorCode();
+        Account account = accountRepository.findByUsernameAndOperatorCode(request.getUsername(), operatorCode)
+                .orElseGet(() -> {
+                    if (accountRepository.findByUsername(request.getUsername()).isPresent()) {
+                        throw new AppException(ErrorCode.OPERATOR_ACCESS_DENIED);
+                    }
+                    throw new AppException(ErrorCode.USER_NOT_FOUND);
+                });
         if (!PredefinedPasswordStatus.NEED_TO_RESET.equals(account.getPasswordStatus())) {
             throw new AppException(ErrorCode.PASSWORD_RESET_NOT_REQUESTED);
         }
@@ -212,6 +222,17 @@ public class AccountService implements IAccountService {
     private Account getAccountEntity(String accountId) {
         return accountRepository.findById(accountId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private Account getAccountEntityInCurrentOperator(String accountId) {
+        String operatorCode = SecurityUtils.getRequiredCurrentOperatorCode();
+        return accountRepository.findByIdAndOperatorCode(accountId, operatorCode)
+                .orElseGet(() -> {
+                    if (accountRepository.existsById(accountId)) {
+                        throw new AppException(ErrorCode.OPERATOR_ACCESS_DENIED);
+                    }
+                    throw new AppException(ErrorCode.USER_NOT_FOUND);
+                });
     }
 
     private void validateListAccountParams(String keyword, String role, String passwordStatus, int page, int size) {

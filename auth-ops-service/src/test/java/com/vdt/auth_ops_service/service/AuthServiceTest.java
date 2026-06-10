@@ -65,6 +65,7 @@ class AuthServiceTest {
         mockAccount = Account.builder()
                 .id("acc-123")
                 .username("testuser")
+                .operatorCode("HCMC-METRO")
                 .isActive(true)
                 .build();
     }

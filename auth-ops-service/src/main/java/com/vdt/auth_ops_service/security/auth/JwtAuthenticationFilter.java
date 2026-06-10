@@ -80,6 +80,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 CustomUserDetails userDetails = CustomUserDetails.builder()
                         .id(userId)
                         .username(username)
+                        .operatorCode(account.getOperatorCode())
                         .authorities(authorities)
                         .build();
 

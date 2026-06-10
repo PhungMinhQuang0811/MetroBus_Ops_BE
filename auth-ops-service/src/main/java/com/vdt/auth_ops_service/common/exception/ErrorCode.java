@@ -62,6 +62,8 @@ public enum ErrorCode {
     INVALID_CSRF_TOKEN(4009, "Missing or invalid CSRF token", HttpStatus.FORBIDDEN),
     PASSWORD_RESET_REQUIRED(4010, "Your account requires an administrator to reset the password.", HttpStatus.FORBIDDEN),
     PASSWORD_CHANGE_REQUIRED(4011, "You must change your password before using this account.", HttpStatus.FORBIDDEN),
+    OPERATOR_SCOPE_REQUIRED(4012, "Operator scope is required", HttpStatus.FORBIDDEN),
+    OPERATOR_ACCESS_DENIED(4013, "You do not have permission to access data from another operator", HttpStatus.FORBIDDEN),
     ;
 
     int code;

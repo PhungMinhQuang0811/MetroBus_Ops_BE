@@ -139,6 +139,7 @@ Response:
   "result": {
     "id": "uuid",
     "username": "manager01",
+    "operatorCode": "HCMC-METRO",
     "roles": ["OPERATOR_MANAGER"],
     "permissions": ["MASTER_DATA_READ", "DASHBOARD_READ"],
     "passwordStatus": "NORMAL"
@@ -158,8 +159,8 @@ Luồng:
 
 1. Kiểm tra username/password.
 2. Kiểm tra `is_active = true`.
-3. Load roles/permissions.
-4. Sinh access token và refresh token, set vào cookie theo cấu hình hiện tại.
+3. Load operator scope, roles/permissions.
+4. Sinh access token có claim `operatorCode` và các permission name, sinh refresh token, set vào cookie theo cấu hình hiện tại.
 5. Trả `passwordStatus` để FE biết mật khẩu đang `NORMAL`, cần đổi sau đăng nhập (`NEED_TO_CHANGE`) hoặc cần admin reset (`NEED_TO_RESET`).
 6. Ghi login event/audit.
 
@@ -231,6 +232,8 @@ Set-Cookie: refresh_token=; HttpOnly; Max-Age=0; Path=/auth/logout
 
 Permission: `ACCOUNT_READ`.
 
+Scope dữ liệu: backend lấy `operatorCode` từ account `OPERATOR_ADMIN` đang đăng nhập và chỉ trả account thuộc operator đó.
+
 Query params:
 
 | Field | Type | Required | Validation |
@@ -253,6 +256,7 @@ Response:
       {
         "id": "uuid",
         "username": "station01",
+        "operatorCode": "HCMC-METRO",
         "roles": ["STATION_OPERATOR"],
         "isActive": true,
         "passwordStatus": "NEED_TO_CHANGE",
@@ -275,6 +279,7 @@ Lỗi chính:
 | `INVALID_SEARCH_KEYWORD` | Search keyword is too long | 400 |
 | `INVALID_ROLE_SELECTION` | Invalid operator role selection | 400 |
 | `INVALID_PASSWORD_STATUS` | Invalid password status | 400 |
+| `OPERATOR_SCOPE_REQUIRED` | Operator scope is required | 403 |
 
 #### API-AUTH-005 - Create Account
 
@@ -300,6 +305,8 @@ Validation:
 | `username` | Required; phải unique |
 | `roleNames` | Required; chỉ được dùng `OPERATOR_MANAGER` hoặc `STATION_OPERATOR`; role phải tồn tại trong hệ thống |
 
+Backend tự lấy `operatorCode` từ account `OPERATOR_ADMIN` đang đăng nhập và gán cho account mới. Client không truyền `operatorCode`.
+
 Response:
 
 ```json
@@ -309,6 +316,7 @@ Response:
   "result": {
     "id": "uuid",
     "username": "station01",
+    "operatorCode": "HCMC-METRO",
     "roles": ["STATION_OPERATOR"],
     "isActive": true,
     "passwordStatus": "NEED_TO_CHANGE",
@@ -320,7 +328,7 @@ Response:
 Luồng:
 
 1. `OPERATOR_ADMIN` nhập username và role.
-2. System validate username unique và role hợp lệ.
+2. System validate username unique, role hợp lệ và account admin có operator scope.
 3. System tự sinh mật khẩu tạm đạt password policy.
 4. Lưu password hash.
 5. Set `passwordStatus = NEED_TO_CHANGE`.
@@ -369,6 +377,7 @@ Lỗi chính:
 | Code | Message | HTTP |
 | --- | --- | --- |
 | `INVALID_ACCOUNT_ID` | Account id is invalid | 400 |
+| `OPERATOR_ACCESS_DENIED` | You do not have permission to access data from another operator | 403 |
 | `USER_NOT_FOUND` | User not found | 404 |
 | `OPERATOR_ADMIN_STATUS_CHANGE_NOT_ALLOWED` | Operator admin account status cannot be changed | 400 |
 | `ACCOUNT_ALREADY_DISABLED` | Account is already disabled | 400 |
@@ -408,6 +417,7 @@ Lỗi chính:
 | Code | Message | HTTP |
 | --- | --- | --- |
 | `INVALID_ACCOUNT_ID` | Account id is invalid | 400 |
+| `OPERATOR_ACCESS_DENIED` | You do not have permission to access data from another operator | 403 |
 | `USER_NOT_FOUND` | User not found | 404 |
 | `OPERATOR_ADMIN_STATUS_CHANGE_NOT_ALLOWED` | Operator admin account status cannot be changed | 400 |
 | `ACCOUNT_ALREADY_ENABLED` | Account is already enabled | 400 |
@@ -431,6 +441,8 @@ File columns:
 | `username` | Yes | Required; trim; unique trong file; chưa tồn tại trong DB |
 | `roleName` | Yes | Chỉ được dùng `OPERATOR_MANAGER` hoặc `STATION_OPERATOR`; role phải tồn tại trong hệ thống |
 
+Backend tự lấy `operatorCode` từ account `OPERATOR_ADMIN` đang đăng nhập và gán cho toàn bộ account import. File không có cột `operatorCode`.
+
 Response:
 
 ```json
@@ -445,6 +457,7 @@ Response:
       {
         "row": 2,
         "username": "station01",
+        "operatorCode": "HCMC-METRO",
         "roleName": "STATION_OPERATOR",
         "valid": true,
         "errors": []
@@ -948,6 +961,7 @@ Lỗi chính:
 | `INVALID_CSRF_TOKEN` | Missing or invalid CSRF token | 403 |
 | `FIELD_REQUIRED` | `username is required` | 400 |
 | `PASSWORD_RESET_NOT_REQUESTED` | Password reset has not been requested for this account | 400 |
+| `OPERATOR_ACCESS_DENIED` | You do not have permission to access data from another operator | 403 |
 | `USER_NOT_FOUND` | User not found | 404 |
 
 Response theo case để FE ghép:
@@ -1060,15 +1074,16 @@ FE action đề xuất: báo admin rằng account này chưa ở trạng thái c
 
 #### API-AFC-001 - List Routes
 
-`GET /afc-ops/list-routes?operatorId=&keyword=&transportType=&status=&page=0&size=20`
+`GET /afc-ops/list-routes?keyword=&transportType=&status=&page=0&size=20`
 
 Permission: `MASTER_DATA_READ`.
+
+Scope dữ liệu: backend lấy `operatorCode` từ JWT của account đang đăng nhập, tìm operator tương ứng và chỉ trả route thuộc operator đó. Client không truyền `operatorId`.
 
 Query params:
 
 | Field | Type | Required | Rule |
 | --- | --- | --- | --- |
-| `operatorId` | number | Yes | Operator phải tồn tại |
 | `keyword` | string | No | Trim trước khi xử lý; tìm theo `routeCode` hoặc `routeName`; tối đa 50 ký tự |
 | `transportType` | string | No | Nếu truyền phải thuộc `METRO`, `BUS` |
 | `status` | string | No | Nếu truyền phải thuộc `ACTIVE`, `DISABLED` |
@@ -1086,7 +1101,7 @@ Response:
       {
         "id": 1,
         "operatorId": 1,
-        "routeCode": "METRO-01",
+        "routeCode": "METRO-001",
         "routeName": "Metro Line 1",
         "transportType": "METRO",
         "status": "ACTIVE"
@@ -1110,13 +1125,12 @@ Request:
 
 ```json
 {
-  "operatorId": 1,
-  "routeCode": "METRO-01",
   "routeName": "Metro Line 1",
-  "transportType": "METRO",
-  "status": "ACTIVE"
+  "transportType": "METRO"
 }
 ```
+
+Create route luôn tạo tuyến trong operator của account đang đăng nhập theo claim `operatorCode` trong JWT, backend tự sinh `routeCode` theo `transportType` trong phạm vi operator và mặc định `status = ACTIVE`. Client không truyền `routeCode`, `operatorId` hoặc `status`.
 
 Response:
 
@@ -1127,7 +1141,7 @@ Response:
   "result": {
     "id": 1,
     "operatorId": 1,
-    "routeCode": "METRO-01",
+    "routeCode": "METRO-001",
     "routeName": "Metro Line 1",
     "transportType": "METRO",
     "status": "ACTIVE",
@@ -1147,13 +1161,12 @@ Request:
 
 ```json
 {
-  "operatorId": 1,
-  "routeCode": "METRO-01",
   "routeName": "Metro Line 1 Updated",
-  "transportType": "METRO",
-  "status": "ACTIVE"
+  "transportType": "METRO"
 }
 ```
+
+Update route chỉ áp dụng trong operator của account đang đăng nhập theo claim `operatorCode` trong JWT và không đổi `routeCode`/`status`. Client không truyền `routeCode`, `operatorId` hoặc `status`; dùng API enable/disable riêng để đổi trạng thái.
 
 Response:
 
@@ -1164,7 +1177,7 @@ Response:
   "result": {
     "id": 1,
     "operatorId": 1,
-    "routeCode": "METRO-01",
+    "routeCode": "METRO-001",
     "routeName": "Metro Line 1 Updated",
     "transportType": "METRO",
     "status": "ACTIVE",
@@ -1174,86 +1187,90 @@ Response:
 }
 ```
 
-#### API-AFC-004 - Import Routes
+#### API-AFC-003A - Enable Route
 
-`POST /afc-ops/import-routes`
+`POST /afc-ops/enable-route/{routeId}`
 
 Permission: `MASTER_DATA_WRITE`.
 
-Content-Type: `multipart/form-data`, field `file`.
+Response giống `RouteResponse`; `status` sau thao tác là `ACTIVE`.
 
-File columns:
+#### API-AFC-003B - Disable Route
 
-| Column | Required | Rule |
-| --- | --- | --- |
-| `operatorId` | Yes | Operator phải tồn tại |
-| `routeCode` | Yes | Tối đa 50 ký tự, trim trước khi xử lý, unique trong cùng `operatorId` |
-| `routeName` | Yes | Tối đa 255 ký tự |
-| `transportType` | Yes | `METRO`, `BUS` |
-| `status` | No | `ACTIVE`, `DISABLED`; nếu bỏ trống mặc định `ACTIVE` |
+`POST /afc-ops/disable-route/{routeId}`
 
-Import rule:
+Permission: `MASTER_DATA_WRITE`.
 
-- API này import all-or-nothing: nếu có bất kỳ dòng lỗi thì không ghi dòng nào.
-- Nếu `routeCode` đã tồn tại trong cùng `operatorId`, backend cập nhật route đó.
-- Nếu `routeCode` chưa tồn tại trong cùng `operatorId`, backend tạo route mới.
-- Backend dùng account hiện tại từ token để set `createdByAccountId` cho route tạo mới hoặc import.
+Response giống `RouteResponse`; `status` sau thao tác là `DISABLED`.
 
-Response:
+#### UC05 Error Matrix
+
+| Code key | Code | Áp dụng | Điều kiện | Message | HTTP |
+| --- | ---: | --- | --- | --- | ---: |
+| `UNAUTHENTICATED` | 4002 | Tất cả API UC05 | Thiếu access token, token sai chữ ký, hết hạn hoặc không đọc được | Unauthenticated access | 401 |
+| `ACCOUNT_DISABLED` | 4006 | Tất cả API UC05 | Account đã bị disable trong Redis token-status | Your account is currently disabled or inactive. | 403 |
+| `ACCESS_DENIED` | 4007 | Tất cả API UC05 | Không có `MASTER_DATA_READ` khi list hoặc không có `MASTER_DATA_WRITE` khi create/update/enable/disable | You do not have permission to access this resource | 403 |
+| `INVALID_CSRF_TOKEN` | 4009 | Create, update, enable, disable | Thiếu hoặc sai CSRF token trên API thay đổi dữ liệu | Missing or invalid CSRF token | 403 |
+| `FIELD_REQUIRED` | 2000 | Create, update | Thiếu/rỗng `routeName` hoặc `transportType` | `{fieldName} is required` | 400 |
+| `FIELD_REQUIRED` | 2000 | Create, update | Thiếu request body hoặc JSON body sai cấu trúc/không đọc được | Request body is invalid | 400 |
+| `INVALID_PAGE_REQUEST` | 2001 | List | `page < 0`, `size < 1` hoặc `size > 100` | Page must be >= 0 and size must be between 1 and 100 | 400 |
+| `INVALID_SEARCH_KEYWORD` | 2002 | List | `keyword` sau trim dài hơn 50 ký tự | Search keyword is too long | 400 |
+| `INVALID_TRANSPORT_TYPE` | 2005 | List, create, update | `transportType` không thuộc `METRO`, `BUS` | Invalid transport type | 400 |
+| `INVALID_MASTER_DATA_STATUS` | 2006 | List | `status` không thuộc `ACTIVE`, `DISABLED` | Invalid master data status | 400 |
+| `INVALID_ROUTE_NAME_LENGTH` | 2007 | Create, update | `routeName` dài hơn 255 ký tự | Route name must not exceed 255 characters | 400 |
+| `INVALID_ROUTE_ID` | 2004 | Update, enable, disable | `routeId` không phải số nguyên dương | Route id is invalid | 400 |
+| `OPERATOR_SCOPE_REQUIRED` | 4012 | Tất cả API UC05 | JWT/account không có `operatorCode` hợp lệ | Operator scope is required | 403 |
+| `OPERATOR_ACCESS_DENIED` | 4013 | Update, enable, disable | Route tồn tại nhưng thuộc operator khác | You do not have permission to access data from another operator | 403 |
+| `ROUTE_ALREADY_ENABLED` | 3001 | Enable | Route đang `ACTIVE` sẵn | Route is already active | 400 |
+| `ROUTE_ALREADY_DISABLED` | 3002 | Disable | Route đang `DISABLED` sẵn | Route is already disabled | 400 |
+| `OPERATOR_NOT_FOUND` | 3003 | Tất cả API UC05 | `operatorCode` của account không tồn tại trong bảng `operators` | Operator not found | 404 |
+| `ROUTE_NOT_FOUND` | 3004 | Update, enable, disable | `routeId` không tồn tại | Route not found | 404 |
+| `UNCATEGORIZED_EXCEPTION` | 4000 | Tất cả API UC05 | Lỗi hệ thống không được phân loại, lỗi DB hoặc lỗi phát sinh ngoài dự kiến | Uncategorized error | 500 |
+
+Error response format:
 
 ```json
 {
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "imported": 10,
-    "errors": []
-  }
+  "code": 4013,
+  "message": "You do not have permission to access data from another operator",
+  "result": null
 }
 ```
 
-Nếu có dòng lỗi thì không import:
+FE và API test phải xác định case chính bằng numeric `code` và HTTP status. `message` dùng để hiển thị/log, không dùng làm khóa xử lý.
 
-```json
-{
-  "code": 4001,
-  "message": "Import file contains invalid rows",
-  "result": {
-    "imported": 0,
-    "errors": [
-      {
-        "row": 3,
-        "field": "routeCode",
-        "message": "Route code already exists"
-      }
-    ]
-  }
-}
-```
+Ghi chú parsing query/path:
 
-Validation/error cases:
+1. `page`, `size` không phải số hiện được Spring xử lý qua type-mismatch và trả `FIELD_REQUIRED` (`400`); message hiện tại có thể là placeholder chung.
+2. `routeId` không phải số được map sang `INVALID_ROUTE_ID` (`400`).
+3. Thiếu hẳn segment `{routeId}` không match endpoint và do framework xử lý như URL không tồn tại, không đi vào UC05 service.
 
-| Code key | Message | HTTP |
+#### UC05 Expected State Cases
+
+| API | Trạng thái hiện tại | Kết quả |
 | --- | --- | --- |
-| `FIELD_REQUIRED` | `{fieldName} is required` | 400 |
-| `INVALID_PAGE_REQUEST` | Page must be >= 0 and size must be between 1 and 100 | 400 |
-| `INVALID_SEARCH_KEYWORD` | Search keyword is too long | 400 |
-| `INVALID_OPERATOR_ID` | Operator id is invalid | 400 |
-| `OPERATOR_NOT_FOUND` | Operator not found | 404 |
-| `INVALID_ROUTE_ID` | Route id is invalid | 400 |
-| `ROUTE_NOT_FOUND` | Route not found | 404 |
-| `ROUTE_CODE_EXISTED` | Route code already exists in operator | 400 |
-| `INVALID_TRANSPORT_TYPE` | Invalid transport type | 400 |
-| `INVALID_MASTER_DATA_STATUS` | Invalid master data status | 400 |
-| `IMPORT_FILE_INVALID` | Import file is invalid | 400 |
-| `IMPORT_FILE_HAS_ERRORS` | Import file contains invalid rows | 400 |
+| Enable route | Route đang `ACTIVE` và thuộc đúng operator | Lỗi `ROUTE_ALREADY_ENABLED` |
+| Disable route | Route đang `DISABLED` và thuộc đúng operator | Lỗi `ROUTE_ALREADY_DISABLED` |
+| Update route | Route đang `ACTIVE` hoặc `DISABLED` và thuộc đúng operator | Thành công `200`, chỉ cập nhật `routeName`, `transportType`; giữ nguyên `routeCode`, `status`, `operator` |
+| List routes | Operator chưa có route hoặc filter không có kết quả | Thành công `200`, `items = []`, `totalElements = 0` |
+| List routes | `transportType`, `status` truyền chữ thường hoặc có khoảng trắng | Trim, uppercase và query bình thường |
+| Create/update route | `routeName` có khoảng trắng đầu/cuối | Trim trước khi lưu |
+| Create/update route | `transportType` là `metro`, `bus` hoặc có khoảng trắng | Trim, uppercase thành `METRO`, `BUS` |
+| Create route | Operator chưa có code cùng `transportType` | Sinh code đầu tiên, ví dụ `METRO-001` hoặc `BUS-001` |
+| Create route | Operator đã có code cùng `transportType` | Sinh sequence tiếp theo trong đúng operator |
 
 Business notes:
 
-1. `routeCode` unique trong cùng `operatorId`.
-2. `routeCode`, `routeName`, `transportType`, `status` được trim trước khi validate.
-3. `status = DISABLED` dùng để ngừng route, không xóa cứng.
-4. API chưa trả `createdByAccountId`; backend vẫn lưu để audit/truy vết.
+1. `routeCode` do backend tự sinh và unique trong operator của account đang đăng nhập, ví dụ `METRO-001`, `BUS-001`.
+2. Request create/update dùng Bean Validation ở DTO trước khi vào service: required field, route name length và transport type.
+3. `routeName`, `transportType` được trim/normalize trước khi lưu; filter `status` được trim/normalize trước khi query.
+4. Create route mặc định `status = ACTIVE`; enable/disable route là API riêng.
+5. `status = DISABLED` dùng để ngừng route, không xóa cứng.
+6. Nếu thao tác trực tiếp bằng `routeId` mà route tồn tại nhưng thuộc operator khác, backend trả `OPERATOR_ACCESS_DENIED`.
+7. API chưa trả `createdByAccountId`; backend vẫn lưu để audit/truy vết.
+8. FE phải xử lý `UNAUTHENTICATED` bằng luồng đăng nhập lại; `ACCESS_DENIED`, `OPERATOR_SCOPE_REQUIRED`, `OPERATOR_ACCESS_DENIED` là lỗi phân quyền và không retry tự động.
+9. Với lỗi `500`, FE hiển thị thông báo lỗi hệ thống chung; không suy diễn thành lỗi validation.
+10. Enable/disable không idempotent: nếu route đã ở đúng trạng thái thì trả lỗi riêng ở bảng lỗi UC05.
 
 ### UC06 - Quản Lý Ga/Trạm
 

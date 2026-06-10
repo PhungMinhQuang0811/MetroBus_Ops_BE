@@ -14,6 +14,8 @@ import java.util.Optional;
 public interface AccountRepository extends JpaRepository<Account, String> {
     boolean existsByUsername(String username);
 
+    Optional<Account> findByUsernameAndOperatorCode(String username, String operatorCode);
+
     @Query("SELECT a FROM Account a " +
             "LEFT JOIN FETCH a.roles r " +
             "LEFT JOIN FETCH r.permissions " +
@@ -29,22 +31,31 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     @Query(
             value = "SELECT DISTINCT a FROM Account a " +
                     "LEFT JOIN a.roles r " +
-                    "WHERE LOWER(a.username) LIKE :keywordPattern " +
+                    "WHERE a.operatorCode = :operatorCode " +
+                    "AND LOWER(a.username) LIKE :keywordPattern " +
                     "AND (:role IS NULL OR r.name = :role) " +
                     "AND (:isActive IS NULL OR a.isActive = :isActive) " +
                     "AND (:passwordStatus IS NULL OR a.passwordStatus = :passwordStatus)",
             countQuery = "SELECT COUNT(DISTINCT a) FROM Account a " +
                     "LEFT JOIN a.roles r " +
-                    "WHERE LOWER(a.username) LIKE :keywordPattern " +
+                    "WHERE a.operatorCode = :operatorCode " +
+                    "AND LOWER(a.username) LIKE :keywordPattern " +
                     "AND (:role IS NULL OR r.name = :role) " +
                     "AND (:isActive IS NULL OR a.isActive = :isActive) " +
                     "AND (:passwordStatus IS NULL OR a.passwordStatus = :passwordStatus)"
     )
-    Page<Account> searchAccounts(@Param("keywordPattern") String keywordPattern,
+    Page<Account> searchAccounts(@Param("operatorCode") String operatorCode,
+                                 @Param("keywordPattern") String keywordPattern,
                                  @Param("role") String role,
                                  @Param("isActive") Boolean isActive,
                                  @Param("passwordStatus") String passwordStatus,
                                  Pageable pageable);
+
+    @Query("SELECT a FROM Account a " +
+            "LEFT JOIN FETCH a.roles r " +
+            "LEFT JOIN FETCH r.permissions " +
+            "WHERE a.id = :id AND a.operatorCode = :operatorCode")
+    Optional<Account> findByIdAndOperatorCode(@Param("id") String id, @Param("operatorCode") String operatorCode);
 
     @Query("SELECT COUNT(DISTINCT a) FROM Account a JOIN a.roles r " +
             "WHERE a.isActive = true AND r.name = :roleName")

@@ -3,7 +3,6 @@ package com.vdt.afc_ops_service.security.auth;
 import com.nimbusds.jwt.SignedJWT;
 import com.vdt.afc_ops_service.common.exception.AppException;
 import com.vdt.afc_ops_service.common.exception.ErrorCode;
-import com.vdt.afc_ops_service.constant.SecurityConstants;
 import com.vdt.afc_ops_service.security.entity.AfcUserDetails;
 import com.vdt.afc_ops_service.security.service.TokenStatusService;
 import com.vdt.afc_ops_service.security.util.JwtUtil;
@@ -30,7 +29,6 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
-import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -55,6 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SignedJWT signedJWT = jwtUtil.verifyAccessToken(token);
                 String accountId = signedJWT.getJWTClaimsSet().getSubject();
                 String username = signedJWT.getJWTClaimsSet().getStringClaim("username");
+                String operatorCode = signedJWT.getJWTClaimsSet().getStringClaim("operatorCode");
 
                 if (tokenStatusService.isAccountDisabled(accountId)) {
                     throw new AppException(ErrorCode.ACCOUNT_DISABLED);
@@ -67,6 +66,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 AfcUserDetails userDetails = AfcUserDetails.builder()
                         .id(accountId)
                         .username(username)
+                        .operatorCode(operatorCode)
                         .authorities(authorities)
                         .build();
 
@@ -105,18 +105,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private Collection<SimpleGrantedAuthority> resolveAuthorities(String scope) {
-        Set<String> authorities = new LinkedHashSet<>();
+        Collection<String> authorities = new LinkedHashSet<>();
         if (StringUtils.hasText(scope)) {
             authorities.addAll(Arrays.asList(scope.split("\\s+")));
         }
-
-        Set<String> roleAuthorities = new LinkedHashSet<>(authorities);
-        roleAuthorities.forEach(role -> {
-            Set<String> afcPermissions = SecurityConstants.ROLE_AFC_PERMISSIONS.get(role);
-            if (afcPermissions != null) {
-                authorities.addAll(afcPermissions);
-            }
-        });
 
         return authorities.stream()
                 .filter(StringUtils::hasText)

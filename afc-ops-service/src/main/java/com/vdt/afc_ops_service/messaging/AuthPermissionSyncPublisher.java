@@ -45,10 +45,10 @@ public class AuthPermissionSyncPublisher {
                 "source", "afc-ops-service",
                 "rolePermissions", List.of(Map.of(
                         "roleName", PredefinedAuthRole.OPERATOR_MANAGER,
-                        "permissions", Arrays.stream(PredefinedAfcPermission.Definition.values())
-                                .map(PredefinedAfcPermission.Definition::getName)
-                                .sorted()
-                                .toList()
+                        "permissions", List.of(
+                                PredefinedAfcPermission.MASTER_DATA_READ,
+                                PredefinedAfcPermission.MASTER_DATA_WRITE
+                        )
                 ))
         );
 

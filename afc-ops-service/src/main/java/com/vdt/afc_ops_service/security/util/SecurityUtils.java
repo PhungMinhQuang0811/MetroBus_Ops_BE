@@ -1,5 +1,8 @@
 package com.vdt.afc_ops_service.security.util;
 
+import com.vdt.afc_ops_service.common.exception.AppException;
+import com.vdt.afc_ops_service.common.exception.ErrorCode;
+import com.vdt.afc_ops_service.common.util.SearchFilterUtil;
 import com.vdt.afc_ops_service.security.entity.AfcUserDetails;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -33,6 +36,19 @@ public class SecurityUtils {
     public static String getCurrentUsername() {
         AfcUserDetails user = getCurrentUser();
         return user != null ? user.getUsername() : null;
+    }
+
+    public static String getCurrentOperatorCode() {
+        AfcUserDetails user = getCurrentUser();
+        return user != null ? user.getOperatorCode() : null;
+    }
+
+    public static String getRequiredCurrentOperatorCode() {
+        String operatorCode = SearchFilterUtil.normalize(getCurrentOperatorCode());
+        if (operatorCode == null) {
+            throw new AppException(ErrorCode.OPERATOR_SCOPE_REQUIRED);
+        }
+        return operatorCode;
     }
 
     public static List<String> getCurrentAuthorities() {

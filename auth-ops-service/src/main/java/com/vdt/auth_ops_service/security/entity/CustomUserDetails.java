@@ -18,12 +18,14 @@ import java.util.stream.Collectors;
 public class CustomUserDetails implements UserDetails {
     String id;
     String username;
+    String operatorCode;
     String password;
     Collection<? extends GrantedAuthority> authorities;
 
     public CustomUserDetails(Account account) {
         this.id = account.getId();
         this.username = account.getUsername();
+        this.operatorCode = account.getOperatorCode();
         this.password = account.getPassword();
         this.authorities = account.getRoles().stream()
                 .flatMap(role -> role.getPermissions().stream())

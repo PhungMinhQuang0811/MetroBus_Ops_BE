@@ -54,6 +54,7 @@ public class AuthMapper {
         return AuthResponse.builder()
                 .id(account.getId())
                 .username(account.getUsername())
+                .operatorCode(account.getOperatorCode())
                 .passwordStatus(account.getPasswordStatus())
                 .roles(roles)
                 .permissions(permissions)

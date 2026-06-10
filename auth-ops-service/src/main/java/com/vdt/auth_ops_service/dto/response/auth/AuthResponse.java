@@ -13,6 +13,7 @@ import java.util.Set;
 public class AuthResponse {
     String id;
     String username;
+    String operatorCode;
     String passwordStatus;
     Set<String> roles;
     Set<String> permissions;

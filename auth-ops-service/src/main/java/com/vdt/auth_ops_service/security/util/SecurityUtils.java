@@ -1,5 +1,8 @@
 package com.vdt.auth_ops_service.security.util;
 
+import com.vdt.auth_ops_service.common.exception.AppException;
+import com.vdt.auth_ops_service.common.exception.ErrorCode;
+import com.vdt.auth_ops_service.common.util.SearchFilterUtil;
 import com.vdt.auth_ops_service.security.entity.CustomUserDetails;
 import com.vdt.auth_ops_service.constant.PredefinedRole;
 import org.springframework.security.core.Authentication;
@@ -33,6 +36,19 @@ public class SecurityUtils {
     public static String getCurrentUsername() {
         CustomUserDetails user = getCurrentUser();
         return user != null ? user.getUsername() : null;
+    }
+
+    public static String getCurrentOperatorCode() {
+        CustomUserDetails user = getCurrentUser();
+        return user != null ? user.getOperatorCode() : null;
+    }
+
+    public static String getRequiredCurrentOperatorCode() {
+        String operatorCode = SearchFilterUtil.normalize(getCurrentOperatorCode());
+        if (operatorCode == null) {
+            throw new AppException(ErrorCode.OPERATOR_SCOPE_REQUIRED);
+        }
+        return operatorCode;
     }
 
     /**

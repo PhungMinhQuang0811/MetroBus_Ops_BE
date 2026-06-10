@@ -125,7 +125,7 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 | Actor chính | `OPERATOR_ADMIN` |
 | Priority | P0 |
 | Tần suất | Khi onboarding/offboarding nhân sự |
-| Dữ liệu chính | Account, role |
+| Dữ liệu chính | Account, operator scope, role |
 
 ### Tiền Điều Kiện
 
@@ -137,10 +137,10 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 | Bước | Actor/System | Mô tả |
 | --- | --- | --- |
 | 1 | OPERATOR_ADMIN | Mở màn hình quản lý account |
-| 2 | OPERATOR_ADMIN | Nhập username và mật khẩu tạm |
+| 2 | OPERATOR_ADMIN | Nhập username |
 | 3 | OPERATOR_ADMIN | Chọn role cho account |
-| 4 | System | Kiểm tra username không trùng |
-| 5 | System | Tạo account |
+| 4 | System | Kiểm tra username không trùng và account admin có operator scope |
+| 5 | System | Tạo account kèm operator scope của admin đang đăng nhập |
 | 6 | System | Gán role |
 | 7 | System | Đánh dấu account bắt buộc đổi mật khẩu ở lần đăng nhập đầu tiên |
 | 8 | OPERATOR_ADMIN | Chuyển mật khẩu tạm cho user qua kênh ngoài hệ thống |
@@ -151,11 +151,11 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 | Bước | Actor/System | Mô tả |
 | --- | --- | --- |
 | A1 | OPERATOR_ADMIN | Tải lên file CSV/Excel theo mẫu |
-| A2 | System | Kiểm tra username, mật khẩu tạm và role của từng dòng |
-| A3 | System | Validate toàn bộ username không trùng và role đã tồn tại |
+| A2 | System | Kiểm tra username và role của từng dòng |
+| A3 | System | Validate toàn bộ username không trùng, role đã tồn tại và account admin có operator scope |
 | A4 | System | Hiển thị preview hoặc danh sách lỗi |
 | A5 | OPERATOR_ADMIN | Xác nhận import |
-| A6 | System | Tạo account, gán role và đánh dấu bắt buộc đổi mật khẩu trong một transaction |
+| A6 | System | Tạo account kèm operator scope của admin đang đăng nhập, gán role và đánh dấu bắt buộc đổi mật khẩu trong một transaction |
 
 ### Luồng Thay Thế/Lỗi
 
@@ -166,10 +166,12 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 | UC02-E03 | Khóa operator admin cuối cùng | Từ chối thao tác |
 | UC02-E04 | Account đã có transaction/audit | Không xóa cứng, chỉ disable |
 | UC02-E05 | File import sai cấu trúc hoặc có dòng lỗi | Không import, trả báo cáo lỗi |
+| UC02-E06 | Account cần xem/sửa/reset không thuộc operator của admin | Từ chối theo phân quyền đơn vị |
 
 ### Hậu Điều Kiện
 
 - Account được tạo/cập nhật/khóa đúng trạng thái.
+- Account có operator scope để các service phân quyền dữ liệu theo operator.
 - Role được áp dụng cho phân quyền API.
 - User phải đổi mật khẩu ngay lần đăng nhập đầu tiên.
 - `OPERATOR_ADMIN` chỉ biết mật khẩu tạm, không biết mật khẩu thật sau khi user đổi.
@@ -287,6 +289,7 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 
 - `OPERATOR_MANAGER` đã đăng nhập.
 - Operator đã tồn tại.
+- JWT của account có `operatorCode` trỏ tới operator hợp lệ.
 
 ### Luồng Chính
 
@@ -294,21 +297,18 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 | --- | --- | --- |
 | 1 | OPERATOR_MANAGER | Mở danh sách tuyến |
 | 2 | OPERATOR_MANAGER | Tạo tuyến mới hoặc chọn tuyến cần sửa |
-| 3 | OPERATOR_MANAGER | Nhập route code, route name, transport type |
-| 4 | System | Validate route code trong operator |
-| 5 | System | Lưu route |
+| 3 | OPERATOR_MANAGER | Nhập route name, transport type |
+| 4 | System | Lấy operator từ `operatorCode` trong JWT và tự sinh route code trong operator đó |
+| 5 | System | Lưu route thuộc operator của account; route mới mặc định active |
 | 6 | System | Ghi audit thay đổi master data |
 
-### Luồng Thay Thế - Import Tuyến Hàng Loạt
+### Luồng Thay Thế - Đổi Trạng Thái Tuyến
 
 | Bước | Actor/System | Mô tả |
 | --- | --- | --- |
-| A1 | OPERATOR_MANAGER | Tải lên file CSV/Excel theo mẫu |
-| A2 | System | Kiểm tra cấu trúc file và các cột bắt buộc |
-| A3 | System | Validate toàn bộ route code và dữ liệu từng dòng |
-| A4 | System | Hiển thị kết quả preview hoặc danh sách lỗi |
-| A5 | OPERATOR_MANAGER | Xác nhận import |
-| A6 | System | Tạo/cập nhật các tuyến hợp lệ trong một transaction |
+| A1 | OPERATOR_MANAGER | Chọn tuyến cần bật hoặc tắt |
+| A2 | System | Kiểm tra tuyến thuộc operator của account |
+| A3 | System | Cập nhật trạng thái tuyến qua API enable/disable riêng |
 
 ### Luồng Thay Thế/Lỗi
 
@@ -316,12 +316,13 @@ Không làm vé ngày trong MVP. Cắt vé ngày để giữ scope gọn sau khi
 | --- | --- | --- |
 | UC05-E01 | Route code trùng trong operator | Từ chối lưu |
 | UC05-E02 | Dữ liệu bắt buộc thiếu | Từ chối lưu |
-| UC05-E03 | Route đã có station/transaction | Không xóa cứng, chỉ disable |
-| UC05-E04 | File import sai cấu trúc hoặc có dòng lỗi | Không import, trả báo cáo lỗi |
+| UC05-E03 | Account không có `operatorCode` trong JWT | Từ chối truy cập dữ liệu |
+| UC05-E04 | Route không thuộc operator của account | Từ chối thao tác |
 
 ### Hậu Điều Kiện
 
 - Route sẵn sàng để gán station và thiết bị.
+- Dữ liệu route được phân quyền theo operator của account đang đăng nhập.
 
 ## UC06 - Quản Lý Ga/Trạm
 

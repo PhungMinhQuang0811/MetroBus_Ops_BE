@@ -2,6 +2,7 @@ package com.vdt.auth_ops_service.service.Impl;
 
 import com.vdt.auth_ops_service.common.exception.AppException;
 import com.vdt.auth_ops_service.common.exception.ErrorCode;
+import com.vdt.auth_ops_service.common.util.ExcelUtil;
 import com.vdt.auth_ops_service.common.util.PasswordUtil;
 import com.vdt.auth_ops_service.constant.PredefinedPasswordStatus;
 import com.vdt.auth_ops_service.constant.PredefinedRole;
@@ -14,20 +15,14 @@ import com.vdt.auth_ops_service.entity.Account;
 import com.vdt.auth_ops_service.entity.Role;
 import com.vdt.auth_ops_service.repository.AccountRepository;
 import com.vdt.auth_ops_service.repository.RoleRepository;
+import com.vdt.auth_ops_service.security.util.SecurityUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -42,6 +37,7 @@ public class AccountImportService {
     static final int ROLE_COLUMN_INDEX = 1;
     static final String USERNAME_HEADER = "username";
     static final String ROLE_HEADER = "roleName";
+    static final List<String> IMPORT_HEADERS = List.of(USERNAME_HEADER, ROLE_HEADER);
     static final Set<String> IMPORT_ALLOWED_ROLES = Set.of(
             PredefinedRole.OPERATOR_MANAGER,
             PredefinedRole.STATION_OPERATOR
@@ -52,11 +48,12 @@ public class AccountImportService {
     PasswordEncoder passwordEncoder;
 
     public ImportAccountPreviewResponse preview(MultipartFile file) {
-        return buildImportPreview(parseImportRows(file));
+        return buildImportPreview(parseImportRows(file), SecurityUtils.getRequiredCurrentOperatorCode());
     }
 
     public ImportAccountConfirmResponse confirm(MultipartFile file) {
-        ImportAccountPreviewResponse preview = buildImportPreview(parseImportRows(file));
+        String operatorCode = SecurityUtils.getRequiredCurrentOperatorCode();
+        ImportAccountPreviewResponse preview = buildImportPreview(parseImportRows(file), operatorCode);
         if (preview.getInvalidRows() > 0) {
             throw new AppException(ErrorCode.IMPORT_FILE_HAS_ERRORS);
         }
@@ -68,6 +65,7 @@ public class AccountImportService {
             String temporaryPassword = PasswordUtil.generateTemporaryPassword();
             Account account = Account.builder()
                     .username(item.getUsername())
+                    .operatorCode(operatorCode)
                     .password(passwordEncoder.encode(temporaryPassword))
                     .isActive(true)
                     .passwordStatus(PredefinedPasswordStatus.NEED_TO_CHANGE)
@@ -79,6 +77,7 @@ public class AccountImportService {
                     .row(item.getRow())
                     .id(savedAccount.getId())
                     .username(savedAccount.getUsername())
+                    .operatorCode(savedAccount.getOperatorCode())
                     .roles(savedAccount.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))
                     .isActive(savedAccount.isActive())
                     .passwordStatus(savedAccount.getPasswordStatus())
@@ -93,42 +92,19 @@ public class AccountImportService {
     }
 
     private List<ImportAccountRow> parseImportRows(MultipartFile file) {
-        validateImportFile(file);
-
-        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
-            Sheet sheet = workbook.getSheetAt(0);
-            validateImportSheet(sheet);
-
-            List<ImportAccountRow> rows = new ArrayList<>();
-            DataFormatter formatter = new DataFormatter();
-            int lastRowNumber = sheet.getLastRowNum();
-            for (int rowIndex = 1; rowIndex <= lastRowNumber; rowIndex++) {
-                Row row = sheet.getRow(rowIndex);
-                if (isBlankRow(row, formatter)) {
-                    continue;
-                }
-
-                rows.add(new ImportAccountRow(
-                        rowIndex + 1,
-                        getCellValue(row, USERNAME_COLUMN_INDEX, formatter),
-                        getCellValue(row, ROLE_COLUMN_INDEX, formatter)
-                ));
-            }
-
-            if (rows.isEmpty()) {
-                throw new AppException(ErrorCode.IMPORT_FILE_INVALID);
-            }
-
-            return rows;
-        } catch (IOException | RuntimeException exception) {
-            if (exception instanceof AppException appException) {
-                throw appException;
-            }
-            throw new AppException(ErrorCode.IMPORT_FILE_INVALID);
-        }
+        return ExcelUtil.parseRows(
+                file,
+                IMPORT_HEADERS,
+                row -> new ImportAccountRow(
+                        row.rowNumber(),
+                        row.getValue(USERNAME_COLUMN_INDEX),
+                        row.getValue(ROLE_COLUMN_INDEX)
+                ),
+                ErrorCode.IMPORT_FILE_INVALID
+        );
     }
 
-    private ImportAccountPreviewResponse buildImportPreview(List<ImportAccountRow> rows) {
+    private ImportAccountPreviewResponse buildImportPreview(List<ImportAccountRow> rows, String operatorCode) {
         Set<String> usernamesInFile = new HashSet<>();
         Set<String> duplicateUsernames = rows.stream()
                 .map(row -> normalize(row.username()))
@@ -138,7 +114,7 @@ public class AccountImportService {
                 .collect(Collectors.toSet());
 
         List<ImportAccountPreviewItem> items = rows.stream()
-                .map(row -> validateImportRow(row, duplicateUsernames))
+                .map(row -> validateImportRow(row, duplicateUsernames, operatorCode))
                 .toList();
 
         List<ImportAccountRowError> errors = items.stream()
@@ -154,7 +130,7 @@ public class AccountImportService {
                 .build();
     }
 
-    private ImportAccountPreviewItem validateImportRow(ImportAccountRow row, Set<String> duplicateUsernames) {
+    private ImportAccountPreviewItem validateImportRow(ImportAccountRow row, Set<String> duplicateUsernames, String operatorCode) {
         String username = normalize(row.username());
         String roleName = normalize(row.roleName());
         List<ImportAccountRowError> errors = new ArrayList<>();
@@ -179,6 +155,7 @@ public class AccountImportService {
         return ImportAccountPreviewItem.builder()
                 .row(row.rowNumber())
                 .username(username)
+                .operatorCode(operatorCode)
                 .roleName(roleName)
                 .valid(errors.isEmpty())
                 .errors(errors)
@@ -191,50 +168,6 @@ public class AccountImportService {
                 .field(field)
                 .message(message)
                 .build();
-    }
-
-    private void validateImportFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new AppException(ErrorCode.IMPORT_FILE_INVALID);
-        }
-
-        String filename = file.getOriginalFilename();
-        if (filename == null || !filename.toLowerCase().endsWith(".xlsx")) {
-            throw new AppException(ErrorCode.IMPORT_FILE_INVALID);
-        }
-    }
-
-    private void validateImportSheet(Sheet sheet) {
-        if (sheet == null || sheet.getPhysicalNumberOfRows() < 2) {
-            throw new AppException(ErrorCode.IMPORT_FILE_INVALID);
-        }
-
-        DataFormatter formatter = new DataFormatter();
-        Row header = sheet.getRow(0);
-        if (header == null
-                || !USERNAME_HEADER.equals(getCellValue(header, USERNAME_COLUMN_INDEX, formatter))
-                || !ROLE_HEADER.equals(getCellValue(header, ROLE_COLUMN_INDEX, formatter))) {
-            throw new AppException(ErrorCode.IMPORT_FILE_INVALID);
-        }
-    }
-
-    private boolean isBlankRow(Row row, DataFormatter formatter) {
-        if (row == null) {
-            return true;
-        }
-
-        return getCellValue(row, USERNAME_COLUMN_INDEX, formatter) == null
-                && getCellValue(row, ROLE_COLUMN_INDEX, formatter) == null;
-    }
-
-    private String getCellValue(Row row, int cellIndex, DataFormatter formatter) {
-        if (row == null) {
-            return null;
-        }
-
-        Cell cell = row.getCell(cellIndex);
-        String value = formatter.formatCellValue(cell);
-        return normalize(value);
     }
 
     private String normalize(String value) {

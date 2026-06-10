@@ -117,13 +117,14 @@ erDiagram
 | --- | --- | --- | --- |
 | id | VARCHAR(36) | PK | UUID |
 | username | VARCHAR(50) | NOT NULL, UNIQUE | Dùng đăng nhập |
+| operator_code | VARCHAR(50) | NOT NULL | Mã đơn vị vận hành của account; tham chiếu mềm sang `afc_ops_db.operators.operator_code` |
 | password | VARCHAR(100) | NOT NULL | Password hash |
 | is_active | BOOLEAN | NOT NULL, DEFAULT TRUE | Khóa/mở account |
 | password_status | VARCHAR(30) | NOT NULL, DEFAULT NEED_TO_CHANGE | NORMAL, NEED_TO_CHANGE, NEED_TO_RESET |
 | created_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
-Trong MVP, mỗi account nội bộ được hiểu là thuộc phạm vi vận hành hiện tại của hệ thống C4, nên `accounts` chưa cần `operator_id`. `afc_ops_db` vẫn có thể có nhiều `operators` để lưu dữ liệu đồng bộ/giám sát; chỉ là account chưa bị giới hạn thao tác theo từng operator. Nếu sau này cần một user chỉ được thao tác đúng một hoặc vài operator thì bổ sung `operator_id` hoặc bảng scope account-operator.
+Mỗi account nội bộ thuộc đúng một operator thông qua `operator_code`. Auth DB không giữ bảng operator riêng; `operator_code` là tham chiếu mềm tới danh mục operator ở `afc_ops_db`. Các API quản lý account và master data dùng scope này để giới hạn dữ liệu theo operator của account đang đăng nhập.
 
 ### 2.5. Bảng `roles`
 
@@ -906,6 +907,7 @@ Vé lượt Metro không dùng `DAY_PASS` hay vé ngày. C5 phát hành `tickets
 | Bảng | Index/Unique đề xuất |
 | --- | --- |
 | accounts | unique `username` |
+| accounts | index `operator_code` |
 | account_roles | PK `(account_id, role_id)` |
 | role_permissions | PK `(role_id, permission_id)` |
 | routes | unique `(operator_id, route_code)` |

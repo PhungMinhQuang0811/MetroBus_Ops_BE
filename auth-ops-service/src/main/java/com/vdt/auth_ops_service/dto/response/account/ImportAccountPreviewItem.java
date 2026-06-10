@@ -13,6 +13,7 @@ import java.util.List;
 public class ImportAccountPreviewItem {
     Integer row;
     String username;
+    String operatorCode;
     String roleName;
     Boolean valid;
     List<ImportAccountRowError> errors;

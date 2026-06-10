@@ -38,6 +38,7 @@ class JwtUtilTest {
         mockAccount = Account.builder()
                 .id("user-123")
                 .username("testuser")
+                .operatorCode("HCMC-METRO")
                 .roles(Set.of(role))
                 .build();
     }
@@ -52,6 +53,7 @@ class JwtUtilTest {
         SignedJWT signedJWT = jwtUtil.verifyAccessToken(token);
         assertEquals("user-123", signedJWT.getJWTClaimsSet().getSubject());
         assertEquals("testuser", signedJWT.getJWTClaimsSet().getClaim("username"));
+        assertEquals("HCMC-METRO", signedJWT.getJWTClaimsSet().getClaim("operatorCode"));
     }
 
     @Test
@@ -92,7 +94,7 @@ class JwtUtilTest {
         mockAccount.setRoles(Set.of(role));
         String token = jwtUtil.generateToken(mockAccount);
         SignedJWT signedJWT = jwtUtil.verifyAccessToken(token);
-        assertEquals(JwtUtil.ROLE_PREFIX + "USER", signedJWT.getJWTClaimsSet().getClaim("scope"));
+        assertEquals("", signedJWT.getJWTClaimsSet().getClaim("scope"));
     }
 
     @Test
@@ -104,7 +106,7 @@ class JwtUtilTest {
         String token = jwtUtil.generateToken(mockAccount);
         SignedJWT signedJWT = jwtUtil.verifyAccessToken(token);
         String scope = (String) signedJWT.getJWTClaimsSet().getClaim("scope");
-        assertTrue(scope.contains(JwtUtil.ROLE_PREFIX + "USER"));
+        assertFalse(scope.contains("USER"));
         assertTrue(scope.contains("READ"));
     }
 

@@ -14,6 +14,7 @@ public class ImportAccountItemResponse {
     Integer row;
     String id;
     String username;
+    String operatorCode;
     Set<String> roles;
     Boolean isActive;
     String passwordStatus;

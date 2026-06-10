@@ -24,6 +24,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Configuration
@@ -37,6 +38,7 @@ public class ApplicationInitConfig {
     @Value("${app.init.admin.password}")
     String adminPassword;
 
+    static final String DEFAULT_OPERATOR_CODE = "HCMC-METRO";
     String adminUsername = "admin";
 
     @Bean
@@ -102,27 +104,31 @@ public class ApplicationInitConfig {
             }
 
             // =========================================================================
-            // BƯỚC 3: KHỞI TẠO DUY NHẤT 1 TÀI KHOẢN OPERATOR_ADMIN
+            // BƯỚC 3: KHỞI TẠO OPERATOR_ADMIN CHO TỪNG OPERATOR SEED
             // =========================================================================
-            if (accountRepository.count() == 0) {
-                log.info("Initializing root operator admin account...");
+            Role adminRole = roleRepository.findByName(PredefinedRole.OPERATOR_ADMIN).orElse(null);
+            if (adminRole == null) {
+                log.error("Failed to initialize system: OPERATOR_ADMIN role could not be found in Database.");
+                return;
+            }
 
-                Role adminRole = roleRepository.findByName(PredefinedRole.OPERATOR_ADMIN).orElse(null);
-
-                if (adminRole != null) {
-                    Account adminAccount = Account.builder()
-                            .username(adminUsername)
-                            .password(passwordEncoder.encode(adminPassword))
-                            .isActive(true)
-                            .passwordStatus(PredefinedPasswordStatus.NORMAL)
-                            .roles(Set.of(adminRole))
-                            .build();
-
-                    accountRepository.save(adminAccount);
-                    log.info("Initialization completed successfully. Operator admin account created.");
-                } else {
-                    log.error("Failed to initialize system: OPERATOR_ADMIN role could not be found in Database.");
+            for (String operatorCode : getOperatorSeeds()) {
+                String adminUsernameForOperator = getAdminUsername(operatorCode);
+                if (accountRepository.existsByUsername(adminUsernameForOperator)) {
+                    continue;
                 }
+
+                log.info("Initializing operator admin account {} for {}", adminUsernameForOperator, operatorCode);
+                Account adminAccount = Account.builder()
+                        .username(adminUsernameForOperator)
+                        .operatorCode(operatorCode)
+                        .password(passwordEncoder.encode(adminPassword))
+                        .isActive(true)
+                        .passwordStatus(PredefinedPasswordStatus.NORMAL)
+                        .roles(Set.of(adminRole))
+                        .build();
+
+                accountRepository.save(adminAccount);
             }
         };
     }
@@ -144,6 +150,28 @@ public class ApplicationInitConfig {
                     .build();
             return repository.save(r);
         });
+    }
+
+    private Set<String> getOperatorSeeds() {
+        Set<String> operatorCodes = new LinkedHashSet<>();
+        addOperatorSeed(operatorCodes, DEFAULT_OPERATOR_CODE);
+        addOperatorSeed(operatorCodes, "HCMC-METRO");
+        addOperatorSeed(operatorCodes, "HCMC-BUS");
+        addOperatorSeed(operatorCodes, "HCMC-BRT");
+        return operatorCodes;
+    }
+
+    private void addOperatorSeed(Set<String> operatorCodes, String operatorCode) {
+        if (operatorCode != null && !operatorCode.isBlank()) {
+            operatorCodes.add(operatorCode.trim());
+        }
+    }
+
+    private String getAdminUsername(String operatorCode) {
+        if (operatorCode.equals(DEFAULT_OPERATOR_CODE)) {
+            return adminUsername;
+        }
+        return "admin_" + operatorCode.toLowerCase().replace('-', '_');
     }
 
 }

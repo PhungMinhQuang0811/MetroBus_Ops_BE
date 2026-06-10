@@ -21,6 +21,7 @@ public class AccountMapper {
         return AccountResponse.builder()
                 .id(account.getId())
                 .username(account.getUsername())
+                .operatorCode(account.getOperatorCode())
                 .roles(roles)
                 .isActive(account.isActive())
                 .passwordStatus(account.getPasswordStatus())

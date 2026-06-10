@@ -20,6 +20,7 @@ public class AfcUserDetails implements UserDetails {
 
     String id;
     String username;
+    String operatorCode;
     Collection<? extends GrantedAuthority> authorities;
 
     @Override

@@ -14,6 +14,7 @@ import java.util.Set;
 public class AccountResponse {
     String id;
     String username;
+    String operatorCode;
     Set<String> roles;
     Boolean isActive;
     String passwordStatus;

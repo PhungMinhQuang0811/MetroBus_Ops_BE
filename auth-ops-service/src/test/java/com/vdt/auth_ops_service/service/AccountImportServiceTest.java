@@ -10,11 +10,14 @@ import com.vdt.auth_ops_service.entity.Account;
 import com.vdt.auth_ops_service.entity.Role;
 import com.vdt.auth_ops_service.repository.AccountRepository;
 import com.vdt.auth_ops_service.repository.RoleRepository;
+import com.vdt.auth_ops_service.security.entity.CustomUserDetails;
 import com.vdt.auth_ops_service.service.Impl.AccountImportService;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -22,10 +25,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -44,6 +50,16 @@ class AccountImportServiceTest {
     @InjectMocks
     private AccountImportService accountImportService;
 
+    @BeforeEach
+    void setUp() {
+        authenticateAsAdmin();
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void preview_ValidRows_ReturnsValidPreview() throws IOException {
         when(accountRepository.existsByUsername("station01")).thenReturn(false);
@@ -56,6 +72,7 @@ class AccountImportServiceTest {
         assertEquals(0, response.getInvalidRows());
         assertTrue(response.getErrors().isEmpty());
         assertEquals("station01", response.getItems().getFirst().getUsername());
+        assertEquals("HCMC-METRO", response.getItems().getFirst().getOperatorCode());
     }
 
     @Test
@@ -230,12 +247,14 @@ class AccountImportServiceTest {
 
         assertEquals(1, response.getImported());
         assertEquals("station01", response.getItems().getFirst().getUsername());
+        assertEquals("HCMC-METRO", response.getItems().getFirst().getOperatorCode());
         assertEquals(9, response.getItems().getFirst().getTemporaryPassword().length());
 
         ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
         verify(accountRepository).save(accountCaptor.capture());
         Account savedAccount = accountCaptor.getValue();
         assertTrue(savedAccount.isActive());
+        assertEquals("HCMC-METRO", savedAccount.getOperatorCode());
         assertEquals("encoded", savedAccount.getPassword());
         assertEquals(PredefinedPasswordStatus.NEED_TO_CHANGE, savedAccount.getPasswordStatus());
         assertEquals(Set.of(role), savedAccount.getRoles());
@@ -296,5 +315,16 @@ class AccountImportServiceTest {
                     outputStream.toByteArray()
             );
         }
+    }
+
+    private void authenticateAsAdmin() {
+        CustomUserDetails userDetails = CustomUserDetails.builder()
+                .id(UUID.randomUUID().toString())
+                .username("admin")
+                .operatorCode("HCMC-METRO")
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userDetails, null, List.of())
+        );
     }
 }
