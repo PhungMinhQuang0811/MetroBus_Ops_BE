@@ -3,11 +3,14 @@ package com.vdt.afc_ops_service.service;
 import com.vdt.afc_ops_service.dto.request.route.CreateRouteRequest;
 import com.vdt.afc_ops_service.dto.request.route.UpdateRouteRequest;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
+import com.vdt.afc_ops_service.dto.response.route.RouteDetailResponse;
 import com.vdt.afc_ops_service.dto.response.route.RouteResponse;
 
 public interface IRouteService {
 
     PageResponse<RouteResponse> listRoutes(String keyword, String transportType, String status, int page, int size);
+
+    RouteDetailResponse getRoute(Long routeId);
 
     RouteResponse createRoute(CreateRouteRequest request);
 

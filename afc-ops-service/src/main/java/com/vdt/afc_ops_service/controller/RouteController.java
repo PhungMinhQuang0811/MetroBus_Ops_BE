@@ -8,6 +8,7 @@ import com.vdt.afc_ops_service.dto.response.ApiResponse;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
 import com.vdt.afc_ops_service.dto.response.route.ImportRouteConfirmResponse;
 import com.vdt.afc_ops_service.dto.response.route.ImportRoutePreviewResponse;
+import com.vdt.afc_ops_service.dto.response.route.RouteDetailResponse;
 import com.vdt.afc_ops_service.dto.response.route.RouteResponse;
 import com.vdt.afc_ops_service.service.IRouteService;
 import com.vdt.afc_ops_service.service.Impl.RouteImportService;
@@ -46,6 +47,13 @@ public class RouteController {
     ) {
         return ApiResponse.<PageResponse<RouteResponse>>builder()
                 .result(routeService.listRoutes(keyword, transportType, status, page, size))
+                .build();
+    }
+
+    @GetMapping("/get-route/{routeId}")
+    public ApiResponse<RouteDetailResponse> getRoute(@PathVariable Long routeId) {
+        return ApiResponse.<RouteDetailResponse>builder()
+                .result(routeService.getRoute(routeId))
                 .build();
     }
 

@@ -1115,6 +1115,46 @@ Response:
 }
 ```
 
+#### API-AFC-001A - Get Route Detail
+
+`GET /route/get-route/{routeId}`
+
+Permission: `MASTER_DATA_READ`.
+
+Chỉ đọc được route thuộc operator của account hiện tại. Danh sách station được sắp xếp tăng dần
+theo `stationOrder`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 1,
+    "operatorId": 1,
+    "routeCode": "METRO-001",
+    "routeName": "Metro Line 1",
+    "transportType": "METRO",
+    "status": "ACTIVE",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:00:00+07:00",
+    "stationCount": 2,
+    "stations": [
+      {
+        "id": 10,
+        "routeId": 1,
+        "routeCode": "METRO-001",
+        "stationCode": "METRO-001-ST-001",
+        "stationName": "Bến Thành",
+        "stationOrder": 1,
+        "status": "ACTIVE"
+      }
+    ]
+  }
+}
+```
+
 #### API-AFC-002 - Create Route
 
 `POST /route/create-route`
@@ -1333,13 +1373,13 @@ Response thành công:
 | `INVALID_TRANSPORT_TYPE` | 2005 | List, create, update | `transportType` không thuộc `METRO`, `BUS` | Invalid transport type | 400 |
 | `INVALID_MASTER_DATA_STATUS` | 2006 | List | `status` không thuộc `ACTIVE`, `DISABLED` | Invalid master data status | 400 |
 | `INVALID_ROUTE_NAME_LENGTH` | 2007 | Create, update | `routeName` dài hơn 255 ký tự | Route name must not exceed 255 characters | 400 |
-| `INVALID_ROUTE_ID` | 2004 | Update, enable, disable | `routeId` không phải số nguyên dương | Route id is invalid | 400 |
+| `INVALID_ROUTE_ID` | 2004 | Detail, update, enable, disable | `routeId` không phải số nguyên dương | Route id is invalid | 400 |
 | `OPERATOR_SCOPE_REQUIRED` | 4012 | Tất cả API UC05 | JWT/account không có `operatorCode` hợp lệ | Operator scope is required | 403 |
-| `OPERATOR_ACCESS_DENIED` | 4013 | Update, enable, disable | Route tồn tại nhưng thuộc operator khác | You do not have permission to access data from another operator | 403 |
+| `OPERATOR_ACCESS_DENIED` | 4013 | Detail, update, enable, disable | Route tồn tại nhưng thuộc operator khác | You do not have permission to access data from another operator | 403 |
 | `ROUTE_ALREADY_ENABLED` | 3001 | Enable | Route đang `ACTIVE` sẵn | Route is already active | 400 |
 | `ROUTE_ALREADY_DISABLED` | 3002 | Disable | Route đang `DISABLED` sẵn | Route is already disabled | 400 |
 | `OPERATOR_NOT_FOUND` | 3003 | Tất cả API UC05 | `operatorCode` của account không tồn tại trong bảng `operators` | Operator not found | 404 |
-| `ROUTE_NOT_FOUND` | 3004 | Update, enable, disable | `routeId` không tồn tại | Route not found | 404 |
+| `ROUTE_NOT_FOUND` | 3004 | Detail, update, enable, disable | `routeId` không tồn tại | Route not found | 404 |
 | `IMPORT_FILE_INVALID` | 3014 | Preview import, confirm import | Thiếu file, nhiều hơn một file, file rỗng, không phải `.xlsx`, file hỏng, sai header hoặc không có dòng dữ liệu | Import file is invalid | 400 |
 | `IMPORT_FILE_HAS_ERRORS` | 3015 | Confirm import | File đúng cấu trúc nhưng có ít nhất một dòng validation lỗi | Import file contains invalid rows | 400 |
 | `UNCATEGORIZED_EXCEPTION` | 4000 | Tất cả API UC05 | Lỗi hệ thống không được phân loại, lỗi DB hoặc lỗi phát sinh ngoài dự kiến | Uncategorized error | 500 |
@@ -1393,14 +1433,18 @@ Business notes:
 10. Enable/disable không idempotent: nếu route đã ở đúng trạng thái thì trả lỗi riêng ở bảng lỗi UC05.
 11. Import route là all-or-nothing ở bước confirm. Preview chỉ kiểm tra và không giữ session/import token phía server.
 12. FE phải gửi lại file gốc khi confirm; backend parse và validate lại file.
+13. UC05 không cung cấp API xóa route; ngừng sử dụng route bằng API disable.
 
 ### UC06 - Quản Lý Ga/Trạm
 
 #### API-AFC-005 - List Stations
 
-`GET /afc-ops/list-stations?routeId=&keyword=&status=&page=0&size=20`
+`GET /station/list-stations?routeId=&keyword=&status=&page=0&size=20`
 
 Permission: `MASTER_DATA_READ`.
+
+Scope dữ liệu: chỉ trả station thuộc operator của account đang đăng nhập. Nếu truyền `routeId`
+thuộc operator khác, API trả lỗi phân quyền đơn vị.
 
 Response:
 
@@ -1413,7 +1457,8 @@ Response:
       {
         "id": 1,
         "routeId": 1,
-        "stationCode": "BEN-THANH",
+        "routeCode": "METRO-001",
+        "stationCode": "METRO-001-ST-001",
         "stationName": "Bến Thành",
         "stationOrder": 1,
         "status": "ACTIVE",
@@ -1429,23 +1474,13 @@ Response:
 }
 ```
 
-#### API-AFC-006 - Create Station
+#### API-AFC-005A - Get Station Detail
 
-`POST /afc-ops/create-station`
+`GET /station/get-station/{stationId}`
 
-Permission: `MASTER_DATA_WRITE`.
+Permission: `MASTER_DATA_READ`.
 
-Request:
-
-```json
-{
-  "routeId": 1,
-  "stationCode": "BEN-THANH",
-  "stationName": "Bến Thành",
-  "stationOrder": 1,
-  "status": "ACTIVE"
-}
-```
+Chỉ đọc được station thuộc operator của account hiện tại. Device được sắp xếp theo `deviceCode`.
 
 Response:
 
@@ -1456,7 +1491,66 @@ Response:
   "result": {
     "id": 1,
     "routeId": 1,
-    "stationCode": "BEN-THANH",
+    "routeCode": "METRO-001",
+    "routeName": "Metro Line 1",
+    "stationCode": "METRO-001-ST-001",
+    "stationName": "Bến Thành",
+    "stationOrder": 1,
+    "status": "ACTIVE",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:00:00+07:00",
+    "deviceSummary": {
+      "total": 4,
+      "active": 1,
+      "offline": 1,
+      "maintenance": 1,
+      "disabled": 1
+    },
+    "devices": [
+      {
+        "id": 10,
+        "deviceCode": "GATE-001",
+        "deviceType": "QR_SCANNER_SIMULATOR",
+        "direction": "ENTRY",
+        "status": "ACTIVE",
+        "firmwareVersion": "1.0.0",
+        "lastSeenAt": "2026-06-10T10:00:00+07:00"
+      }
+    ]
+  }
+}
+```
+
+#### API-AFC-006 - Create Station
+
+`POST /station/create-station`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Request:
+
+```json
+{
+  "routeId": 1,
+  "stationName": "Bến Thành",
+  "stationOrder": 1
+}
+```
+
+Không truyền `stationCode` và `status`. System tự sinh `stationCode` theo route và tạo mới với
+`status = ACTIVE`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 1,
+    "routeId": 1,
+    "routeCode": "METRO-001",
+    "stationCode": "METRO-001-ST-001",
     "stationName": "Bến Thành",
     "stationOrder": 1,
     "status": "ACTIVE",
@@ -1468,7 +1562,7 @@ Response:
 
 #### API-AFC-007 - Update Station
 
-`POST /afc-ops/update-station/{stationId}`
+`POST /station/update-station/{stationId}`
 
 Permission: `MASTER_DATA_WRITE`.
 
@@ -1477,12 +1571,13 @@ Request:
 ```json
 {
   "routeId": 1,
-  "stationCode": "BEN-THANH",
   "stationName": "Bến Thành Updated",
-  "stationOrder": 1,
-  "status": "ACTIVE"
+  "stationOrder": 1
 }
 ```
+
+Không truyền `stationCode` và `status`. API chỉ cập nhật route, tên station và thứ tự station.
+Đổi trạng thái dùng API enable/disable riêng.
 
 Response:
 
@@ -1493,7 +1588,8 @@ Response:
   "result": {
     "id": 1,
     "routeId": 1,
-    "stationCode": "BEN-THANH",
+    "routeCode": "METRO-001",
+    "stationCode": "METRO-001-ST-001",
     "stationName": "Bến Thành Updated",
     "stationOrder": 1,
     "status": "ACTIVE",
@@ -1503,13 +1599,75 @@ Response:
 }
 ```
 
-#### API-AFC-008 - Import Stations
+#### API-AFC-008 - Enable Station
 
-`POST /afc-ops/import-stations`
+`POST /station/enable-station/{stationId}`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Response thành công:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 1,
+    "routeId": 1,
+    "routeCode": "METRO-001",
+    "stationCode": "METRO-001-ST-001",
+    "stationName": "Bến Thành",
+    "stationOrder": 1,
+    "status": "ACTIVE"
+  }
+}
+```
+
+Nếu station đã `ACTIVE`, trả lỗi `STATION_ALREADY_ENABLED`.
+
+#### API-AFC-009 - Disable Station
+
+`POST /station/disable-station/{stationId}`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Response thành công:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 1,
+    "routeId": 1,
+    "routeCode": "METRO-001",
+    "stationCode": "METRO-001-ST-001",
+    "stationName": "Bến Thành",
+    "stationOrder": 1,
+    "status": "DISABLED"
+  }
+}
+```
+
+Nếu station đã `DISABLED`, trả lỗi `STATION_ALREADY_DISABLED`.
+
+#### API-AFC-010 - Preview Import Stations
+
+`POST /station/preview-import-stations`
 
 Permission: `MASTER_DATA_WRITE`.
 
 Content-Type: `multipart/form-data`, field `file`.
+
+File template: `afc-ops-service/src/main/resources/templates/station-import-template.xlsx`.
+
+Header bắt buộc:
+
+| Column | Required | Ghi chú |
+| --- | --- | --- |
+| `routeCode` | Yes | Route phải thuộc operator hiện tại |
+| `stationName` | Yes | Tối đa 255 ký tự |
+| `stationOrder` | Yes | Số nguyên >= 1, không trùng trong cùng route và không trùng trong file |
 
 Response:
 
@@ -1518,30 +1676,87 @@ Response:
   "code": 1000,
   "message": "Success",
   "result": {
-    "imported": 10,
+    "totalRows": 2,
+    "validRows": 2,
+    "invalidRows": 0,
+    "items": [
+      {
+        "row": 2,
+        "routeId": 1,
+        "routeCode": "METRO-001",
+        "stationName": "Bến Thành",
+        "stationOrder": 1,
+        "valid": true,
+        "errors": []
+      }
+    ],
     "errors": []
   }
 }
 ```
 
-Nếu có dòng lỗi thì không import:
+#### API-AFC-011 - Confirm Import Stations
+
+`POST /station/confirm-import-stations`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Content-Type: `multipart/form-data`, field `file`.
+
+Confirm sẽ parse và validate lại file. Nếu có dòng lỗi thì không import dòng nào.
+
+Response thành công:
 
 ```json
 {
-  "code": 4001,
-  "message": "Import file contains invalid rows",
+  "code": 1000,
+  "message": "Success",
   "result": {
-    "imported": 0,
-    "errors": [
+    "imported": 2,
+    "items": [
       {
-        "row": 3,
-        "field": "stationCode",
-        "message": "Station code already exists in route"
+        "row": 2,
+        "id": 1,
+        "routeId": 1,
+        "routeCode": "METRO-001",
+        "stationCode": "METRO-001-ST-001",
+        "stationName": "Bến Thành",
+        "stationOrder": 1,
+        "status": "ACTIVE"
       }
     ]
   }
 }
 ```
+
+Nếu có dòng lỗi:
+
+```json
+{
+  "code": 3015,
+  "message": "Import file contains invalid rows"
+}
+```
+
+Case lỗi UC06:
+
+| Case | Điều kiện | Error code |
+| --- | --- | --- |
+| Route id không hợp lệ | `routeId <= 0` hoặc sai kiểu path/query | `INVALID_ROUTE_ID` |
+| Station id không hợp lệ | `stationId <= 0` hoặc sai kiểu path | `INVALID_STATION_ID` |
+| Route không tồn tại | `routeId` không có trong hệ thống | `ROUTE_NOT_FOUND` |
+| Station không tồn tại | `stationId` không có trong hệ thống | `STATION_NOT_FOUND` |
+| Khác operator | Route/station thuộc operator khác account hiện tại | `OPERATOR_ACCESS_DENIED` |
+| Trùng thứ tự station | `stationOrder` đã tồn tại trong route | `STATION_ORDER_EXISTED` |
+| Station đã active | Gọi enable khi station đang `ACTIVE` | `STATION_ALREADY_ENABLED` |
+| Station đã disabled | Gọi disable khi station đang `DISABLED` | `STATION_ALREADY_DISABLED` |
+| Status filter không hợp lệ | `status` khác `ACTIVE`, `DISABLED` | `INVALID_MASTER_DATA_STATUS` |
+| Keyword quá dài | `keyword` dài hơn 50 ký tự | `INVALID_SEARCH_KEYWORD` |
+| Page/size không hợp lệ | `page < 0`, `size < 1` hoặc `size > 100` | `INVALID_PAGE_REQUEST` |
+| File import sai cấu trúc | File rỗng, không phải `.xlsx`, thiếu header hoặc không có data row | `IMPORT_FILE_INVALID` |
+| File import có dòng lỗi | Preview có `invalidRows > 0`, confirm bị từ chối | `IMPORT_FILE_HAS_ERRORS` |
+
+UC06 không cung cấp API xóa station; ngừng sử dụng station bằng API disable.
 
 ### UC07 - Quản Lý Danh Mục Thiết Bị AFC
 

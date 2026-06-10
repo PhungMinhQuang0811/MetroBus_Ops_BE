@@ -12,6 +12,7 @@ import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.mapper.RouteMapper;
 import com.vdt.afc_ops_service.repository.OperatorRepository;
 import com.vdt.afc_ops_service.repository.RouteRepository;
+import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.entity.AfcUserDetails;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.Impl.RouteService;
@@ -50,6 +51,9 @@ class RouteServiceTest {
     @Mock
     RouteRepository routeRepository;
 
+    @Mock
+    StationRepository stationRepository;
+
     RouteMapper routeMapper = new RouteMapper();
 
     Validator validator;
@@ -61,6 +65,7 @@ class RouteServiceTest {
         validator = Validation.buildDefaultValidatorFactory().getValidator();
         routeService = new RouteService(
                 routeRepository,
+                stationRepository,
                 routeMapper,
                 new RouteCodeGenerator(routeRepository),
                 new SecurityUtils(operatorRepository)
@@ -105,6 +110,48 @@ class RouteServiceTest {
 
         assertEquals(1, response.getTotalElements());
         assertEquals("METRO-001", response.getItems().get(0).getRouteCode());
+    }
+
+    @Test
+    void getRoute_ExistingRoute_ReturnsStationsOrderedByRepository() {
+        Operator operator = Operator.builder().id(1L).operatorCode("HCMC-METRO").build();
+        Route route = Route.builder()
+                .id(10L)
+                .operator(operator)
+                .routeCode("METRO-001")
+                .routeName("Metro Line 1")
+                .transportType(PredefinedTransportType.METRO)
+                .status(PredefinedMasterDataStatus.ACTIVE)
+                .build();
+        com.vdt.afc_ops_service.entity.Station station = com.vdt.afc_ops_service.entity.Station.builder()
+                .id(100L)
+                .route(route)
+                .stationCode("METRO-001-ST-001")
+                .stationName("Ben Thanh")
+                .stationOrder(1)
+                .status(PredefinedMasterDataStatus.ACTIVE)
+                .build();
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+        when(routeRepository.findByIdAndOperator(10L, operator)).thenReturn(Optional.of(route));
+        when(stationRepository.findAllByRouteOrderByStationOrderAsc(route)).thenReturn(List.of(station));
+
+        var response = routeService.getRoute(10L);
+
+        assertEquals("METRO-001", response.getRouteCode());
+        assertEquals(1, response.getStationCount());
+        assertEquals("METRO-001-ST-001", response.getStations().get(0).getStationCode());
+    }
+
+    @Test
+    void getRoute_DifferentOperator_ThrowsOperatorAccessDenied() {
+        Operator operator = Operator.builder().id(1L).operatorCode("HCMC-METRO").build();
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+        when(routeRepository.findByIdAndOperator(10L, operator)).thenReturn(Optional.empty());
+        when(routeRepository.existsById(10L)).thenReturn(true);
+
+        AppException exception = assertThrows(AppException.class, () -> routeService.getRoute(10L));
+
+        assertEquals(ErrorCode.OPERATOR_ACCESS_DENIED, exception.getErrorCode());
     }
 
     @Test

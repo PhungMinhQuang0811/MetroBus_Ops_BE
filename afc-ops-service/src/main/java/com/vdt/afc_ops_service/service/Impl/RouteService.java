@@ -8,11 +8,13 @@ import com.vdt.afc_ops_service.constant.PredefinedTransportType;
 import com.vdt.afc_ops_service.dto.request.route.CreateRouteRequest;
 import com.vdt.afc_ops_service.dto.request.route.UpdateRouteRequest;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
+import com.vdt.afc_ops_service.dto.response.route.RouteDetailResponse;
 import com.vdt.afc_ops_service.dto.response.route.RouteResponse;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.mapper.RouteMapper;
 import com.vdt.afc_ops_service.repository.RouteRepository;
+import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.IRouteService;
 import com.vdt.afc_ops_service.service.RouteCodeGenerator;
@@ -32,6 +34,7 @@ public class RouteService implements IRouteService {
     static final int MAX_PAGE_SIZE = 100;
     static final int MAX_KEYWORD_LENGTH = 50;
     RouteRepository routeRepository;
+    StationRepository stationRepository;
     RouteMapper routeMapper;
     RouteCodeGenerator routeCodeGenerator;
     SecurityUtils securityUtils;
@@ -61,6 +64,28 @@ public class RouteService implements IRouteService {
                 .size(routes.getSize())
                 .totalElements(routes.getTotalElements())
                 .totalPages(routes.getTotalPages())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RouteDetailResponse getRoute(Long routeId) {
+        Route route = getRoute(routeId, securityUtils.getRequiredCurrentOperator());
+        var stations = stationRepository.findAllByRouteOrderByStationOrderAsc(route).stream()
+                .map(routeMapper::toStationResponse)
+                .toList();
+
+        return RouteDetailResponse.builder()
+                .id(route.getId())
+                .operatorId(route.getOperator().getId())
+                .routeCode(route.getRouteCode())
+                .routeName(route.getRouteName())
+                .transportType(route.getTransportType())
+                .status(route.getStatus())
+                .createdAt(route.getCreatedAt())
+                .updatedAt(route.getUpdatedAt())
+                .stationCount(stations.size())
+                .stations(stations)
                 .build();
     }
 

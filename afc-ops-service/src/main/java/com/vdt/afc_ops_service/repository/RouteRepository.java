@@ -17,6 +17,8 @@ public interface RouteRepository extends JpaRepository<Route, Long> {
 
     Optional<Route> findByIdAndOperator(Long id, Operator operator);
 
+    Optional<Route> findByOperatorAndRouteCode(Operator operator, String routeCode);
+
     @Query("SELECT r.routeCode FROM Route r " +
             "WHERE r.operator = :operator " +
             "AND r.routeCode LIKE CONCAT(:prefix, '-%')")

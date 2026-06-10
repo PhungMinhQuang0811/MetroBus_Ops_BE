@@ -27,6 +27,9 @@ public enum ErrorCode {
     INVALID_TRANSPORT_TYPE(2005, "Invalid transport type", HttpStatus.BAD_REQUEST),
     INVALID_MASTER_DATA_STATUS(2006, "Invalid master data status", HttpStatus.BAD_REQUEST),
     INVALID_ROUTE_NAME_LENGTH(2007, "Route name must not exceed 255 characters", HttpStatus.BAD_REQUEST),
+    INVALID_STATION_ID(2008, "Station id is invalid", HttpStatus.BAD_REQUEST),
+    INVALID_STATION_NAME_LENGTH(2009, "Station name must not exceed 255 characters", HttpStatus.BAD_REQUEST),
+    INVALID_STATION_ORDER(2010, "Station order must be greater than or equal to 1", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
@@ -36,6 +39,11 @@ public enum ErrorCode {
     ROUTE_ALREADY_DISABLED(3002, "Route is already disabled", HttpStatus.BAD_REQUEST),
     OPERATOR_NOT_FOUND(3003, "Operator not found", HttpStatus.NOT_FOUND),
     ROUTE_NOT_FOUND(3004, "Route not found", HttpStatus.NOT_FOUND),
+    STATION_NOT_FOUND(3005, "Station not found", HttpStatus.NOT_FOUND),
+    STATION_CODE_EXISTED(3006, "Station code already exists in route", HttpStatus.BAD_REQUEST),
+    STATION_ORDER_EXISTED(3007, "Station order already exists in route", HttpStatus.BAD_REQUEST),
+    STATION_ALREADY_ENABLED(3008, "Station is already active", HttpStatus.BAD_REQUEST),
+    STATION_ALREADY_DISABLED(3009, "Station is already disabled", HttpStatus.BAD_REQUEST),
     IMPORT_FILE_INVALID(3014, "Import file is invalid", HttpStatus.BAD_REQUEST),
     IMPORT_FILE_HAS_ERRORS(3015, "Import file contains invalid rows", HttpStatus.BAD_REQUEST),
 

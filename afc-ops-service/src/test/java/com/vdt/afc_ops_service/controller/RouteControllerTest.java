@@ -10,6 +10,8 @@ import com.vdt.afc_ops_service.dto.response.route.ImportRouteItemResponse;
 import com.vdt.afc_ops_service.dto.response.route.ImportRoutePreviewItem;
 import com.vdt.afc_ops_service.dto.response.route.ImportRoutePreviewResponse;
 import com.vdt.afc_ops_service.dto.response.route.RouteResponse;
+import com.vdt.afc_ops_service.dto.response.route.RouteDetailResponse;
+import com.vdt.afc_ops_service.dto.response.station.StationResponse;
 import com.vdt.afc_ops_service.service.IRouteService;
 import com.vdt.afc_ops_service.service.Impl.RouteImportService;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +72,32 @@ class RouteControllerTest {
                         .param("status", "ACTIVE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.items[0].routeCode").value("METRO-001"));
+    }
+
+    @Test
+    void getRoute_UsesRouteBasePath() throws Exception {
+        when(routeService.getRoute(1L)).thenReturn(RouteDetailResponse.builder()
+                .id(1L)
+                .operatorId(1L)
+                .routeCode("METRO-001")
+                .routeName("Metro Line 1")
+                .transportType(PredefinedTransportType.METRO)
+                .status(PredefinedMasterDataStatus.ACTIVE)
+                .stationCount(1)
+                .stations(List.of(StationResponse.builder()
+                        .id(10L)
+                        .routeId(1L)
+                        .routeCode("METRO-001")
+                        .stationCode("METRO-001-ST-001")
+                        .stationOrder(1)
+                        .build()))
+                .build());
+
+        mockMvc.perform(get("/route/get-route/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.routeCode").value("METRO-001"))
+                .andExpect(jsonPath("$.result.stationCount").value(1))
+                .andExpect(jsonPath("$.result.stations[0].stationCode").value("METRO-001-ST-001"));
     }
 
     @Test
