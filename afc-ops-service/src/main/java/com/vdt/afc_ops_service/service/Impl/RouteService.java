@@ -12,10 +12,10 @@ import com.vdt.afc_ops_service.dto.response.route.RouteResponse;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.mapper.RouteMapper;
-import com.vdt.afc_ops_service.repository.OperatorRepository;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.IRouteService;
+import com.vdt.afc_ops_service.service.RouteCodeGenerator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -31,17 +31,16 @@ public class RouteService implements IRouteService {
 
     static final int MAX_PAGE_SIZE = 100;
     static final int MAX_KEYWORD_LENGTH = 50;
-    static final String ROUTE_CODE_FORMAT = "%s-%03d";
-
-    OperatorRepository operatorRepository;
     RouteRepository routeRepository;
     RouteMapper routeMapper;
+    RouteCodeGenerator routeCodeGenerator;
+    SecurityUtils securityUtils;
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<RouteResponse> listRoutes(String keyword, String transportType, String status,
                                                   int page, int size) {
-        Operator operator = getCurrentOperator();
+        Operator operator = securityUtils.getRequiredCurrentOperator();
 
         String normalizedKeyword = SearchFilterUtil.normalize(keyword);
         String normalizedTransportType = SearchFilterUtil.normalizeUppercase(transportType);
@@ -71,10 +70,10 @@ public class RouteService implements IRouteService {
         String routeName = SearchFilterUtil.normalize(request.getRouteName());
         String transportType = SearchFilterUtil.normalizeUppercase(request.getTransportType());
 
-        Operator operator = getCurrentOperator();
-        String routeCode = generateRouteCode(operator, transportType);
+        Operator operator = securityUtils.getRequiredCurrentOperator();
+        String routeCode = routeCodeGenerator.generate(operator, transportType);
 
-        String accountId = getCurrentAccountId();
+        String accountId = SecurityUtils.getRequiredCurrentAccountId();
         Route route = Route.builder()
                 .operator(operator)
                 .routeCode(routeCode)
@@ -91,7 +90,7 @@ public class RouteService implements IRouteService {
     @Transactional
     public RouteResponse updateRoute(Long routeId, UpdateRouteRequest request) {
         validateRouteId(routeId);
-        Operator operator = getCurrentOperator();
+        Operator operator = securityUtils.getRequiredCurrentOperator();
         Route route = getRoute(routeId, operator);
         String routeName = SearchFilterUtil.normalize(request.getRouteName());
         String transportType = SearchFilterUtil.normalizeUppercase(request.getTransportType());
@@ -104,7 +103,7 @@ public class RouteService implements IRouteService {
     @Override
     @Transactional
     public RouteResponse enableRoute(Long routeId) {
-        Route route = getRoute(routeId, getCurrentOperator());
+        Route route = getRoute(routeId, securityUtils.getRequiredCurrentOperator());
         if (PredefinedMasterDataStatus.ACTIVE.equals(route.getStatus())) {
             throw new AppException(ErrorCode.ROUTE_ALREADY_ENABLED);
         }
@@ -115,18 +114,12 @@ public class RouteService implements IRouteService {
     @Override
     @Transactional
     public RouteResponse disableRoute(Long routeId) {
-        Route route = getRoute(routeId, getCurrentOperator());
+        Route route = getRoute(routeId, securityUtils.getRequiredCurrentOperator());
         if (PredefinedMasterDataStatus.DISABLED.equals(route.getStatus())) {
             throw new AppException(ErrorCode.ROUTE_ALREADY_DISABLED);
         }
         route.setStatus(PredefinedMasterDataStatus.DISABLED);
         return routeMapper.toRouteResponse(routeRepository.save(route));
-    }
-
-    Operator getCurrentOperator() {
-        String operatorCode = SecurityUtils.getRequiredCurrentOperatorCode();
-        return operatorRepository.findByOperatorCode(operatorCode)
-                .orElseThrow(() -> new AppException(ErrorCode.OPERATOR_NOT_FOUND));
     }
 
     private Route getRoute(Long routeId, Operator operator) {
@@ -138,33 +131,6 @@ public class RouteService implements IRouteService {
                     }
                     throw new AppException(ErrorCode.ROUTE_NOT_FOUND);
                 });
-    }
-
-    private String generateRouteCode(Operator operator, String transportType) {
-        int nextSequence = routeRepository.findRouteCodesByOperatorAndPrefix(operator, transportType).stream()
-                .map(routeCode -> parseSequence(routeCode, transportType))
-                .max(Integer::compareTo)
-                .orElse(0) + 1;
-
-        String routeCode = String.format(ROUTE_CODE_FORMAT, transportType, nextSequence);
-        while (routeRepository.existsByOperatorAndRouteCode(operator, routeCode)) {
-            nextSequence++;
-            routeCode = String.format(ROUTE_CODE_FORMAT, transportType, nextSequence);
-        }
-        return routeCode;
-    }
-
-    private int parseSequence(String routeCode, String prefix) {
-        String expectedPrefix = prefix + "-";
-        if (routeCode == null || !routeCode.startsWith(expectedPrefix)) {
-            return 0;
-        }
-
-        try {
-            return Integer.parseInt(routeCode.substring(expectedPrefix.length()));
-        } catch (NumberFormatException exception) {
-            return 0;
-        }
     }
 
     private void validateTransportType(String transportType) {
@@ -200,11 +166,4 @@ public class RouteService implements IRouteService {
         }
     }
 
-    private String getCurrentAccountId() {
-        String accountId = SecurityUtils.getCurrentAccountId();
-        if (accountId == null || accountId.isBlank()) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
-        }
-        return accountId;
-    }
 }

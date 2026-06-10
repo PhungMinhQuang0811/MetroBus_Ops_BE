@@ -3,7 +3,12 @@ package com.vdt.afc_ops_service.security.util;
 import com.vdt.afc_ops_service.common.exception.AppException;
 import com.vdt.afc_ops_service.common.exception.ErrorCode;
 import com.vdt.afc_ops_service.common.util.SearchFilterUtil;
+import com.vdt.afc_ops_service.entity.Operator;
+import com.vdt.afc_ops_service.repository.OperatorRepository;
 import com.vdt.afc_ops_service.security.entity.AfcUserDetails;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,7 +17,11 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SecurityUtils {
+
+    OperatorRepository operatorRepository;
 
     public static AfcUserDetails getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -33,6 +42,14 @@ public class SecurityUtils {
         return user != null ? user.getId() : null;
     }
 
+    public static String getRequiredCurrentAccountId() {
+        String accountId = SearchFilterUtil.normalize(getCurrentAccountId());
+        if (accountId == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        return accountId;
+    }
+
     public static String getCurrentUsername() {
         AfcUserDetails user = getCurrentUser();
         return user != null ? user.getUsername() : null;
@@ -49,6 +66,11 @@ public class SecurityUtils {
             throw new AppException(ErrorCode.OPERATOR_SCOPE_REQUIRED);
         }
         return operatorCode;
+    }
+
+    public Operator getRequiredCurrentOperator() {
+        return operatorRepository.findByOperatorCode(getRequiredCurrentOperatorCode())
+                .orElseThrow(() -> new AppException(ErrorCode.OPERATOR_NOT_FOUND));
     }
 
     public static List<String> getCurrentAuthorities() {

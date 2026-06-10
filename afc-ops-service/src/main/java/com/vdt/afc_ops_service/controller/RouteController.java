@@ -1,11 +1,16 @@
 package com.vdt.afc_ops_service.controller;
 
+import com.vdt.afc_ops_service.common.exception.AppException;
+import com.vdt.afc_ops_service.common.exception.ErrorCode;
 import com.vdt.afc_ops_service.dto.request.route.CreateRouteRequest;
 import com.vdt.afc_ops_service.dto.request.route.UpdateRouteRequest;
 import com.vdt.afc_ops_service.dto.response.ApiResponse;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
+import com.vdt.afc_ops_service.dto.response.route.ImportRouteConfirmResponse;
+import com.vdt.afc_ops_service.dto.response.route.ImportRoutePreviewResponse;
 import com.vdt.afc_ops_service.dto.response.route.RouteResponse;
 import com.vdt.afc_ops_service.service.IRouteService;
+import com.vdt.afc_ops_service.service.Impl.RouteImportService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -17,14 +22,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/afc-ops")
+@RequestMapping("/route")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class RouteController {
 
     IRouteService routeService;
+    RouteImportService routeImportService;
 
     @GetMapping("/list-routes")
     public ApiResponse<PageResponse<RouteResponse>> listRoutes(
@@ -68,6 +78,31 @@ public class RouteController {
         return ApiResponse.<RouteResponse>builder()
                 .result(routeService.disableRoute(routeId))
                 .build();
+    }
+
+    @PostMapping("/preview-import-routes")
+    public ApiResponse<ImportRoutePreviewResponse> previewImportRoutes(
+            @RequestPart(value = "file", required = false) List<MultipartFile> files
+    ) {
+        return ApiResponse.<ImportRoutePreviewResponse>builder()
+                .result(routeImportService.preview(resolveSingleImportFile(files)))
+                .build();
+    }
+
+    @PostMapping("/confirm-import-routes")
+    public ApiResponse<ImportRouteConfirmResponse> confirmImportRoutes(
+            @RequestPart(value = "file", required = false) List<MultipartFile> files
+    ) {
+        return ApiResponse.<ImportRouteConfirmResponse>builder()
+                .result(routeImportService.confirm(resolveSingleImportFile(files)))
+                .build();
+    }
+
+    private MultipartFile resolveSingleImportFile(List<MultipartFile> files) {
+        if (files == null || files.size() != 1) {
+            throw new AppException(ErrorCode.IMPORT_FILE_INVALID);
+        }
+        return files.get(0);
     }
 
 }

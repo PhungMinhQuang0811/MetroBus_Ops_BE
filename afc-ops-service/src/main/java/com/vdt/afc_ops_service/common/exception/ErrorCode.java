@@ -36,6 +36,8 @@ public enum ErrorCode {
     ROUTE_ALREADY_DISABLED(3002, "Route is already disabled", HttpStatus.BAD_REQUEST),
     OPERATOR_NOT_FOUND(3003, "Operator not found", HttpStatus.NOT_FOUND),
     ROUTE_NOT_FOUND(3004, "Route not found", HttpStatus.NOT_FOUND),
+    IMPORT_FILE_INVALID(3014, "Import file is invalid", HttpStatus.BAD_REQUEST),
+    IMPORT_FILE_HAS_ERRORS(3015, "Import file contains invalid rows", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 4xxx: Security, Authentication & System errors

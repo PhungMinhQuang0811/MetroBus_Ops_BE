@@ -30,6 +30,7 @@
         <java.version>17</java.version>
         <spring-doc.version>2.8.5</spring-doc.version>
         <jjwt.version>0.12.6</jjwt.version>
+        <apache-poi.version>5.4.1</apache-poi.version>
     </properties>
     <dependencies>
         <dependency>
@@ -95,6 +96,11 @@
             <artifactId>jjwt-jackson</artifactId>
             <version>${jjwt.version}</version>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${apache-poi.version}</version>
         </dependency>
 
         <dependency>
