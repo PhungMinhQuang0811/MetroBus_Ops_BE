@@ -30,6 +30,13 @@ public enum ErrorCode {
     INVALID_STATION_ID(2008, "Station id is invalid", HttpStatus.BAD_REQUEST),
     INVALID_STATION_NAME_LENGTH(2009, "Station name must not exceed 255 characters", HttpStatus.BAD_REQUEST),
     INVALID_STATION_ORDER(2010, "Station order must be greater than or equal to 1", HttpStatus.BAD_REQUEST),
+    INVALID_DEVICE_ID(2011, "Device id is invalid", HttpStatus.BAD_REQUEST),
+    INVALID_DEVICE_CODE_LENGTH(2012, "Device code must not exceed 100 characters", HttpStatus.BAD_REQUEST),
+    INVALID_FIRMWARE_VERSION_LENGTH(2013, "Firmware version must not exceed 100 characters", HttpStatus.BAD_REQUEST),
+    INVALID_DEVICE_TYPE(2014, "Invalid device type", HttpStatus.BAD_REQUEST),
+    INVALID_DEVICE_DIRECTION(2015, "Invalid device direction", HttpStatus.BAD_REQUEST),
+    INVALID_DEVICE_STATUS(2016, "Invalid device status", HttpStatus.BAD_REQUEST),
+    INVALID_DEVICE_SECRET_LENGTH(2017, "Device secret must not exceed 255 characters", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
@@ -44,6 +51,10 @@ public enum ErrorCode {
     STATION_ORDER_EXISTED(3007, "Station order already exists in route", HttpStatus.BAD_REQUEST),
     STATION_ALREADY_ENABLED(3008, "Station is already active", HttpStatus.BAD_REQUEST),
     STATION_ALREADY_DISABLED(3009, "Station is already disabled", HttpStatus.BAD_REQUEST),
+    DEVICE_NOT_FOUND(3010, "Device not found", HttpStatus.NOT_FOUND),
+    DEVICE_CODE_EXISTED(3011, "Device code already exists", HttpStatus.BAD_REQUEST),
+    DEVICE_ALREADY_ENABLED(3012, "Device is already active", HttpStatus.BAD_REQUEST),
+    DEVICE_ALREADY_DISABLED(3013, "Device is already disabled", HttpStatus.BAD_REQUEST),
     IMPORT_FILE_INVALID(3014, "Import file is invalid", HttpStatus.BAD_REQUEST),
     IMPORT_FILE_HAS_ERRORS(3015, "Import file contains invalid rows", HttpStatus.BAD_REQUEST),
 

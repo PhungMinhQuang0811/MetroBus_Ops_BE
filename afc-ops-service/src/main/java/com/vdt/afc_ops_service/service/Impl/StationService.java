@@ -8,10 +8,7 @@ import com.vdt.afc_ops_service.dto.request.station.CreateStationRequest;
 import com.vdt.afc_ops_service.dto.request.station.UpdateStationRequest;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
 import com.vdt.afc_ops_service.dto.response.station.StationDetailResponse;
-import com.vdt.afc_ops_service.dto.response.station.StationDeviceResponse;
-import com.vdt.afc_ops_service.dto.response.station.StationDeviceSummary;
 import com.vdt.afc_ops_service.dto.response.station.StationResponse;
-import com.vdt.afc_ops_service.entity.Device;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.entity.Station;
@@ -21,7 +18,7 @@ import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.IStationService;
-import com.vdt.afc_ops_service.service.StationCodeGenerator;
+import com.vdt.afc_ops_service.service.generator.StationCodeGenerator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -29,8 +26,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -81,22 +76,7 @@ public class StationService implements IStationService {
     public StationDetailResponse getStation(Long stationId) {
         Station station = getStation(stationId, securityUtils.getRequiredCurrentOperator());
         var devices = deviceRepository.findAllByStationOrderByDeviceCodeAsc(station);
-        var deviceResponses = devices.stream().map(this::toDeviceResponse).toList();
-
-        return StationDetailResponse.builder()
-                .id(station.getId())
-                .routeId(station.getRoute().getId())
-                .routeCode(station.getRoute().getRouteCode())
-                .routeName(station.getRoute().getRouteName())
-                .stationCode(station.getStationCode())
-                .stationName(station.getStationName())
-                .stationOrder(station.getStationOrder())
-                .status(station.getStatus())
-                .createdAt(station.getCreatedAt())
-                .updatedAt(station.getUpdatedAt())
-                .deviceSummary(buildDeviceSummary(devices))
-                .devices(deviceResponses)
-                .build();
+        return stationMapper.toStationDetailResponse(station, devices);
     }
 
     @Override
@@ -184,32 +164,6 @@ public class StationService implements IStationService {
         if (existed) {
             throw new AppException(ErrorCode.STATION_ORDER_EXISTED);
         }
-    }
-
-    private StationDeviceResponse toDeviceResponse(Device device) {
-        return StationDeviceResponse.builder()
-                .id(device.getId())
-                .deviceCode(device.getDeviceCode())
-                .deviceType(device.getDeviceType())
-                .direction(device.getDirection())
-                .status(device.getStatus())
-                .firmwareVersion(device.getFirmwareVersion())
-                .lastSeenAt(device.getLastSeenAt())
-                .build();
-    }
-
-    private StationDeviceSummary buildDeviceSummary(List<Device> devices) {
-        return StationDeviceSummary.builder()
-                .total(devices.size())
-                .active(countDevicesByStatus(devices, "ACTIVE"))
-                .offline(countDevicesByStatus(devices, "OFFLINE"))
-                .maintenance(countDevicesByStatus(devices, "MAINTENANCE"))
-                .disabled(countDevicesByStatus(devices, "DISABLED"))
-                .build();
-    }
-
-    private int countDevicesByStatus(List<Device> devices, String status) {
-        return (int) devices.stream().filter(device -> status.equals(device.getStatus())).count();
     }
 
     private void validateStatus(String status) {

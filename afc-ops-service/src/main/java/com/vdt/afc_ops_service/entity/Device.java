@@ -52,6 +52,9 @@ public class Device {
     @Column(name = "firmware_version", length = 100)
     private String firmwareVersion;
 
+    @Column(name = "device_secret", length = 255)
+    private String deviceSecret;
+
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
 

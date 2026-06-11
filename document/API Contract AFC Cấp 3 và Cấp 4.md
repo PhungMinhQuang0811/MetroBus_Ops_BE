@@ -1760,11 +1760,22 @@ UC06 không cung cấp API xóa station; ngừng sử dụng station bằng API 
 
 ### UC07 - Quản Lý Danh Mục Thiết Bị AFC
 
-#### API-AFC-009 - List Devices
+#### API-AFC-012A - List Devices
 
-`GET /afc-ops/list-devices?stationId=&deviceType=&status=&keyword=&page=0&size=20`
+`GET /device/list-devices?stationId=&deviceType=&status=&keyword=&page=0&size=20`
 
 Permission: `MASTER_DATA_READ`.
+
+Query:
+
+| Query | Bắt buộc | Ghi chú |
+| --- | --- | --- |
+| `stationId` | Không | Lọc theo station; nếu truyền station khác operator hiện tại thì trả `OPERATOR_ACCESS_DENIED` |
+| `deviceType` | Không | MVP: `QR_SCANNER_SIMULATOR` |
+| `status` | Không | `ACTIVE`, `OFFLINE`, `MAINTENANCE`, `DISABLED`; `OFFLINE` chỉ dùng cho monitoring/filter |
+| `keyword` | Không | Tìm theo `deviceCode`, `stationCode`, `stationName`; tối đa 50 ký tự |
+| `page` | Không | Default `0` |
+| `size` | Không | Default `20`, max `100` |
 
 Response:
 
@@ -1776,7 +1787,10 @@ Response:
     "items": [
       {
         "id": 10,
+        "routeId": 1,
+        "routeCode": "METRO-001",
         "stationId": 1,
+        "stationCode": "METRO-001-ST-001",
         "stationName": "Bến Thành",
         "deviceCode": "QR-BT-001",
         "deviceType": "QR_SCANNER_SIMULATOR",
@@ -1796,9 +1810,54 @@ Response:
 }
 ```
 
-#### API-AFC-010 - Create Device
+#### API-AFC-012B - Get Device Detail
 
-`POST /afc-ops/create-device`
+`GET /device/get-device/{deviceId}`
+
+Permission: `MASTER_DATA_READ`.
+
+Response dùng cho popup/màn chi tiết thiết bị. `latestIncident` hiện nullable trong UC07; khi triển khai UC12/UC13 thì nối incident gần nhất vào field này.
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 10,
+    "deviceCode": "QR-BT-001",
+    "deviceType": "QR_SCANNER_SIMULATOR",
+    "direction": "ENTRY",
+    "status": "ACTIVE",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:30:00+07:00",
+    "stationId": 1,
+    "stationCode": "METRO-001-ST-001",
+    "stationName": "Bến Thành",
+    "routeId": 1,
+    "routeCode": "METRO-001",
+    "routeName": "Metro Line 1",
+    "lastSeenAt": "2026-06-04T10:00:00+07:00",
+    "firmwareVersion": "1.0.0",
+    "latestIncident": null
+  }
+}
+```
+
+Khi UC12/UC13 có incident data, `latestIncident` dự kiến:
+
+```json
+{
+  "incidentId": "INC-000001",
+  "incidentType": "DEVICE_ERROR",
+  "severity": "HIGH",
+  "message": "Scanner timeout",
+  "occurredAt": "2026-06-04T10:20:00+07:00"
+}
+```
+
+#### API-AFC-012C - Create Device
+
+`POST /device/create-device`
 
 Permission: `MASTER_DATA_WRITE`.
 
@@ -1807,14 +1866,19 @@ Request:
 ```json
 {
   "stationId": 1,
-  "deviceCode": "QR-BT-001",
   "deviceType": "QR_SCANNER_SIMULATOR",
   "direction": "ENTRY",
-  "status": "ACTIVE",
-  "firmwareVersion": "1.0.0",
-  "deviceSecret": "mock-secret"
+  "firmwareVersion": "1.0.0"
 }
 ```
+
+Ghi chú:
+
+- `deviceCode` do BE tự sinh theo station, dạng đề xuất `{stationCode}-DV-001`.
+- `deviceSecret` do BE tự sinh để chuẩn bị xác thực UC08/UC10. Secret chỉ trả một lần trong response tạo/import thiết bị; list/detail/update không trả secret.
+- Khi tạo thiết bị, BE mặc định `status = ACTIVE`; FE không cần truyền status.
+- Khi cập nhật từ FE, `status` chỉ nhận `ACTIVE`, `MAINTENANCE`, `DISABLED`.
+- `OFFLINE` là trạng thái runtime do heartbeat/timeout của hệ thống cập nhật, FE không set thủ công bằng create/update/import.
 
 Response:
 
@@ -1824,13 +1888,17 @@ Response:
   "message": "Success",
   "result": {
     "id": 10,
+    "routeId": 1,
+    "routeCode": "METRO-001",
     "stationId": 1,
+    "stationCode": "METRO-001-ST-001",
     "stationName": "Bến Thành",
-    "deviceCode": "QR-BT-001",
+    "deviceCode": "METRO-001-ST-001-DV-001",
     "deviceType": "QR_SCANNER_SIMULATOR",
     "direction": "ENTRY",
     "status": "ACTIVE",
     "firmwareVersion": "1.0.0",
+    "deviceSecret": "generated-device-secret",
     "lastSeenAt": null,
     "createdAt": "2026-06-04T10:00:00+07:00",
     "updatedAt": "2026-06-04T10:00:00+07:00"
@@ -1838,9 +1906,9 @@ Response:
 }
 ```
 
-#### API-AFC-011 - Update Device
+#### API-AFC-012D - Update Device
 
-`POST /afc-ops/update-device/{deviceId}`
+`POST /device/update-device/{deviceId}`
 
 Permission: `MASTER_DATA_WRITE`.
 
@@ -1856,6 +1924,11 @@ Request:
 }
 ```
 
+Ghi chú:
+
+- Dùng `update-device` để chuyển thiết bị sang `MAINTENANCE`.
+- Không gửi `status = "OFFLINE"` từ FE; trạng thái này do hệ thống runtime quản lý.
+
 Response:
 
 ```json
@@ -1864,7 +1937,10 @@ Response:
   "message": "Success",
   "result": {
     "id": 10,
+    "routeId": 1,
+    "routeCode": "METRO-001",
     "stationId": 1,
+    "stationCode": "METRO-001-ST-001",
     "stationName": "Bến Thành",
     "deviceCode": "QR-BT-001",
     "deviceType": "QR_SCANNER_SIMULATOR",
@@ -1878,13 +1954,11 @@ Response:
 }
 ```
 
-#### API-AFC-012 - Import Devices
+#### API-AFC-012E - Enable Device
 
-`POST /afc-ops/import-devices`
+`POST /device/enable-device/{deviceId}`
 
 Permission: `MASTER_DATA_WRITE`.
-
-Content-Type: `multipart/form-data`, field `file`.
 
 Response:
 
@@ -1893,25 +1967,149 @@ Response:
   "code": 1000,
   "message": "Success",
   "result": {
-    "imported": 10,
+    "id": 10,
+    "routeId": 1,
+    "routeCode": "METRO-001",
+    "stationId": 1,
+    "stationCode": "METRO-001-ST-001",
+    "stationName": "Bến Thành",
+    "deviceCode": "QR-BT-001",
+    "deviceType": "QR_SCANNER_SIMULATOR",
+    "direction": "ENTRY",
+    "status": "ACTIVE",
+    "firmwareVersion": "1.0.0",
+    "lastSeenAt": "2026-06-04T10:00:00+07:00",
+    "createdAt": "2026-06-04T10:00:00+07:00",
+    "updatedAt": "2026-06-04T10:30:00+07:00"
+  }
+}
+```
+
+#### API-AFC-012F - Disable Device
+
+`POST /device/disable-device/{deviceId}`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Response giống API-AFC-012E, với `status = "DISABLED"`.
+
+#### API-AFC-012G - Preview Import Devices
+
+`POST /device/preview-import-devices`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Content-Type: `multipart/form-data`, field `file`.
+
+File template: `afc-ops-service/src/main/resources/templates/device-import-template.xlsx`.
+
+File `.xlsx` cần header. Không nhập `deviceCode`, `deviceSecret` và `status`; BE tự sinh code/secret và mặc định `status = ACTIVE` khi confirm import.
+
+| stationCode | deviceType | direction | firmwareVersion |
+| --- | --- | --- | --- |
+| METRO-001-ST-001 | QR_SCANNER_SIMULATOR | ENTRY | 1.0.0 |
+
+Thiết bị import mới luôn bắt đầu với `status = ACTIVE`. Nếu cần đưa thiết bị sang `MAINTENANCE` hoặc `DISABLED`, FE gọi `update-device` sau khi import.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "totalRows": 1,
+    "validRows": 1,
+    "invalidRows": 0,
+    "items": [
+      {
+        "row": 2,
+        "stationId": 1,
+        "stationCode": "METRO-001-ST-001",
+        "stationName": "Bến Thành",
+        "deviceType": "QR_SCANNER_SIMULATOR",
+        "direction": "ENTRY",
+        "firmwareVersion": "1.0.0",
+        "valid": true,
+        "errors": []
+      }
+    ],
     "errors": []
   }
 }
 ```
 
-Nếu có dòng lỗi thì không import:
+Nếu có dòng lỗi, preview vẫn trả danh sách lỗi để FE hiển thị:
 
 ```json
 {
-  "code": 4001,
-  "message": "Import file contains invalid rows",
+  "code": 1000,
+  "message": "Success",
   "result": {
-    "imported": 0,
+    "totalRows": 1,
+    "validRows": 0,
+    "invalidRows": 1,
+    "items": [
+      {
+        "row": 2,
+        "stationId": null,
+        "stationCode": "METRO-001-ST-999",
+        "stationName": null,
+        "deviceType": "QR_SCANNER_SIMULATOR",
+        "direction": "ENTRY",
+        "firmwareVersion": "1.0.0",
+        "valid": false,
+        "errors": [
+          {
+            "row": 2,
+            "field": "stationCode",
+            "message": "Station not found in current operator"
+          }
+        ]
+      }
+    ],
     "errors": [
       {
-        "row": 3,
-        "field": "deviceCode",
-        "message": "Device code already exists"
+        "row": 2,
+        "field": "stationCode",
+        "message": "Station not found in current operator"
+      }
+    ]
+  }
+}
+```
+
+#### API-AFC-012H - Confirm Import Devices
+
+`POST /device/confirm-import-devices`
+
+Permission: `MASTER_DATA_WRITE`.
+
+Content-Type: `multipart/form-data`, field `file`.
+
+Nếu file còn dòng lỗi thì không import và trả `IMPORT_FILE_HAS_ERRORS`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "imported": 1,
+    "items": [
+      {
+        "row": 2,
+        "id": 10,
+        "stationId": 1,
+        "stationCode": "METRO-001-ST-001",
+        "stationName": "Bến Thành",
+        "deviceCode": "METRO-001-ST-001-DV-001",
+        "deviceType": "QR_SCANNER_SIMULATOR",
+        "direction": "ENTRY",
+        "status": "ACTIVE",
+        "firmwareVersion": "1.0.0",
+        "deviceSecret": "generated-device-secret"
       }
     ]
   }

@@ -17,7 +17,7 @@ import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.IRouteService;
-import com.vdt.afc_ops_service.service.RouteCodeGenerator;
+import com.vdt.afc_ops_service.service.generator.RouteCodeGenerator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -71,22 +71,8 @@ public class RouteService implements IRouteService {
     @Transactional(readOnly = true)
     public RouteDetailResponse getRoute(Long routeId) {
         Route route = getRoute(routeId, securityUtils.getRequiredCurrentOperator());
-        var stations = stationRepository.findAllByRouteOrderByStationOrderAsc(route).stream()
-                .map(routeMapper::toStationResponse)
-                .toList();
-
-        return RouteDetailResponse.builder()
-                .id(route.getId())
-                .operatorId(route.getOperator().getId())
-                .routeCode(route.getRouteCode())
-                .routeName(route.getRouteName())
-                .transportType(route.getTransportType())
-                .status(route.getStatus())
-                .createdAt(route.getCreatedAt())
-                .updatedAt(route.getUpdatedAt())
-                .stationCount(stations.size())
-                .stations(stations)
-                .build();
+        var stations = stationRepository.findAllByRouteOrderByStationOrderAsc(route);
+        return routeMapper.toRouteDetailResponse(route, stations);
     }
 
     @Override

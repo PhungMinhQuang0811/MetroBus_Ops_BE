@@ -3,13 +3,13 @@ package com.vdt.afc_ops_service.service;
 import com.vdt.afc_ops_service.constant.PredefinedTransportType;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.repository.RouteRepository;
+import com.vdt.afc_ops_service.service.generator.RouteCodeGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;

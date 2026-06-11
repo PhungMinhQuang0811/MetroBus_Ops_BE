@@ -21,6 +21,13 @@ public interface StationRepository extends JpaRepository<Station, Long> {
 
     Optional<Station> findByIdAndRouteOperatorId(Long id, Long operatorId);
 
+    @Query("SELECT s FROM Station s " +
+            "JOIN s.route r " +
+            "WHERE r.operator.id = :operatorId " +
+            "AND s.stationCode = :stationCode")
+    Optional<Station> findByOperatorIdAndStationCode(@Param("operatorId") Long operatorId,
+                                                     @Param("stationCode") String stationCode);
+
     List<Station> findAllByRouteOrderByStationOrderAsc(Route route);
 
     @Query("SELECT s.stationCode FROM Station s " +

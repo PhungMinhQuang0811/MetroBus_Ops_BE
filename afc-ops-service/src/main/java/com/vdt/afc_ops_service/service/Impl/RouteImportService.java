@@ -15,7 +15,7 @@ import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
-import com.vdt.afc_ops_service.service.RouteCodeGenerator;
+import com.vdt.afc_ops_service.service.generator.RouteCodeGenerator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;

@@ -16,7 +16,7 @@ import com.vdt.afc_ops_service.entity.Station;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
-import com.vdt.afc_ops_service.service.StationCodeGenerator;
+import com.vdt.afc_ops_service.service.generator.StationCodeGenerator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;

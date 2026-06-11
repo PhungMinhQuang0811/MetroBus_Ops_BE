@@ -2,6 +2,7 @@ package com.vdt.afc_ops_service.service;
 
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.repository.StationRepository;
+import com.vdt.afc_ops_service.service.generator.StationCodeGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;

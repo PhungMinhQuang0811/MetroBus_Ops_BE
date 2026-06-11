@@ -1,4 +1,4 @@
-package com.vdt.afc_ops_service.service;
+package com.vdt.afc_ops_service.service.generator;
 
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.repository.StationRepository;

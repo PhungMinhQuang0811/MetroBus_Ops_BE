@@ -24,7 +24,15 @@ public final class SecurityConstants {
             entry("/station/enable-station/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/station/disable-station/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/station/preview-import-stations", PredefinedAfcPermission.MASTER_DATA_WRITE),
-            entry("/station/confirm-import-stations", PredefinedAfcPermission.MASTER_DATA_WRITE)
+            entry("/station/confirm-import-stations", PredefinedAfcPermission.MASTER_DATA_WRITE),
+            entry("/device/list-devices", PredefinedAfcPermission.MASTER_DATA_READ),
+            entry("/device/get-device/**", PredefinedAfcPermission.MASTER_DATA_READ),
+            entry("/device/create-device", PredefinedAfcPermission.MASTER_DATA_WRITE),
+            entry("/device/update-device/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
+            entry("/device/enable-device/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
+            entry("/device/disable-device/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
+            entry("/device/preview-import-devices", PredefinedAfcPermission.MASTER_DATA_WRITE),
+            entry("/device/confirm-import-devices", PredefinedAfcPermission.MASTER_DATA_WRITE)
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {

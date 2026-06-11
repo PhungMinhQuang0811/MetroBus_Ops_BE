@@ -66,6 +66,7 @@ public class GlobalExceptionHandler {
             case "operatorId" -> ErrorCode.INVALID_OPERATOR_ID;
             case "routeId" -> ErrorCode.INVALID_ROUTE_ID;
             case "stationId" -> ErrorCode.INVALID_STATION_ID;
+            case "deviceId" -> ErrorCode.INVALID_DEVICE_ID;
             default -> ErrorCode.FIELD_REQUIRED;
         };
         return ResponseEntity.status(errorCode.getHttpStatusCode())
