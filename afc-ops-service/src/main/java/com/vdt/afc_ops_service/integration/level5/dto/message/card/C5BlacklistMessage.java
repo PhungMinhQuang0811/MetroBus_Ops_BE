@@ -1,0 +1,25 @@
+package com.vdt.afc_ops_service.integration.level5.dto.message.card;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class C5BlacklistMessage {
+
+    private UUID blacklistId;
+    private UUID cardId;
+    private String action;
+    private String reason;
+    private UUID performedBy;
+    private Instant occurredAt;
+}

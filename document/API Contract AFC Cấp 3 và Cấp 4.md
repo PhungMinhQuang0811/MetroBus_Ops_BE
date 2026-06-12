@@ -1,4 +1,4 @@
-# API Contract AFC Cấp 3 Và Cấp 4
+﻿# API Contract AFC Cấp 3 Và Cấp 4
 
 Tài liệu này mô tả API contract tạm chốt cho scope AFC Cấp 3/Cấp 4, bám theo:
 
@@ -89,7 +89,7 @@ Response page:
 | Device direction | `ENTRY`, `EXIT`, `BOTH` |
 | Device status | `ACTIVE`, `OFFLINE`, `MAINTENANCE`, `DISABLED` |
 | Master data status | `ACTIVE`, `DISABLED` |
-| Transport type | `METRO`, `BUS` |
+| Transport type | `METRO`, `BUS`, `ALL` |
 | Media type | `VIRTUAL_QR` |
 | Card type | `VIRTUAL_QR`, `PHYSICAL` |
 | Card status | `ACTIVE`, `INACTIVE`, `CANCELLED`, `BLACKLISTED` |
@@ -105,9 +105,9 @@ Response page:
 | Package status | `CREATED`, `PUBLISHED`, `REVOKED` |
 | Station sync status | `PENDING`, `APPLIED`, `FAILED` |
 | Batch status | `CREATED`, `SUBMITTED`, `ACCEPTED`, `REJECTED`, `FAILED` |
-| Entitlement status | `ACTIVE`, `INACTIVE`, `CANCELLED` |
+| Entitlement status | `ACTIVE`, `INACTIVE`, `CANCELLED`, `EXPIRED` |
 | Pass period | `MONTH` |
-| Pass scope | `SINGLE_ROUTE`, `INTERLINE` |
+| Pass scope | `SINGLE_ROUTE`, `INTERLINE`, `NETWORK` |
 
 Ghi chú: `TIME_SYNC` không đưa vào package type chính của MVP. Đồng bộ thời gian xem là yêu cầu hạ tầng/NTP hoặc validate timestamp ở backend.
 
@@ -2428,151 +2428,59 @@ Response:
 
 ### UC14 - Đồng Bộ Dữ Liệu Quản Lý Từ Cấp 5
 
-#### API-AFC-020 - Receive Level 5 Business Sync
+#### RabbitMQ - Receive Level 5 Business Events
 
-`POST /afc-ops/receive-level5-business-sync`
+C4 subscribe RabbitMQ do C5 publish:
 
-Auth: `X-Level5-Client-Id`, `X-Level5-Signature`.
+| Nhóm | Exchange | Queue C4 | Routing key | Xử lý tại C4 |
+| --- | --- | --- | --- | --- |
+| Card | `afc.exchange` | `afc.level5-card-sync` | `card.status.changed` | Upsert card theo `cardId`, lưu `cardUid`, cập nhật status |
+| Blacklist | `afc.exchange` | `afc.level5-card-sync` | `blacklist.added`, `blacklist.removed` | Map thành `cards.status = BLACKLISTED` hoặc `ACTIVE` |
+| Ticket | `afc.exchange` | `afc.level5-ticket-sync` | `ticket.created` | Nếu `type = SINGLE_TRIP` thì upsert `tickets` |
+| Ticket unlink | `afc.exchange` | `afc.level5-ticket-sync` | `ticket.unlinked` | Gỡ `tickets.card_id`, không coi là cancel ticket |
+| Entitlement | `afc.exchange` | `afc.level5-entitlement-sync` | `ticket.created` | Nếu `type = MONTHLY_PASS` thì upsert `entitlements` |
+| Entitlement unlink | `afc.exchange` | `afc.level5-entitlement-sync` | `ticket.unlinked` | Gỡ `entitlements.card_id`, không coi là cancel entitlement |
+| Card snapshot | `afc.exchange` | `afc.level5-card-sync` | `sync.card.all` | Backfill/reconcile toàn bộ card theo `id` C5 |
+| Ticket snapshot | `afc.exchange` | `afc.level5-ticket-sync` | `sync.ticket.all` | Backfill/reconcile vé lượt nếu `type = SINGLE_TRIP` |
+| Entitlement snapshot | `afc.exchange` | `afc.level5-entitlement-sync` | `sync.ticket.all` | Backfill/reconcile vé tháng nếu `type = MONTHLY_PASS` |
+| Operator snapshot | `afc.exchange` | `afc.level5-operator-sync` | `sync.operator.all` | Upsert operator theo `code`; C4 vẫn giữ `operators.id` nội bộ |
 
-Request:
+Payload C5 hiện tại không bắt buộc khớp 100% read model C4. C4 chấp nhận `cardId = null` ở ticket/monthly-pass vì C5 có thể tạo sản phẩm trước khi link card. Khi C5 gửi `cardId`, C4 tạo card placeholder nếu chưa có bản ghi card tương ứng.
 
-```json
-{
-  "syncBatchCode": "L5-BUSINESS-SYNC-20260604-001",
-  "issuedAt": "2026-06-04T09:00:00+07:00",
-  "items": [
-    {
-      "syncType": "CARD_STATUS_CHANGED",
-      "externalId": "CARD-000001",
-      "version": 12,
-      "card": {
-        "cardId": "CARD-000001",
-        "externalUserId": null,
-        "cardType": "VIRTUAL_QR",
-        "status": "BLACKLISTED",
-        "statusReason": "LOST_CARD",
-        "sourceVersion": 12
-      }
-    },
-    {
-      "syncType": "ENTITLEMENT_UPSERT",
-      "externalId": "ENT-000001",
-      "version": 7,
-      "entitlement": {
-        "entitlementId": "ENT-000001",
-        "cardId": "CARD-000001",
-        "fareProductCode": "MONTHLY_PASS",
-        "passPeriod": "MONTH",
-        "passScope": "SINGLE_ROUTE",
-        "operatorRef": "OP-01",
-        "routeRef": "METRO-01",
-        "transportType": "METRO",
-        "passengerType": null,
-        "status": "ACTIVE",
-        "validFrom": "2026-06-05T00:00:00+07:00",
-        "validTo": "2026-07-05T00:00:00+07:00",
-        "sourceVersion": 7
-      }
-    },
-    {
-      "syncType": "TICKET_UPSERT",
-      "externalId": "TICKET-000001",
-      "version": 3,
-      "ticket": {
-        "ticketId": "TICKET-000001",
-        "cardId": "CARD-000002",
-        "ticketType": "METRO_SINGLE_RIDE",
-        "routeScopeType": "SINGLE_ROUTE",
-        "operatorRef": "OP-01",
-        "routeRef": "METRO-01",
-        "transportType": "METRO",
-        "usageStatus": "UNUSED",
-        "validFrom": "2026-06-05T00:00:00+07:00",
-        "validTo": "2026-06-05T23:59:59+07:00",
-        "firstTapAt": null,
-        "usedAt": null,
-        "sourceVersion": 3
-      }
-    }
-  ]
-}
-```
+C5 có các API trigger snapshot:
 
-Response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "syncBatchCode": "L5-BUSINESS-SYNC-20260604-001",
-    "received": 3,
-    "applied": 3,
-    "ignored": 0,
-    "failed": 0
-  }
-}
-```
-
-Luồng:
-
-1. Xác thực nguồn Cấp 5.
-2. Lưu payload gốc vào `level5_business_sync_payloads`.
-3. Upsert `cards`, `tickets`, `entitlements` theo `syncType`.
-4. Bỏ qua item có `sourceVersion` cũ hơn bản ghi hiện tại.
-5. Nếu một card có nhiều hơn một active product, ghi nhận lỗi dữ liệu và không tự chọn sản phẩm ưu tiên.
-6. Refresh Redis runtime cache sau khi commit RDBMS thành công.
-7. Với card status/blacklist, có thể tạo control package `MEDIA_ACCESS_RULES` để phát hành xuống Cấp 3.
-
-Quy ước `syncType` tối thiểu:
-
-| Giá trị | Xử lý tại C4 |
+| C5 API | Ý nghĩa |
 | --- | --- |
-| `CARD_UPSERT` | Tạo/cập nhật read model card |
-| `CARD_STATUS_CHANGED` | Cập nhật trạng thái card, bao gồm `BLACKLISTED`, `CANCELLED`, `INACTIVE` |
-| `TICKET_UPSERT` | Tạo/cập nhật vé lượt Metro prepaid |
-| `TICKET_STATUS_CHANGED` | Cập nhật `usageStatus` của ticket |
-| `ENTITLEMENT_UPSERT` | Tạo/cập nhật vé tháng |
-| `ENTITLEMENT_STATUS_CHANGED` | Cập nhật trạng thái entitlement |
+| `POST /api/afc/sync/cards` | C5 đọc toàn bộ card và publish `sync.card.all` |
+| `POST /api/afc/sync/tickets` | C5 đọc toàn bộ ticket/monthly pass và publish `sync.ticket.all` |
+| `POST /api/afc/sync/operators` | C5 đọc toàn bộ operator và publish `sync.operator.all` |
+| `POST /api/afc/sync` | Trigger cả cards, tickets và operators |
 
-#### API-AFC-021 - Pull Level 5 Business Sync
+Các API trên trả `200 OK`/empty body; C4 không pull response body từ C5 mà nhận dữ liệu qua RabbitMQ.
 
-`POST /afc-ops/pull-level5-business-sync`
+Mapping chính:
 
-Permission: `CONTROL_PACKAGE_WRITE` hoặc scheduled job nội bộ.
+| C5 field/value | C4 field/value |
+| --- | --- |
+| `cardId` trong card event | `cards.id` |
+| `cardUid` | `cards.card_uid` |
+| `issuedAtStationId` | `cards.issued_at_station_ref` |
+| `ticket.type = SINGLE_TRIP` | `tickets.ticket_type = METRO_SINGLE_RIDE` |
+| `ticket.type = MONTHLY_PASS` | `entitlements.fare_product_code = MONTHLY_PASS`, `pass_period = MONTH` |
+| `ticket.fromStationId/toStationId` | `tickets.from_station_ref/to_station_ref` hoặc `entitlements.from_station_ref/to_station_ref` |
+| `ticket.mode = METRO/BUS/ANY` | `transport_type = METRO/BUS/ALL` |
+| `ticket.scope = null` ở monthly pass | `entitlements.pass_scope = NETWORK` |
+| `ticket.status = ACTIVE/null` | `tickets.usage_status = UNUSED` hoặc `entitlements.status = ACTIVE` |
+| `ticket.status = USED/EXPIRED/CANCELLED/REVOKED` | `tickets.usage_status` hoặc `entitlements.status` tương ứng nếu có |
+| `operator.code/name/status` | `operators.operator_code/operator_name/status`; `INACTIVE` map thành `DISABLED` |
 
-Request:
+#### UC14 FE - Tạm Dừng Màn Hình
 
-```json
-{
-  "syncTypes": ["CARD_UPSERT", "CARD_STATUS_CHANGED", "TICKET_UPSERT", "ENTITLEMENT_UPSERT"],
-  "sinceVersion": 11
-}
-```
+UC14 hiện chỉ triển khai phần đồng bộ dữ liệu nền từ C5 qua RabbitMQ để C4 có read model phục vụ xử lý kỹ thuật/runtime sau này.
 
-Response:
-
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "pulled": 2,
-    "applied": 2,
-    "items": [
-      {
-        "syncType": "CARD_STATUS_CHANGED",
-        "externalId": "CARD-000001",
-        "version": 12,
-        "applied": true
-      }
-    ]
-  }
-}
-```
-
-Ghi chú: API này dùng cho dev/mock hoặc khi Cấp 4 chủ động pull Cấp 5.
-
+- FE chưa cần màn hình danh sách/chi tiết card, ticket, entitlement.
+- C4 chưa expose API đọc card, ticket, entitlement cho FE trong giai đoạn này.
+- Việc lọc dữ liệu theo operator sẽ xử lý sau khi thống nhất mapping station C5 với station C4.
 ### UC15 - Tạo Control Package Cấu Hình Vận Hành
 
 #### API-AFC-022 - Create Control Package
@@ -2614,7 +2522,7 @@ Response:
 Ghi chú:
 
 - Không tạo tay `MEDIA_ACCESS_RULES` toàn mạng ở API này.
-- `MEDIA_ACCESS_RULES` đi từ UC14/API-AFC-020 hoặc API-AFC-021.
+- `MEDIA_ACCESS_RULES` có thể phát sinh từ UC14 khi C4 nhận card status/blacklist qua RabbitMQ từ C5.
 
 #### API-AFC-023 - List Control Packages
 
@@ -3053,12 +2961,11 @@ Luồng:
 
 1. Xác thực App/mock App.
 2. Kiểm tra card tồn tại trong read model, `status = ACTIVE`, không blacklist/cancelled/inactive.
-3. Nếu C5 có đồng bộ `externalUserId`, kiểm tra card thuộc user đang gọi.
-4. Xác định đúng một active product của card: `ticket` vé lượt Metro hoặc `entitlement` vé tháng.
-5. Nếu là ticket, kiểm tra `usageStatus` cho phép hiển thị QR, còn hạn và đúng phạm vi.
-6. Nếu là entitlement, kiểm tra active, còn hạn và đúng phạm vi.
-7. Sinh `qrId`, nonce, TTL 30-60 giây, ký payload và lưu `qr:session:{qrId}` trong Redis.
-8. Trả QR payload để App render.
+3. Xác định đúng một active product của card: `ticket` vé lượt Metro hoặc `entitlement` vé tháng.
+4. Nếu là ticket, kiểm tra `usageStatus` cho phép hiển thị QR, còn hạn và đúng phạm vi.
+5. Nếu là entitlement, kiểm tra active, còn hạn và đúng phạm vi.
+6. Sinh `qrId`, nonce, TTL 30-60 giây, ký payload và lưu `qr:session:{qrId}` trong Redis.
+7. Trả QR payload để App render.
 
 Lỗi chính:
 
@@ -3071,7 +2978,7 @@ Lỗi chính:
 | Card có nhiều hơn một active product | `ACTIVE_PRODUCT_CONFLICT` |
 | Chưa đồng bộ ticket/entitlement từ C5 | `ACTIVE_PRODUCT_NOT_FOUND` |
 
-Các nghiệp vụ App khác không thuộc `afc-ops-service`. Cấp 3/Cấp 4 chỉ nhận read model từ Cấp 5 qua API-AFC-020/API-AFC-021 gồm:
+Các nghiệp vụ App khác không thuộc `afc-ops-service`. Cấp 3/Cấp 4 chỉ nhận read model từ Cấp 5 qua RabbitMQ gồm:
 
 - `cards`;
 - `tickets`;
@@ -3098,7 +3005,7 @@ Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 sc
 
 ### Luồng C - Card Status/Blacklist Từ Cấp 5 Xuống Thiết Bị
 
-1. Cấp 5/mock gọi `POST /afc-ops/receive-level5-business-sync` với card status/blacklist hiện hành.
+1. Cấp 5 publish RabbitMQ `card.status.changed`, `blacklist.added` hoặc `blacklist.removed`.
 2. System cập nhật read model `cards` và có thể tạo control package `MEDIA_ACCESS_RULES`, `LEVEL5_SYNCED`, `CREATED`.
 3. Manager gọi `POST /afc-ops/publish-control-package/{packageId}`.
 4. Cấp 3/station gọi `GET /afc-ops/pull-pending-control-packages`.
@@ -3124,7 +3031,7 @@ Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 sc
 ### Luồng F - Sử Dụng QR/Card Đã Đồng Bộ Từ Cấp 5
 
 1. App/C5 tạo card, ticket hoặc entitlement ở hệ sở hữu nghiệp vụ.
-2. C5 đồng bộ read model sang C4 qua `POST /afc-ops/receive-level5-business-sync`.
+2. C5 đồng bộ read model sang C4 qua RabbitMQ realtime event hoặc snapshot trigger `POST /api/afc/sync*` ở C5.
 3. App gọi `POST /afc-ops/generate-dynamic-qr` để lấy QR payload ngắn hạn từ card đã đồng bộ.
 4. Mock C2 scan QR và gọi `POST /afc-ops/submit-tap-event`.
 5. C4 verify QR, card status, ticket/entitlement và blacklist rồi trả `OPEN_GATE` hoặc `DENY`.

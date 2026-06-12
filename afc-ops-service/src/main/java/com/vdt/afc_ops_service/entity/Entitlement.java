@@ -30,8 +30,8 @@ public class Entitlement {
     @Column(length = 100)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "card_id", nullable = false, foreignKey = @ForeignKey(name = "fk_entitlements_card"))
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "card_id", foreignKey = @ForeignKey(name = "fk_entitlements_card"))
     private Card card;
 
     @Column(name = "fare_product_code", nullable = false, length = 100)
@@ -48,6 +48,12 @@ public class Entitlement {
 
     @Column(name = "route_ref", nullable = false, length = 100)
     private String routeRef;
+
+    @Column(name = "from_station_ref", length = 100)
+    private String fromStationRef;
+
+    @Column(name = "to_station_ref", length = 100)
+    private String toStationRef;
 
     @Column(name = "transport_type", nullable = false, length = 30)
     private String transportType;

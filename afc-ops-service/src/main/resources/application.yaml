@@ -40,13 +40,29 @@ app:
   domain-name: localhost
   timezone: ${APP_TIMEZONE}
   init:
-    enabled: true
-    sync-auth-permissions-enabled: true
+    enabled: false
+    sync-auth-permissions-enabled: false
   message-broker:
     auth-permission-sync:
       exchange: auth.ops
       queue: auth.permission-sync
       routing-key: auth.permission-sync
+    level5-card-sync:
+      exchange: afc.exchange
+      queue: afc.level5-card-sync
+      routing-keys: "card.status.changed,blacklist.*,sync.card.all"
+    level5-ticket-sync:
+      exchange: afc.exchange
+      queue: afc.level5-ticket-sync
+      routing-keys: "ticket.*,sync.ticket.all"
+    level5-entitlement-sync:
+      exchange: afc.exchange
+      queue: afc.level5-entitlement-sync
+      routing-keys: "ticket.*,sync.ticket.all"
+    level5-operator-sync:
+      exchange: afc.exchange
+      queue: afc.level5-operator-sync
+      routing-keys: "sync.operator.all"
   security:
     csrf-header-name: X-CSRF-TOKEN
     csrf-cookie-name: XSRF-TOKEN

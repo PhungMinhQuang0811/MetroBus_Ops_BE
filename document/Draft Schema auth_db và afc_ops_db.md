@@ -46,7 +46,7 @@ Không cần trong MVP:
 - OTP;
 - notification/mail service.
 
-`PASSENGER_APP` trong các use case mới không dùng account nhân sự trong `auth_db`. App/user hành khách được định danh bởi hệ ngoài hoặc C5; C4 có thể nhận `external_user_id` trong dữ liệu card/ticket/entitlement đồng bộ nếu C5 cho phép chia sẻ.
+`PASSENGER_APP` trong các use case mới không dùng account nhân sự trong `auth_db`. App/user hành khách được định danh bởi hệ ngoài hoặc C5; C4 chỉ giữ read model tối thiểu để verify thiết bị, không lưu passenger id.
 
 ### 2.2. Role Và Permission
 
@@ -242,7 +242,8 @@ erDiagram
 
     cards {
         varchar id PK
-        varchar external_user_id
+        varchar card_uid
+        varchar issued_at_station_ref
         varchar card_type
         varchar status
         varchar status_reason
@@ -258,6 +259,8 @@ erDiagram
         varchar route_scope_type
         varchar operator_ref
         varchar route_ref
+        varchar from_station_ref
+        varchar to_station_ref
         varchar transport_type
         varchar usage_status
         timestamp valid_from
@@ -277,6 +280,8 @@ erDiagram
         varchar pass_scope
         varchar operator_ref
         varchar route_ref
+        varchar from_station_ref
+        varchar to_station_ref
         varchar transport_type
         varchar passenger_type
         varchar status
@@ -492,8 +497,9 @@ Nguyên tắc đồng bộ từ C5:
 
 | Field | Type | Constraint | Ghi chú |
 | --- | --- | --- | --- |
-| id | VARCHAR(100) | PK | `cardId` do C5 cấp |
-| external_user_id | VARCHAR(100) | NULL | User/passenger id từ hệ ngoài/C5 nếu C5 cho phép đồng bộ; không FK sang auth_db |
+| id | VARCHAR(100) | PK | `cardId` do C5 cấp; C4 dùng trực tiếp làm id read model |
+| card_uid | VARCHAR(100) | NULL | UID media/thẻ vật lý nếu C5 gửi; không dùng thay thế `id` |
+| issued_at_station_ref | VARCHAR(100) | NULL | Station UUID/ref C5 nơi phát hành card nếu C5 gửi |
 | card_type | VARCHAR(30) | NOT NULL | MVP: VIRTUAL_QR; future: PHYSICAL |
 | status | VARCHAR(30) | NOT NULL | ACTIVE, INACTIVE, CANCELLED, BLACKLISTED |
 | status_reason | VARCHAR(100) | NULL | LOST_CARD, FRAUD, CANCELLED, CONVERTED_TO_VIRTUAL,... |
@@ -503,9 +509,9 @@ Nguyên tắc đồng bộ từ C5:
 
 Blacklist là một trạng thái của `cards.status = BLACKLISTED` kèm `status_reason`. C4 không lưu lịch sử blacklist chính thức; lịch sử nghiệp vụ thuộc C5.
 
-`external_user_id` không bắt buộc vì C4 không cần thông tin hành khách để quyết định mở cổng. Runtime verify chủ yếu dựa trên `card_id`, trạng thái card và sản phẩm vé active. Nếu C5 không muốn chia sẻ passenger id sang C4 vì tối thiểu hóa dữ liệu cá nhân, field này có thể null.
+Với luồng RabbitMQ từ C5 hiện tại, C4 lưu `cards.id = cardId` khi C5 gửi UUID. `card_uid` chỉ là định danh media bổ sung, không dùng làm khóa chính vì một số event blacklist/status ổn định theo `cardId`.
 
-`cards.id` là định danh media duy nhất do C5 cấp; `card_type` chỉ cho biết media đó là QR ảo hay thẻ vật lý. C4 không lưu quan hệ "thẻ ảo được convert từ thẻ cứng nào". Nếu C5 cho phép convert thẻ cứng sang thẻ ảo, C5 tạo một card mới cho app, chuyển sản phẩm vé active sang `card_id` mới, rồi vô hiệu hóa card vật lý cũ. Sản phẩm active được chuyển có thể là `tickets.card_id` nếu card đang giữ vé lượt Metro, hoặc `entitlements.card_id` nếu card đang giữ vé tháng. C5 đồng bộ card cũ xuống C4 với `status = CANCELLED`, `INACTIVE` hoặc `BLACKLISTED`; nên C4 chỉ mở cổng cho card mới có `status = ACTIVE`. Nhờ vậy không có trường hợp một người dùng quẹt điện thoại xong người khác cầm thẻ cứng cũ quẹt tiếp.
+`cards.id` là định danh media/read model duy nhất; `card_type` chỉ cho biết media đó là QR ảo hay thẻ vật lý. C4 không lưu quan hệ "thẻ ảo được convert từ thẻ cứng nào". Nếu C5 cho phép convert thẻ cứng sang thẻ ảo, C5 tạo một card mới cho app, chuyển sản phẩm vé active sang `card_id` mới, rồi vô hiệu hóa card vật lý cũ. Sản phẩm active được chuyển có thể là `tickets.card_id` nếu card đang giữ vé lượt Metro, hoặc `entitlements.card_id` nếu card đang giữ vé tháng. C5 đồng bộ card cũ xuống C4 với `status = CANCELLED`, `INACTIVE` hoặc `BLACKLISTED`; nên C4 chỉ mở cổng cho card mới có `status = ACTIVE`. Nhờ vậy không có trường hợp một người dùng quẹt điện thoại xong người khác cầm thẻ cứng cũ quẹt tiếp.
 
 Ví dụ sau khi convert:
 
@@ -522,12 +528,14 @@ TICKET_001:        card_id = CARD_VIRTUAL_001
 | Field | Type | Constraint | Ghi chú |
 | --- | --- | --- | --- |
 | id | VARCHAR(100) | PK | `ticketId` do C5 cấp |
-| card_id | VARCHAR(100) | NOT NULL, FK cards | Card dùng để hiển thị QR |
+| card_id | VARCHAR(100) | NULL, FK cards | Card dùng để hiển thị QR; có thể null nếu C5 tạo ticket trước khi link card |
 | ticket_type | VARCHAR(50) | NOT NULL | MVP: METRO_SINGLE_RIDE |
 | route_scope_type | VARCHAR(30) | NOT NULL | SINGLE_ROUTE, NETWORK |
 | operator_ref | VARCHAR(100) | NULL | Operator id/code từ C5; bắt buộc nếu vé giới hạn theo operator/tuyến |
 | route_ref | VARCHAR(100) | NULL | Route id/code từ C5; dùng `*` nếu áp dụng toàn mạng trong scope |
-| transport_type | VARCHAR(30) | NOT NULL | MVP vé lượt chỉ METRO |
+| from_station_ref | VARCHAR(100) | NULL | Station UUID/ref C5 ga đi nếu C5 gửi |
+| to_station_ref | VARCHAR(100) | NULL | Station UUID/ref C5 ga đến nếu C5 gửi |
+| transport_type | VARCHAR(30) | NOT NULL | METRO, BUS, ALL; C4 lưu theo `mode` C5 gửi |
 | usage_status | VARCHAR(30) | NOT NULL | UNUSED, IN_USE, USED, EXPIRED, CANCELLED |
 | valid_from | TIMESTAMP | NOT NULL | Thời điểm bắt đầu được dùng |
 | valid_to | TIMESTAMP | NOT NULL | Thời điểm hết hạn dùng vé lượt |
@@ -537,7 +545,7 @@ TICKET_001:        card_id = CARD_VIRTUAL_001
 | synced_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
-`tickets` là vé lượt prepaid. C4 chỉ lưu bản sao để verify nhanh; C5 là nơi phát hành ticket và xác nhận trạng thái sử dụng chính thức.
+`tickets` là vé lượt prepaid. C4 chỉ lưu bản sao để verify nhanh; C5 là nơi phát hành ticket và xác nhận trạng thái sử dụng chính thức. Ticket chưa link card vẫn được lưu để khi C5 gửi event link/unlink hoặc cập nhật sau, C4 không mất dữ liệu gốc.
 
 Với `route_scope_type = SINGLE_ROUTE`, `operator_ref` và `route_ref` phải có giá trị cụ thể. Với `route_scope_type = NETWORK`, `route_ref` dùng `*`; `operator_ref` có thể là mã operator nếu vé chỉ áp dụng trong một đơn vị, hoặc `*` nếu C5 quy định phạm vi toàn mạng.
 
@@ -546,22 +554,24 @@ Với `route_scope_type = SINGLE_ROUTE`, `operator_ref` và `route_ref` phải c
 | Field | Type | Constraint | Ghi chú |
 | --- | --- | --- | --- |
 | id | VARCHAR(100) | PK | `entitlementId` do C5 cấp |
-| card_id | VARCHAR(100) | NOT NULL, FK cards | Card dùng để hiển thị QR cho entitlement này |
+| card_id | VARCHAR(100) | NULL, FK cards | Card dùng để hiển thị QR; có thể null nếu C5 tạo pass trước khi link card |
 | fare_product_code | VARCHAR(100) | NOT NULL | MVP: MONTHLY_PASS; vé lượt Metro dùng bảng `tickets` |
 | pass_period | VARCHAR(30) | NOT NULL | MVP: MONTH |
-| pass_scope | VARCHAR(30) | NOT NULL | SINGLE_ROUTE, INTERLINE |
+| pass_scope | VARCHAR(30) | NOT NULL | SINGLE_ROUTE, INTERLINE, NETWORK |
 | operator_ref | VARCHAR(100) | NOT NULL | Operator id/code từ C5; dùng `*` nếu C5 quy định toàn mạng |
 | route_ref | VARCHAR(100) | NOT NULL | Route id/code từ C5; dùng `*` nếu `pass_scope = INTERLINE` |
+| from_station_ref | VARCHAR(100) | NULL | Station UUID/ref C5 ga đi nếu pass có phạm vi theo ga |
+| to_station_ref | VARCHAR(100) | NULL | Station UUID/ref C5 ga đến nếu pass có phạm vi theo ga |
 | transport_type | VARCHAR(30) | NOT NULL | BUS, METRO, ALL |
 | passenger_type | VARCHAR(50) | NULL | Chỉ lưu kết quả từ C5 nếu có |
-| status | VARCHAR(30) | NOT NULL | ACTIVE, INACTIVE, CANCELLED |
+| status | VARCHAR(30) | NOT NULL | ACTIVE, INACTIVE, CANCELLED, EXPIRED |
 | valid_from | TIMESTAMP | NOT NULL | Giữ nguyên khi gia hạn |
 | valid_to | TIMESTAMP | NOT NULL | Được nới khi gia hạn |
 | source_version | BIGINT | NOT NULL | Version dữ liệu từ C5 |
 | synced_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
-Với `pass_scope = SINGLE_ROUTE`, `operator_ref` và `route_ref` phải là giá trị cụ thể; `transport_type` là BUS hoặc METRO. Với `pass_scope = INTERLINE`, MVP hiểu là vé tháng được đi đủ các tuyến hợp lệ trong phạm vi C4 nhận từ C5, không liệt kê từng tuyến trong bảng phụ; dùng `route_ref = *` và `transport_type = ALL`.
+Với `pass_scope = SINGLE_ROUTE`, `operator_ref` và `route_ref` phải là giá trị cụ thể; `transport_type` là BUS hoặc METRO. Với `pass_scope = INTERLINE`, MVP hiểu là vé tháng được đi đủ các tuyến hợp lệ trong phạm vi C4 nhận từ C5, không liệt kê từng tuyến trong bảng phụ; dùng `route_ref = *` và `transport_type = ALL`. Với C5 RabbitMQ hiện tại, `scope = null` được C4 map thành `NETWORK`.
 
 BRT được gộp vào BUS trong MVP để giảm nhánh nghiệp vụ. Nếu sau này cần tách BRT thật, chỉ cần mở rộng lại enum `transport_type`.
 
@@ -851,12 +861,14 @@ Trong `qr:session:{qrId}`, chỉ một trong hai field `ticketId` hoặc `entitl
 | entitlements.fare_product_code | `MONTHLY_PASS` | Vé tháng cho BUS/METRO |
 | entitlements.pass_scope | `SINGLE_ROUTE` | Chỉ hợp lệ trên tuyến được cấu hình |
 | entitlements.pass_scope | `INTERLINE` | Hợp lệ toàn bộ các tuyến trong phạm vi C4 nhận từ C5; dùng `route_ref = *`, `transport_type = ALL` |
+| entitlements.pass_scope | `NETWORK` | C5 không gửi scope cụ thể; C4 hiểu là phạm vi mạng/nhóm tuyến do C5 quy định |
 | entitlements.transport_type | `BUS` | Vé tháng áp dụng cho bus; bao gồm BRT trong MVP |
 | entitlements.transport_type | `METRO` | Vé tháng áp dụng cho metro |
 | entitlements.transport_type | `ALL` | Vé tháng liên tuyến áp dụng cho cả BUS và METRO trong phạm vi C5 đồng bộ |
 | entitlements.status | `ACTIVE` | Entitlement được phép sử dụng; vẫn cần check `validTo` |
 | entitlements.status | `INACTIVE` | Entitlement tạm ngừng |
 | entitlements.status | `CANCELLED` | Entitlement đã hủy |
+| entitlements.status | `EXPIRED` | Entitlement đã hết hạn theo trạng thái C5 đồng bộ |
 Trạng thái blacklist hiện hành được biểu diễn bằng `cards.status = BLACKLISTED` và `cards.status_reason`. Lịch sử nghiệp vụ blacklist chính thức thuộc C5; C4 chỉ giữ trạng thái hiện hành để verify runtime.
 
 Rule gia hạn vé tháng:
@@ -922,7 +934,6 @@ Vé lượt Metro không dùng `DAY_PASS` hay vé ngày. C5 phát hành `tickets
 | afc_transactions | index `(ticket_id, occurred_at)` |
 | afc_transactions | index `(entitlement_id, occurred_at)` |
 | afc_transactions | index `(ticket_processing_status, updated_at)` nếu cần theo dõi vé lượt chờ C5 xác nhận |
-| cards | index `(external_user_id, status)` nếu C5 đồng bộ `external_user_id`; có thể bỏ nếu luôn null |
 | tickets | index `(card_id, usage_status, valid_to)` |
 | tickets | partial unique `(card_id)` khi `usage_status IN ('UNUSED', 'IN_USE')` nếu database hỗ trợ |
 | entitlements | index `(card_id, status, valid_to)` |

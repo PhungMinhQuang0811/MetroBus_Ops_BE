@@ -26,8 +26,11 @@ public class Card {
     @Column(length = 100)
     private String id;
 
-    @Column(name = "external_user_id", length = 100)
-    private String externalUserId;
+    @Column(name = "card_uid", length = 100)
+    private String cardUid;
+
+    @Column(name = "issued_at_station_ref", length = 100)
+    private String issuedAtStationRef;
 
     @Column(name = "card_type", nullable = false, length = 30)
     private String cardType;
