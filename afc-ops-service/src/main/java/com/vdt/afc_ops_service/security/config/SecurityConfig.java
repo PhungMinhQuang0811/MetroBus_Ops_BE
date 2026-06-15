@@ -95,6 +95,9 @@ public class SecurityConfig {
         if (publicEndpointPatterns.length > 0) {
             auth.requestMatchers(publicEndpointPatterns).permitAll();
         }
+        if (SecurityConstants.ENDPOINT_THIRD_PARTY.length > 0) {
+            auth.requestMatchers(SecurityConstants.ENDPOINT_THIRD_PARTY).permitAll();
+        }
 
         SecurityConstants.ENDPOINT_PERMISSIONS.forEach((endpoint, permission) ->
                 auth.requestMatchers(endpoint).hasAuthority(permission)

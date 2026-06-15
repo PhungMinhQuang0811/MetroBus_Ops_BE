@@ -30,8 +30,8 @@ public class Entitlement {
     @Column(length = 100)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "card_id", foreignKey = @ForeignKey(name = "fk_entitlements_card"))
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "card_id", nullable = false, foreignKey = @ForeignKey(name = "fk_entitlements_card"))
     private Card card;
 
     @Column(name = "fare_product_code", nullable = false, length = 100)

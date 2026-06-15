@@ -40,10 +40,12 @@ public class Level5EntitlementSyncService implements ILevel5EntitlementSyncServi
         if (!PredefinedLevel5BusinessSync.MONTHLY_PASS.equals(normalizeUppercase(message.getType()))) {
             return ignored(message.getTicketId().toString(), null, "Entitlement sync ignores non monthly-pass messages");
         }
+        if (message.getCardId() == null) {
+            return rejected(message.getTicketId().toString(), null,
+                    "CARD_ID_REQUIRED", "entitlement cardId is required");
+        }
 
-        Card card = message.getCardId() == null
-                ? null
-                : createCardPlaceholderIfMissing(message.getCardId());
+        Card card = createCardPlaceholderIfMissing(message.getCardId());
         String entitlementId = message.getTicketId().toString();
         Long sourceVersion = toSourceVersion(message.getIssuedAt());
         Optional<Entitlement> existingEntitlement = entitlementRepository.findById(entitlementId);
@@ -112,7 +114,7 @@ public class Level5EntitlementSyncService implements ILevel5EntitlementSyncServi
 
         Long sourceVersion = System.currentTimeMillis();
         Entitlement existingEntitlement = entitlement.get();
-        existingEntitlement.setCard(null);
+        existingEntitlement.setStatus(PredefinedLevel5BusinessSync.CANCELLED);
         existingEntitlement.setSourceVersion(sourceVersion);
         existingEntitlement.setSyncedAt(LocalDateTime.now());
         entitlementRepository.save(existingEntitlement);

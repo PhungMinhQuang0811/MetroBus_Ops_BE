@@ -40,10 +40,12 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
         if (!"SINGLE_TRIP".equals(normalizeUppercase(message.getType()))) {
             return ignored(message.getTicketId().toString(), null, "Ticket sync ignores non single-trip messages");
         }
+        if (message.getCardId() == null) {
+            return rejected(message.getTicketId().toString(), null,
+                    "CARD_ID_REQUIRED", "ticket cardId is required");
+        }
 
-        Card card = message.getCardId() == null
-                ? null
-                : createCardPlaceholderIfMissing(message.getCardId());
+        Card card = createCardPlaceholderIfMissing(message.getCardId());
         String ticketId = message.getTicketId().toString();
         Long sourceVersion = toSourceVersion(message.getIssuedAt());
         Optional<Ticket> existingTicket = ticketRepository.findById(ticketId);
@@ -112,7 +114,7 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
 
         Long sourceVersion = System.currentTimeMillis();
         Ticket existingTicket = ticket.get();
-        existingTicket.setCard(null);
+        existingTicket.setUsageStatus(PredefinedLevel5BusinessSync.CANCELLED);
         existingTicket.setSourceVersion(sourceVersion);
         existingTicket.setSyncedAt(LocalDateTime.now());
         ticketRepository.save(existingTicket);

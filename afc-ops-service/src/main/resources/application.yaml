@@ -70,3 +70,5 @@ app:
     access-token-secret-key: ${JWT_ACCESS_SECRET_KEY}
     access-token-expiration: 3600000
     cors-allowed-origins: "http://localhost:3000"
+  dynamic-qr:
+    ttl-seconds: ${DYNAMIC_QR_TTL_SECONDS:30}

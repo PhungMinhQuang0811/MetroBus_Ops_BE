@@ -528,7 +528,7 @@ TICKET_001:        card_id = CARD_VIRTUAL_001
 | Field | Type | Constraint | Ghi chú |
 | --- | --- | --- | --- |
 | id | VARCHAR(100) | PK | `ticketId` do C5 cấp |
-| card_id | VARCHAR(100) | NULL, FK cards | Card dùng để hiển thị QR; có thể null nếu C5 tạo ticket trước khi link card |
+| card_id | VARCHAR(100) | NOT NULL, FK cards | Card dùng để hiển thị QR; C4 chỉ nhận ticket đã gắn card |
 | ticket_type | VARCHAR(50) | NOT NULL | MVP: METRO_SINGLE_RIDE |
 | route_scope_type | VARCHAR(30) | NOT NULL | SINGLE_ROUTE, NETWORK |
 | operator_ref | VARCHAR(100) | NULL | Operator id/code từ C5; bắt buộc nếu vé giới hạn theo operator/tuyến |
@@ -545,7 +545,7 @@ TICKET_001:        card_id = CARD_VIRTUAL_001
 | synced_at | TIMESTAMP | NOT NULL |  |
 | updated_at | TIMESTAMP | NOT NULL |  |
 
-`tickets` là vé lượt prepaid. C4 chỉ lưu bản sao để verify nhanh; C5 là nơi phát hành ticket và xác nhận trạng thái sử dụng chính thức. Ticket chưa link card vẫn được lưu để khi C5 gửi event link/unlink hoặc cập nhật sau, C4 không mất dữ liệu gốc.
+`tickets` là vé lượt prepaid. C4 chỉ lưu bản sao để verify nhanh; C5 là nơi phát hành ticket và xác nhận trạng thái sử dụng chính thức. Ticket chưa link card không được lưu vào C4 vì UC22/UC10 xử lý theo card.
 
 Với `route_scope_type = SINGLE_ROUTE`, `operator_ref` và `route_ref` phải có giá trị cụ thể. Với `route_scope_type = NETWORK`, `route_ref` dùng `*`; `operator_ref` có thể là mã operator nếu vé chỉ áp dụng trong một đơn vị, hoặc `*` nếu C5 quy định phạm vi toàn mạng.
 
@@ -554,7 +554,7 @@ Với `route_scope_type = SINGLE_ROUTE`, `operator_ref` và `route_ref` phải c
 | Field | Type | Constraint | Ghi chú |
 | --- | --- | --- | --- |
 | id | VARCHAR(100) | PK | `entitlementId` do C5 cấp |
-| card_id | VARCHAR(100) | NULL, FK cards | Card dùng để hiển thị QR; có thể null nếu C5 tạo pass trước khi link card |
+| card_id | VARCHAR(100) | NOT NULL, FK cards | Card dùng để hiển thị QR; C4 chỉ nhận pass đã gắn card |
 | fare_product_code | VARCHAR(100) | NOT NULL | MVP: MONTHLY_PASS; vé lượt Metro dùng bảng `tickets` |
 | pass_period | VARCHAR(30) | NOT NULL | MVP: MONTH |
 | pass_scope | VARCHAR(30) | NOT NULL | SINGLE_ROUTE, INTERLINE, NETWORK |
@@ -616,9 +616,9 @@ ticket_id IS NULL OR entitlement_id IS NULL
 
 Tức là một transaction không được vừa tiêu vé lượt vừa dùng vé tháng.
 
-Trong MVP, C5 đảm bảo mỗi card chỉ có tối đa một sản phẩm vé active tại cùng một thời điểm: hoặc một `ticket` vé lượt, hoặc một `entitlement` vé tháng. C4 không cần xử lý case chọn giữa nhiều sản phẩm active; khi verify QR, C4 lookup card rồi chọn sản phẩm active duy nhất trong read model. Nếu C4 nhận đồng bộ khiến một card có cả ticket và entitlement active, coi đó là lỗi dữ liệu đồng bộ và trả `DENY`, `reason = ACTIVE_PRODUCT_CONFLICT` thay vì tự chọn.
+Trong MVP, C5/test data đảm bảo mỗi card chỉ có tối đa một sản phẩm vé active tại cùng một thời điểm: hoặc một `ticket` vé lượt, hoặc một `entitlement` vé tháng. C4 không cần xử lý case chọn giữa nhiều sản phẩm active; khi generate/verify QR, C4 lookup card rồi chọn sản phẩm active duy nhất trong read model. Nếu read model có cả ticket và entitlement active cho cùng card, coi đó là lỗi dữ liệu đồng bộ và trả `ACTIVE_PRODUCT_CONFLICT`/`DENY` thay vì tự chọn.
 
-Rule này là rule liên bảng nên RDBMS khó enforce trực tiếp bằng một unique constraint đơn giản. Với MVP, C4 enforce ở tầng service khi xử lý dữ liệu đồng bộ từ C5: trước khi mark ticket/entitlement active, kiểm tra card không có sản phẩm active khác. C5 vẫn là nơi enforce chính thức.
+Rule này là rule liên bảng nên RDBMS khó enforce trực tiếp bằng một unique constraint đơn giản. Với MVP, C4 phát hiện conflict ở tầng service khi generate/verify QR; C5 vẫn là nơi enforce chính thức.
 
 Quy ước `decision` và `reason`:
 
@@ -755,8 +755,8 @@ Redis dùng cho dữ liệu cần lookup nhanh hoặc tự hết hạn. Redis kh
 
 | Key pattern | Value chính | TTL | Mục đích |
 | --- | --- | --- | --- |
-| `qr:session:{qrId}` | `cardId`, `ticketId`, `entitlementId`, `nonce`, `expiresAt`, `payloadHash` | 30-60 giây | Verify dynamic QR payload |
-| `qr:used:{qrId}:{eventId}` | Kết quả verify/decision | Theo thời gian chống replay | Chống xử lý lại QR/event không hợp lệ |
+| `qr:session:{qrId}` | `cardId`, `ticketId`, `entitlementId`, `expiresAt`, `used` | 30-60 giây | Resolve dynamic QR session |
+| `qr:session:{qrId}.used` | Boolean trong QR session | Theo TTL của `qr:session:{qrId}` | Chống scan lại cùng QR session |
 | `card:{cardId}` | Status, cardType, statusReason, sourceVersion | Theo cấu hình, refresh từ C5/RDBMS | Lookup card runtime |
 | `ticket:{ticketId}` | Ticket vé lượt còn khả dụng | Theo `validTo` hoặc TTL ngắn | Verify vé lượt Metro nhanh |
 | `entitlement:{entitlementId}` | Entitlement còn khả dụng | Theo `validTo` hoặc TTL ngắn | Verify vé tháng nhanh |
@@ -822,7 +822,7 @@ Trong `qr:session:{qrId}`, chỉ một trong hai field `ticketId` hoặc `entitl
 | afc_transactions.reason | `CARD_CANCELLED` | Card đã bị hủy |
 | afc_transactions.reason | `UNKNOWN_MEDIA` | Không nhận diện được media ở phạm vi local |
 | afc_transactions.reason | `QR_EXPIRED` | Dynamic QR payload đã hết hạn |
-| afc_transactions.reason | `QR_INVALID_SIGNATURE` | QR payload sai chữ ký |
+| afc_transactions.reason | `QR_INVALID` | QR payload sai format hoặc không đọc được `qrId` |
 | afc_transactions.reason | `QR_REPLAYED` | QR/event bị phát hiện replay |
 | afc_transactions.reason | `ENTITLEMENT_EXPIRED` | Entitlement đã hết `validTo` |
 | afc_transactions.reason | `ENTITLEMENT_INACTIVE` | Entitlement không active |

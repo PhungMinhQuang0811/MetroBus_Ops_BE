@@ -36,7 +36,8 @@ public final class SecurityConstants {
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {
-
+            "/generate-dynamic-qr",
+            "/submit-tap-event"
     };
 
     private SecurityConstants() {}

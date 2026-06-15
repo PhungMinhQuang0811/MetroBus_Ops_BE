@@ -57,6 +57,13 @@ public enum ErrorCode {
     DEVICE_ALREADY_DISABLED(3013, "Device is already disabled", HttpStatus.BAD_REQUEST),
     IMPORT_FILE_INVALID(3014, "Import file is invalid", HttpStatus.BAD_REQUEST),
     IMPORT_FILE_HAS_ERRORS(3015, "Import file contains invalid rows", HttpStatus.BAD_REQUEST),
+    CARD_NOT_FOUND(3016, "Card not found", HttpStatus.NOT_FOUND),
+    CARD_INACTIVE(3017, "Card is inactive", HttpStatus.BAD_REQUEST),
+    CARD_CANCELLED(3018, "Card is cancelled", HttpStatus.BAD_REQUEST),
+    MEDIA_BLACKLISTED(3019, "Media is blacklisted", HttpStatus.BAD_REQUEST),
+    ACTIVE_PRODUCT_NOT_FOUND(3020, "Active ticket or entitlement not found", HttpStatus.NOT_FOUND),
+    ACTIVE_PRODUCT_CONFLICT(3021, "More than one active product found for card", HttpStatus.BAD_REQUEST),
+    INVALID_QR_PRODUCT_TYPE(3022, "Invalid QR product type", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 4xxx: Security, Authentication & System errors

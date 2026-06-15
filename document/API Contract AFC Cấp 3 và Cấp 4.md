@@ -97,7 +97,7 @@ Response page:
 | Ticket usage status | `UNUSED`, `IN_USE`, `USED`, `EXPIRED`, `CANCELLED` |
 | Tap type | `TAP_IN`, `TAP_OUT`, `CHECK` |
 | Transaction decision | `OPEN_GATE`, `DENY`, `ACCEPTED_FOR_FORWARDING` |
-| Transaction reason | `VALID`, `DEVICE_DISABLED`, `INVALID_DIRECTION`, `MEDIA_BLACKLISTED`, `CARD_INACTIVE`, `CARD_CANCELLED`, `UNKNOWN_MEDIA`, `QR_EXPIRED`, `QR_INVALID_SIGNATURE`, `QR_REPLAYED`, `ENTITLEMENT_EXPIRED`, `ENTITLEMENT_INACTIVE`, `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_ALREADY_USED`, `TICKET_SCOPE_INVALID`, `ACTIVE_PRODUCT_CONFLICT` |
+| Transaction reason | `VALID`, `DEVICE_DISABLED`, `INVALID_DIRECTION`, `MEDIA_BLACKLISTED`, `CARD_INACTIVE`, `CARD_CANCELLED`, `UNKNOWN_MEDIA`, `QR_EXPIRED`, `QR_INVALID`, `QR_REPLAYED`, `ENTITLEMENT_EXPIRED`, `ENTITLEMENT_INACTIVE`, `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_ALREADY_USED`, `TICKET_SCOPE_INVALID`, `ACTIVE_PRODUCT_CONFLICT` |
 | Transaction sync status | `PENDING`, `SYNCED`, `FAILED` |
 | Ticket processing status | `PENDING`, `CONFIRMED`, `FAILED` |
 | Package type | `DEVICE_CONFIG`, `MEDIA_ACCESS_RULES` |
@@ -2170,23 +2170,19 @@ Luồng:
 
 `POST /afc-ops/submit-tap-event`
 
-Auth: `X-Device-Code`, `X-Device-Secret`.
+Auth MVP: `deviceCode` + `deviceSecret` trong request body.
 
 Request:
 
 ```json
 {
-  "eventId": "QR-BT-001-20260604-000001",
-  "mediaType": "VIRTUAL_QR",
-  "qrPayload": "signed-dynamic-qr-payload",
-  "tapType": "TAP_IN",
-  "occurredAt": "2026-06-04T10:05:00+07:00",
-  "direction": "ENTRY",
-  "rawPayload": {
-    "deviceSequence": 1001
-  }
+  "deviceCode": "GATE-001",
+  "deviceSecret": "device-secret",
+  "qrPayload": "AFCQR:v1:QR-SESSION-000001"
 }
 ```
+
+`direction` không truyền trong request. Cấp 4 lấy chiều xử lý từ `devices.direction` của `deviceCode`; UC10 cần chiều cụ thể `ENTRY` hoặc `EXIT` để suy ra `tapType = TAP_IN/TAP_OUT`.
 
 Response:
 
@@ -2196,7 +2192,6 @@ Response:
   "message": "Success",
   "result": {
     "transactionId": "uuid",
-    "eventId": "QR-BT-001-20260604-000001",
     "decision": "OPEN_GATE",
     "reason": "VALID",
     "serverTime": "2026-06-04T10:05:01+07:00"
@@ -2206,26 +2201,25 @@ Response:
 
 Luồng:
 
-1. Xác thực device.
-2. Kiểm tra idempotency theo `(deviceCode, eventId)`.
-3. Kiểm tra device active và direction hợp lệ.
-4. Verify chữ ký, TTL và replay của dynamic QR payload.
-5. Resolve `cardId` và đúng một sản phẩm active từ QR session: `ticketId` hoặc `entitlementId`.
-6. Kiểm tra card active/không blacklist, ticket hoặc entitlement active/còn hạn và scope hợp lệ.
-7. Lưu raw payload MongoDB.
-8. Lưu `afc_transactions` RDBMS.
-9. Trả decision cho device.
+1. Xác thực device bằng `deviceCode` và `deviceSecret`.
+2. Cấp 4 tự set `occurredAt/receivedAt = now()`.
+3. Kiểm tra device active và lấy direction từ cấu hình device.
+4. Parse `qrId` từ payload dạng `AFCQR:v1:{qrId}`.
+5. Resolve `cardId` và đúng một sản phẩm active từ Redis key `qr:session:{qrId}`.
+6. Kiểm tra QR chưa expire, chưa replay (`used=false`).
+7. Kiểm tra card active/không blacklist, ticket hoặc entitlement active/còn hạn.
+8. Nếu hợp lệ, set QR session `used=true` để chống replay trong TTL ngắn.
+9. Lưu `afc_transactions` RDBMS và trả decision cho device.
 
 Lỗi/idempotency:
 
 | Điều kiện | Kết quả |
 | --- | --- |
-| Gửi lại cùng `eventId` và payload giống nhau | Trả lại decision cũ |
-| Gửi lại cùng `eventId` nhưng payload khác | `409 TAP_EVENT_CONFLICT` |
+| `deviceCode` không tồn tại hoặc `deviceSecret` sai | HTTP auth/business error, không ghi transaction |
 | Device disabled | Trả `decision = DENY`, `reason = DEVICE_DISABLED` |
 | Card trong blacklist | Trả `decision = DENY`, `reason = MEDIA_BLACKLISTED` |
 | Card inactive/cancelled | Trả `decision = DENY`, `reason = CARD_INACTIVE` hoặc `CARD_CANCELLED` |
-| QR hết hạn, sai chữ ký hoặc bị replay | Trả `decision = DENY` với reason QR tương ứng |
+| QR sai format, hết hạn hoặc bị replay | Trả `decision = DENY` với reason QR tương ứng |
 | Entitlement hết hạn hoặc inactive | Trả `decision = DENY` với reason entitlement tương ứng |
 | Ticket không hợp lệ/hết hạn/đã dùng/sai scope | Trả `decision = DENY` với reason ticket tương ứng |
 | Card có cả ticket và entitlement active trong read model | Trả `decision = DENY`, `reason = ACTIVE_PRODUCT_CONFLICT` |
@@ -2437,15 +2431,15 @@ C4 subscribe RabbitMQ do C5 publish:
 | Card | `afc.exchange` | `afc.level5-card-sync` | `card.status.changed` | Upsert card theo `cardId`, lưu `cardUid`, cập nhật status |
 | Blacklist | `afc.exchange` | `afc.level5-card-sync` | `blacklist.added`, `blacklist.removed` | Map thành `cards.status = BLACKLISTED` hoặc `ACTIVE` |
 | Ticket | `afc.exchange` | `afc.level5-ticket-sync` | `ticket.created` | Nếu `type = SINGLE_TRIP` thì upsert `tickets` |
-| Ticket unlink | `afc.exchange` | `afc.level5-ticket-sync` | `ticket.unlinked` | Gỡ `tickets.card_id`, không coi là cancel ticket |
+| Ticket unlink | `afc.exchange` | `afc.level5-ticket-sync` | `ticket.unlinked` | Đánh dấu `tickets.usage_status = CANCELLED` |
 | Entitlement | `afc.exchange` | `afc.level5-entitlement-sync` | `ticket.created` | Nếu `type = MONTHLY_PASS` thì upsert `entitlements` |
-| Entitlement unlink | `afc.exchange` | `afc.level5-entitlement-sync` | `ticket.unlinked` | Gỡ `entitlements.card_id`, không coi là cancel entitlement |
+| Entitlement unlink | `afc.exchange` | `afc.level5-entitlement-sync` | `ticket.unlinked` | Đánh dấu `entitlements.status = CANCELLED` |
 | Card snapshot | `afc.exchange` | `afc.level5-card-sync` | `sync.card.all` | Backfill/reconcile toàn bộ card theo `id` C5 |
 | Ticket snapshot | `afc.exchange` | `afc.level5-ticket-sync` | `sync.ticket.all` | Backfill/reconcile vé lượt nếu `type = SINGLE_TRIP` |
 | Entitlement snapshot | `afc.exchange` | `afc.level5-entitlement-sync` | `sync.ticket.all` | Backfill/reconcile vé tháng nếu `type = MONTHLY_PASS` |
 | Operator snapshot | `afc.exchange` | `afc.level5-operator-sync` | `sync.operator.all` | Upsert operator theo `code`; C4 vẫn giữ `operators.id` nội bộ |
 
-Payload C5 hiện tại không bắt buộc khớp 100% read model C4. C4 chấp nhận `cardId = null` ở ticket/monthly-pass vì C5 có thể tạo sản phẩm trước khi link card. Khi C5 gửi `cardId`, C4 tạo card placeholder nếu chưa có bản ghi card tương ứng.
+Payload C5 cần gửi `cardId` cho ticket/monthly-pass. C4 xử lý QR theo card nên ticket/entitlement không gắn card sẽ bị reject/ignore ở consumer. Khi C5 gửi `cardId`, C4 tạo card placeholder nếu chưa có bản ghi card tương ứng.
 
 C5 có các API trigger snapshot:
 
@@ -2932,10 +2926,7 @@ Request:
 
 ```json
 {
-  "cardId": "CARD-000001",
-  "productType": "ENTITLEMENT",
-  "ticketId": null,
-  "entitlementId": "ENT-000001"
+  "cardId": "CARD-000001"
 }
 ```
 
@@ -2947,15 +2938,14 @@ Response:
   "message": "Success",
   "result": {
     "qrId": "QR-SESSION-000001",
-    "cardId": "CARD-000001",
-    "ticketId": null,
-    "entitlementId": "ENT-000001",
-    "qrPayload": "signed-dynamic-qr-payload",
+    "qrPayload": "AFCQR:v1:QR-SESSION-000001",
     "expiresAt": "2026-06-04T10:05:30+07:00",
     "refreshAfterSeconds": 30
   }
 }
 ```
+
+`qrPayload` chỉ chứa session QR id để app render QR. `cardId`, `ticketId`, `entitlementId` không trả ra response và không nhúng trong QR; Cấp 4 lưu mapping trong Redis theo key `qr:session:{qrId}` với TTL ngắn.
 
 Luồng:
 
@@ -2964,7 +2954,7 @@ Luồng:
 3. Xác định đúng một active product của card: `ticket` vé lượt Metro hoặc `entitlement` vé tháng.
 4. Nếu là ticket, kiểm tra `usageStatus` cho phép hiển thị QR, còn hạn và đúng phạm vi.
 5. Nếu là entitlement, kiểm tra active, còn hạn và đúng phạm vi.
-6. Sinh `qrId`, nonce, TTL 30-60 giây, ký payload và lưu `qr:session:{qrId}` trong Redis.
+6. Sinh `qrId` TTL 30-60 giây, lưu `qr:session:{qrId}` trong Redis và trả payload ngắn dạng `AFCQR:v1:{qrId}`.
 7. Trả QR payload để App render.
 
 Lỗi chính:
@@ -3068,7 +3058,7 @@ Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 sc
 | `ENTITLEMENT_INACTIVE` | 400 | Entitlement không active |
 | `ENTITLEMENT_EXPIRED` | 400 | Entitlement đã hết hạn |
 | `QR_EXPIRED` | 400 | QR động đã hết hạn |
-| `QR_INVALID_SIGNATURE` | 400 | Chữ ký QR không hợp lệ |
+| `QR_INVALID` | 400 | QR payload sai format hoặc không đọc được `qrId` |
 | `QR_REPLAYED` | 409 | QR/event bị phát hiện replay |
 | `PASS_SCOPE_INVALID` | 400 | Phạm vi vé không hợp lệ |
 

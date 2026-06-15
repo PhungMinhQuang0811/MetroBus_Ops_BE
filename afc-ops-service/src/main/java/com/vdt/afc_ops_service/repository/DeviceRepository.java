@@ -15,6 +15,8 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     boolean existsByDeviceCode(String deviceCode);
 
+    Optional<Device> findByDeviceCode(String deviceCode);
+
     Optional<Device> findByIdAndStationRouteOperatorId(Long id, Long operatorId);
 
     List<Device> findAllByStationOrderByDeviceCodeAsc(Station station);

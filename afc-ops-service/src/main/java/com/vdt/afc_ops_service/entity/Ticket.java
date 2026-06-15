@@ -30,8 +30,8 @@ public class Ticket {
     @Column(length = 100)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "card_id", foreignKey = @ForeignKey(name = "fk_tickets_card"))
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "card_id", nullable = false, foreignKey = @ForeignKey(name = "fk_tickets_card"))
     private Card card;
 
     @Column(name = "ticket_type", nullable = false, length = 50)

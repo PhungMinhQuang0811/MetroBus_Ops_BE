@@ -154,7 +154,7 @@ public class Level5BusinessSyncService implements ILevel5BusinessSyncService {
         Optional<Ticket> ticket = ticketRepository.findById(ticketId);
         if (ticket.isPresent()) {
             Ticket existingTicket = ticket.get();
-            existingTicket.setCard(null);
+            existingTicket.setUsageStatus(PredefinedLevel5BusinessSync.CANCELLED);
             existingTicket.setSourceVersion(sourceVersion);
             existingTicket.setSyncedAt(LocalDateTime.now());
             ticketRepository.save(existingTicket);
@@ -164,7 +164,7 @@ public class Level5BusinessSyncService implements ILevel5BusinessSyncService {
         Optional<Entitlement> entitlement = entitlementRepository.findById(ticketId);
         if (entitlement.isPresent()) {
             Entitlement existingEntitlement = entitlement.get();
-            existingEntitlement.setCard(null);
+            existingEntitlement.setStatus(PredefinedLevel5BusinessSync.CANCELLED);
             existingEntitlement.setSourceVersion(sourceVersion);
             existingEntitlement.setSyncedAt(LocalDateTime.now());
             entitlementRepository.save(existingEntitlement);
@@ -386,6 +386,9 @@ public class Level5BusinessSyncService implements ILevel5BusinessSyncService {
     }
 
     private String validateTicket(Level5TicketPayload payload) {
+        if (isBlank(payload.getCardId())) {
+            return "CARD_ID_REQUIRED";
+        }
         if (!PredefinedLevel5BusinessSync.METRO_SINGLE_RIDE.equals(payload.getTicketType())) {
             return "INVALID_TICKET_TYPE";
         }
@@ -410,6 +413,9 @@ public class Level5BusinessSyncService implements ILevel5BusinessSyncService {
     }
 
     private String validateEntitlement(Level5EntitlementPayload payload) {
+        if (isBlank(payload.getCardId())) {
+            return "CARD_ID_REQUIRED";
+        }
         if (!PredefinedLevel5BusinessSync.MONTHLY_PASS.equals(payload.getFareProductCode())) {
             return "INVALID_FARE_PRODUCT_CODE";
         }
