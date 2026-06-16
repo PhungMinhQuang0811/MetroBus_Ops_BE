@@ -32,7 +32,9 @@ public final class SecurityConstants {
             entry("/device/enable-device/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/device/disable-device/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/device/preview-import-devices", PredefinedAfcPermission.MASTER_DATA_WRITE),
-            entry("/device/confirm-import-devices", PredefinedAfcPermission.MASTER_DATA_WRITE)
+            entry("/device/confirm-import-devices", PredefinedAfcPermission.MASTER_DATA_WRITE),
+            entry("/search-transactions", PredefinedAfcPermission.TRANSACTION_READ),
+            entry("/get-transaction-detail", PredefinedAfcPermission.TRANSACTION_READ)
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {

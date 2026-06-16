@@ -37,6 +37,8 @@ public enum ErrorCode {
     INVALID_DEVICE_DIRECTION(2015, "Invalid device direction", HttpStatus.BAD_REQUEST),
     INVALID_DEVICE_STATUS(2016, "Invalid device status", HttpStatus.BAD_REQUEST),
     INVALID_DEVICE_SECRET_LENGTH(2017, "Device secret must not exceed 255 characters", HttpStatus.BAD_REQUEST),
+    INVALID_TRANSACTION_ID(2018, "Transaction id is invalid", HttpStatus.BAD_REQUEST),
+    INVALID_TRANSACTION_TIME_RANGE(2019, "Transaction from time must be before or equal to to time", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
@@ -64,6 +66,7 @@ public enum ErrorCode {
     ACTIVE_PRODUCT_NOT_FOUND(3020, "Active ticket or entitlement not found", HttpStatus.NOT_FOUND),
     ACTIVE_PRODUCT_CONFLICT(3021, "More than one active product found for card", HttpStatus.BAD_REQUEST),
     INVALID_QR_PRODUCT_TYPE(3022, "Invalid QR product type", HttpStatus.BAD_REQUEST),
+    TRANSACTION_NOT_FOUND(3023, "Transaction not found", HttpStatus.NOT_FOUND),
 
     /**
      * Range 4xxx: Security, Authentication & System errors

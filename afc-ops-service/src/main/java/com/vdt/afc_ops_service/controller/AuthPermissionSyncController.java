@@ -18,7 +18,13 @@ public class AuthPermissionSyncController {
 
     @PostMapping("/sync-operator-manager-role-permissions")
     public ApiResponse<Void> syncOperatorManagerRolePermissions() {
-        authPermissionSyncPublisher.publishOperatorManagerRolePermissions();
+        authPermissionSyncPublisher.publishDefaultRolePermissions();
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @PostMapping("/sync-default-role-permissions")
+    public ApiResponse<Void> syncDefaultRolePermissions() {
+        authPermissionSyncPublisher.publishDefaultRolePermissions();
         return ApiResponse.<Void>builder().build();
     }
 }

@@ -7,9 +7,14 @@ import com.vdt.afc_ops_service.constant.PredefinedTransactionReason;
 import com.vdt.afc_ops_service.constant.PredefinedTransactionStatus;
 import com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest;
 import com.vdt.afc_ops_service.dto.response.transaction.SubmitTransactionResponse;
+import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailResponse;
+import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemResponse;
 import com.vdt.afc_ops_service.entity.Card;
 import com.vdt.afc_ops_service.entity.Device;
 import com.vdt.afc_ops_service.entity.Entitlement;
+import com.vdt.afc_ops_service.entity.Operator;
+import com.vdt.afc_ops_service.entity.Route;
+import com.vdt.afc_ops_service.entity.Station;
 import com.vdt.afc_ops_service.entity.Ticket;
 import com.vdt.afc_ops_service.entity.Transaction;
 import com.vdt.afc_ops_service.qr.DynamicQrSession;
@@ -91,6 +96,103 @@ public class TransactionMapper {
                 .reason(evaluation.reason())
                 .serverTime(serverTime)
                 .build();
+    }
+
+    public TransactionListItemResponse toListItemResponse(Transaction transaction) {
+        Route route = transaction.getRoute();
+        Station station = transaction.getStation();
+        Device device = transaction.getDevice();
+
+        return TransactionListItemResponse.builder()
+                .id(transaction.getId())
+                .eventId(transaction.getEventId())
+                .routeId(route != null ? route.getId() : null)
+                .routeCode(route != null ? route.getRouteCode() : null)
+                .routeName(route != null ? route.getRouteName() : null)
+                .stationId(station != null ? station.getId() : null)
+                .stationCode(station != null ? station.getStationCode() : null)
+                .stationName(station != null ? station.getStationName() : null)
+                .deviceId(device != null ? device.getId() : null)
+                .deviceCode(device != null ? device.getDeviceCode() : null)
+                .mediaType(transaction.getMediaType())
+                .cardId(getCardId(transaction.getCard()))
+                .ticketId(getTicketId(transaction.getTicket()))
+                .entitlementId(getEntitlementId(transaction.getEntitlement()))
+                .qrId(transaction.getQrId())
+                .tapType(transaction.getTapType())
+                .occurredAt(transaction.getOccurredAt())
+                .decision(transaction.getDecision())
+                .reason(transaction.getReason())
+                .syncStatus(transaction.getSyncStatus())
+                .ticketProcessingStatus(transaction.getTicketProcessingStatus())
+                .batchId(transaction.getBatchId())
+                .build();
+    }
+
+    public TransactionDetailResponse toDetailResponse(Transaction transaction) {
+        Operator operator = transaction.getOperator();
+        Route route = transaction.getRoute();
+        Station station = transaction.getStation();
+        Device device = transaction.getDevice();
+        Card card = transaction.getCard();
+        Ticket ticket = transaction.getTicket();
+        Entitlement entitlement = transaction.getEntitlement();
+
+        return TransactionDetailResponse.builder()
+                .id(transaction.getId())
+                .eventId(transaction.getEventId())
+                .operatorId(operator != null ? operator.getId() : null)
+                .operatorCode(operator != null ? operator.getOperatorCode() : null)
+                .operatorName(operator != null ? operator.getOperatorName() : null)
+                .routeId(route != null ? route.getId() : null)
+                .routeCode(route != null ? route.getRouteCode() : null)
+                .routeName(route != null ? route.getRouteName() : null)
+                .stationId(station != null ? station.getId() : null)
+                .stationCode(station != null ? station.getStationCode() : null)
+                .stationName(station != null ? station.getStationName() : null)
+                .deviceId(device != null ? device.getId() : null)
+                .deviceCode(device != null ? device.getDeviceCode() : null)
+                .deviceType(device != null ? device.getDeviceType() : null)
+                .deviceDirection(device != null ? device.getDirection() : null)
+                .mediaType(transaction.getMediaType())
+                .cardId(getCardId(card))
+                .cardUid(card != null ? card.getCardUid() : null)
+                .cardStatus(card != null ? card.getStatus() : null)
+                .ticketId(getTicketId(ticket))
+                .ticketUsageStatus(ticket != null ? ticket.getUsageStatus() : null)
+                .entitlementId(getEntitlementId(entitlement))
+                .entitlementStatus(entitlement != null ? entitlement.getStatus() : null)
+                .qrId(transaction.getQrId())
+                .qrPayloadHash(transaction.getQrPayloadHash())
+                .tapType(transaction.getTapType())
+                .journeyRef(transaction.getJourneyRef())
+                .occurredAt(transaction.getOccurredAt())
+                .receivedAt(transaction.getReceivedAt())
+                .decision(transaction.getDecision())
+                .reason(transaction.getReason())
+                .syncStatus(transaction.getSyncStatus())
+                .ticketProcessingStatus(transaction.getTicketProcessingStatus())
+                .batchId(transaction.getBatchId())
+                .rawEventRef(transaction.getRawEventRef())
+                .rawEventAvailable(transaction.getRawEventRef() != null)
+                .ticketUsageResultAvailable(transaction.getJourneyRef() != null
+                        || transaction.getTicketProcessingStatus() != null)
+                .auditAvailable(false)
+                .createdAt(transaction.getCreatedAt())
+                .updatedAt(transaction.getUpdatedAt())
+                .build();
+    }
+
+    private String getCardId(Card card) {
+        return card != null ? card.getId() : null;
+    }
+
+    private String getTicketId(Ticket ticket) {
+        return ticket != null ? ticket.getId() : null;
+    }
+
+    private String getEntitlementId(Entitlement entitlement) {
+        return entitlement != null ? entitlement.getId() : null;
     }
 
     public record TransactionEvaluation(String decision, String reason, String qrId, DynamicQrSession session,

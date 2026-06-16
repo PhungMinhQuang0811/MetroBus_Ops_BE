@@ -8,10 +8,14 @@ import com.vdt.afc_ops_service.constant.PredefinedDeviceStatus;
 import com.vdt.afc_ops_service.constant.PredefinedTransactionDecision;
 import com.vdt.afc_ops_service.constant.PredefinedTransactionReason;
 import com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest;
+import com.vdt.afc_ops_service.dto.response.PageResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.SubmitTransactionResponse;
+import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailResponse;
+import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemResponse;
 import com.vdt.afc_ops_service.entity.Card;
 import com.vdt.afc_ops_service.entity.Device;
 import com.vdt.afc_ops_service.entity.Entitlement;
+import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Ticket;
 import com.vdt.afc_ops_service.entity.Transaction;
 import com.vdt.afc_ops_service.integration.level5.constant.PredefinedLevel5BusinessSync;
@@ -24,10 +28,14 @@ import com.vdt.afc_ops_service.repository.DeviceRepository;
 import com.vdt.afc_ops_service.repository.EntitlementRepository;
 import com.vdt.afc_ops_service.repository.TicketRepository;
 import com.vdt.afc_ops_service.repository.TransactionRepository;
+import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.ITransactionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +51,9 @@ public class TransactionService implements ITransactionService {
 
     static final String TAP_TYPE_TAP_IN = "TAP_IN";
     static final String TAP_TYPE_TAP_OUT = "TAP_OUT";
+    static final int MAX_PAGE_SIZE = 100;
+    static final LocalDateTime MIN_TRANSACTION_TIME = LocalDateTime.of(1900, 1, 1, 0, 0);
+    static final LocalDateTime MAX_TRANSACTION_TIME = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
 
     DeviceRepository deviceRepository;
     CardRepository cardRepository;
@@ -51,6 +62,7 @@ public class TransactionService implements ITransactionService {
     TransactionRepository transactionRepository;
     DynamicQrSessionStore dynamicQrSessionStore;
     TransactionMapper transactionMapper;
+    SecurityUtils securityUtils;
 
     @Override
     @Transactional
@@ -72,6 +84,77 @@ public class TransactionService implements ITransactionService {
         }
 
         return transactionMapper.toResponse(transaction, evaluation, now);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<TransactionListItemResponse> searchTransactions(LocalDateTime from, LocalDateTime to,
+                                                                        Long routeId, Long stationId, Long deviceId,
+                                                                        String cardId, String ticketId,
+                                                                        String entitlementId, String tapType,
+                                                                        String decision, String reason,
+                                                                        String syncStatus,
+                                                                        String ticketProcessingStatus,
+                                                                        int page, int size) {
+        Operator operator = securityUtils.getRequiredCurrentOperator();
+        validateSearchParams(from, to, routeId, stationId, deviceId, page, size);
+        String normalizedCardId = SearchFilterUtil.normalize(cardId);
+        String normalizedTicketId = SearchFilterUtil.normalize(ticketId);
+        String normalizedEntitlementId = SearchFilterUtil.normalize(entitlementId);
+        String normalizedTapType = SearchFilterUtil.normalizeUppercase(tapType);
+        String normalizedDecision = SearchFilterUtil.normalizeUppercase(decision);
+        String normalizedReason = SearchFilterUtil.normalizeUppercase(reason);
+        String normalizedSyncStatus = SearchFilterUtil.normalizeUppercase(syncStatus);
+        String normalizedTicketProcessingStatus = SearchFilterUtil.normalizeUppercase(ticketProcessingStatus);
+        LocalDateTime queryFrom = from == null ? MIN_TRANSACTION_TIME : from;
+        LocalDateTime queryTo = to == null ? MAX_TRANSACTION_TIME : to;
+
+        Page<Transaction> transactions = transactionRepository.searchTransactions(
+                operator.getId(),
+                queryFrom,
+                queryTo,
+                routeId,
+                stationId,
+                deviceId,
+                normalizedCardId,
+                normalizedTicketId,
+                normalizedEntitlementId,
+                normalizedTapType,
+                normalizedDecision,
+                normalizedReason,
+                normalizedSyncStatus,
+                normalizedTicketProcessingStatus,
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "occurredAt"))
+        );
+
+        return PageResponse.<TransactionListItemResponse>builder()
+                .items(transactions.getContent().stream()
+                        .map(transactionMapper::toListItemResponse)
+                        .toList())
+                .page(transactions.getNumber())
+                .size(transactions.getSize())
+                .totalElements(transactions.getTotalElements())
+                .totalPages(transactions.getTotalPages())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransactionDetailResponse getTransactionDetail(String transactionId) {
+        String normalizedTransactionId = SearchFilterUtil.normalize(transactionId);
+        validateTransactionId(normalizedTransactionId);
+        Operator operator = securityUtils.getRequiredCurrentOperator();
+
+        Transaction transaction = transactionRepository
+                .findDetailByIdAndOperatorId(normalizedTransactionId, operator.getId())
+                .orElseGet(() -> {
+                    if (transactionRepository.existsById(normalizedTransactionId)) {
+                        throw new AppException(ErrorCode.OPERATOR_ACCESS_DENIED);
+                    }
+                    throw new AppException(ErrorCode.TRANSACTION_NOT_FOUND);
+                });
+
+        return transactionMapper.toDetailResponse(transaction);
     }
 
     private TransactionEvaluation evaluate(SubmitTransactionRequest request, Device device, String direction, LocalDateTime now) {
@@ -233,6 +316,31 @@ public class TransactionService implements ITransactionService {
 
     private long toEpochSecond(LocalDateTime dateTime) {
         return dateTime.atZone(ZoneId.systemDefault()).toEpochSecond();
+    }
+
+    private void validateSearchParams(LocalDateTime from, LocalDateTime to, Long routeId, Long stationId,
+                                      Long deviceId, int page, int size) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new AppException(ErrorCode.INVALID_PAGE_REQUEST);
+        }
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new AppException(ErrorCode.INVALID_TRANSACTION_TIME_RANGE);
+        }
+        validateOptionalPositiveId(routeId, ErrorCode.INVALID_ROUTE_ID);
+        validateOptionalPositiveId(stationId, ErrorCode.INVALID_STATION_ID);
+        validateOptionalPositiveId(deviceId, ErrorCode.INVALID_DEVICE_ID);
+    }
+
+    private void validateOptionalPositiveId(Long id, ErrorCode errorCode) {
+        if (id != null && id <= 0) {
+            throw new AppException(errorCode);
+        }
+    }
+
+    private void validateTransactionId(String transactionId) {
+        if (transactionId == null || transactionId.length() > 36) {
+            throw new AppException(ErrorCode.INVALID_TRANSACTION_ID);
+        }
     }
 
 }

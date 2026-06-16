@@ -10,6 +10,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.List;
 
 @Data
 @Builder
@@ -21,6 +22,8 @@ public class AfcUserDetails implements UserDetails {
     String id;
     String username;
     String operatorCode;
+    List<String> roles;
+    List<Long> stationIds;
     Collection<? extends GrantedAuthority> authorities;
 
     @Override

@@ -3,6 +3,7 @@ package com.vdt.afc_ops_service.security.util;
 import com.vdt.afc_ops_service.common.exception.AppException;
 import com.vdt.afc_ops_service.common.exception.ErrorCode;
 import com.vdt.afc_ops_service.common.util.SearchFilterUtil;
+import com.vdt.afc_ops_service.constant.PredefinedAuthRole;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.repository.OperatorRepository;
 import com.vdt.afc_ops_service.security.entity.AfcUserDetails;
@@ -81,6 +82,41 @@ public class SecurityUtils {
 
         return authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
+                .toList();
+    }
+
+    public static boolean hasCurrentRole(String roleName) {
+        String normalizedRoleName = SearchFilterUtil.normalizeUppercase(roleName);
+        if (normalizedRoleName == null) {
+            return false;
+        }
+        AfcUserDetails user = getCurrentUser();
+        boolean hasRoleClaim = user != null
+                && user.getRoles() != null
+                && user.getRoles().stream()
+                .map(SearchFilterUtil::normalizeUppercase)
+                .anyMatch(normalizedRoleName::equals);
+        return hasRoleClaim || getCurrentAuthorities().stream()
+                .map(SearchFilterUtil::normalizeUppercase)
+                .anyMatch(normalizedRoleName::equals);
+    }
+
+    public static boolean isCurrentStationOperator() {
+        return hasCurrentRole(PredefinedAuthRole.STATION_OPERATOR);
+    }
+
+    public static boolean isCurrentOperatorManager() {
+        return hasCurrentRole(PredefinedAuthRole.OPERATOR_MANAGER);
+    }
+
+    public static List<Long> getCurrentStationIds() {
+        AfcUserDetails user = getCurrentUser();
+        if (user == null || user.getStationIds() == null) {
+            return List.of();
+        }
+        return user.getStationIds().stream()
+                .filter(stationId -> stationId != null && stationId > 0)
+                .distinct()
                 .toList();
     }
 

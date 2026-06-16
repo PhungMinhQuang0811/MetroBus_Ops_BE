@@ -41,19 +41,32 @@ public class AuthPermissionSyncPublisher {
     }
 
     public void publishOperatorManagerRolePermissions() {
+        publishDefaultRolePermissions();
+    }
+
+    public void publishDefaultRolePermissions() {
         Map<String, Object> message = Map.of(
                 "source", "afc-ops-service",
-                "rolePermissions", List.of(Map.of(
-                        "roleName", PredefinedAuthRole.OPERATOR_MANAGER,
-                        "permissions", List.of(
-                                PredefinedAfcPermission.MASTER_DATA_READ,
-                                PredefinedAfcPermission.MASTER_DATA_WRITE
+                "rolePermissions", List.of(
+                        Map.of(
+                                "roleName", PredefinedAuthRole.OPERATOR_MANAGER,
+                                "permissions", List.of(
+                                        PredefinedAfcPermission.MASTER_DATA_READ,
+                                        PredefinedAfcPermission.MASTER_DATA_WRITE,
+                                        PredefinedAfcPermission.TRANSACTION_READ
+                                )
+                        ),
+                        Map.of(
+                                "roleName", PredefinedAuthRole.STATION_OPERATOR,
+                                "permissions", List.of(
+                                        PredefinedAfcPermission.TRANSACTION_READ
+                                )
                         )
-                ))
+                )
         );
 
         publish(message);
-        log.info("Published AFC role permissions sync message for {}", PredefinedAuthRole.OPERATOR_MANAGER);
+        log.info("Published AFC default role permissions sync message");
     }
 
     private void publish(Map<String, Object> message) {

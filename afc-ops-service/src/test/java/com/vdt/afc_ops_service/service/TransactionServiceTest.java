@@ -24,21 +24,26 @@ import com.vdt.afc_ops_service.repository.CardRepository;
 import com.vdt.afc_ops_service.repository.DeviceRepository;
 import com.vdt.afc_ops_service.repository.EntitlementRepository;
 import com.vdt.afc_ops_service.repository.TicketRepository;
+import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.Impl.TransactionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -66,12 +71,16 @@ class TransactionServiceTest {
     @Mock
     DynamicQrSessionStore dynamicQrSessionStore;
 
+    @Mock
+    SecurityUtils securityUtils;
+
     TransactionService service;
 
     @BeforeEach
     void setUp() {
         service = new TransactionService(deviceRepository, cardRepository, ticketRepository,
-                entitlementRepository, transactionRepository, dynamicQrSessionStore, new TransactionMapper());
+                entitlementRepository, transactionRepository, dynamicQrSessionStore, new TransactionMapper(),
+                securityUtils);
         lenient().when(transactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -467,6 +476,129 @@ class TransactionServiceTest {
         verify(transactionRepository, never()).save(any());
     }
 
+    @Test
+    void searchTransactions_ReturnsMappedPageInCurrentOperatorScope() {
+        Operator operator = operator();
+        Transaction transaction = transaction("TX-000001", activeDevice(PredefinedDeviceDirection.ENTRY));
+        when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator);
+        when(transactionRepository.searchTransactions(eq(1L), any(), any(),
+                 any(),  any(),  any(),
+                 any(),  any(),  any(),
+                 any(),  any(),  any(),
+                 any(),  any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(transaction), Pageable.ofSize(20), 1));
+
+        var response = service.searchTransactions(
+                LocalDateTime.of(2026, 6, 15, 0, 0),
+                LocalDateTime.of(2026, 6, 15, 23, 59),
+                1L,
+                1L,
+                1L,
+                "CARD-000001",
+                "TICKET-000001",
+                null,
+                "tap_in",
+                "open_gate",
+                "valid",
+                "pending",
+                null,
+                0,
+                20
+        );
+
+        assertEquals(1, response.getTotalElements());
+        assertEquals("TX-000001", response.getItems().get(0).getId());
+        assertEquals("ST-001", response.getItems().get(0).getStationCode());
+        assertEquals("GATE-001", response.getItems().get(0).getDeviceCode());
+        assertEquals("CARD-000001", response.getItems().get(0).getCardId());
+    }
+
+    @Test
+    void searchTransactions_InvalidTimeRange_ThrowsInvalidTransactionTimeRange() {
+        when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator());
+
+        AppException exception = assertThrows(AppException.class, () -> service.searchTransactions(
+                LocalDateTime.of(2026, 6, 16, 0, 0),
+                LocalDateTime.of(2026, 6, 15, 0, 0),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                0,
+                20
+        ));
+
+        assertEquals(ErrorCode.INVALID_TRANSACTION_TIME_RANGE, exception.getErrorCode());
+        verify(transactionRepository, never()).searchTransactions(any(), any(), any(),
+                 any(),  any(),  any(),
+                 any(),  any(),  any(),
+                 any(),  any(),  any(),
+                 any(),  any(), any(Pageable.class));
+    }
+
+    @Test
+    void searchTransactions_InvalidPage_ThrowsInvalidPageRequest() {
+        when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator());
+
+        AppException exception = assertThrows(AppException.class, () -> service.searchTransactions(
+                null, null, null, null, null, null, null, null, null,
+                null, null, null, null, 0, 101
+        ));
+
+        assertEquals(ErrorCode.INVALID_PAGE_REQUEST, exception.getErrorCode());
+    }
+
+    @Test
+    void getTransactionDetail_FoundInCurrentOperatorScope_ReturnsDetail() {
+        Operator operator = operator();
+        Transaction transaction = transaction("TX-000001", activeDevice(PredefinedDeviceDirection.ENTRY));
+        when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator);
+        when(transactionRepository.findDetailByIdAndOperatorId("TX-000001", 1L))
+                .thenReturn(Optional.of(transaction));
+
+        var response = service.getTransactionDetail(" TX-000001 ");
+
+        assertEquals("TX-000001", response.getId());
+        assertEquals("HCMC-METRO", response.getOperatorCode());
+        assertEquals("QR_SCANNER_SIMULATOR", response.getDeviceType());
+        assertEquals("ENTRY", response.getDeviceDirection());
+        assertEquals("UNUSED", response.getTicketUsageStatus());
+        assertEquals(Boolean.FALSE, response.getRawEventAvailable());
+    }
+
+    @Test
+    void getTransactionDetail_NotFound_ThrowsTransactionNotFound() {
+        when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator());
+        when(transactionRepository.findDetailByIdAndOperatorId("TX-404", 1L))
+                .thenReturn(Optional.empty());
+        when(transactionRepository.existsById("TX-404")).thenReturn(false);
+
+        AppException exception = assertThrows(AppException.class,
+                () -> service.getTransactionDetail("TX-404"));
+
+        assertEquals(ErrorCode.TRANSACTION_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    void getTransactionDetail_ExistsOutsideOperatorScope_ThrowsAccessDenied() {
+        when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator());
+        when(transactionRepository.findDetailByIdAndOperatorId("TX-002", 1L))
+                .thenReturn(Optional.empty());
+        when(transactionRepository.existsById("TX-002")).thenReturn(true);
+
+        AppException exception = assertThrows(AppException.class,
+                () -> service.getTransactionDetail("TX-002"));
+
+        assertEquals(ErrorCode.OPERATOR_ACCESS_DENIED, exception.getErrorCode());
+    }
+
     private Transaction savedTransaction() {
         ArgumentCaptor<Transaction> captor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository).save(captor.capture());
@@ -502,15 +634,9 @@ class TransactionServiceTest {
     }
 
     private Device activeDevice(String direction) {
-        Operator operator = Operator.builder()
-                .id(1L)
-                .operatorCode("OP-001")
-                .operatorName("Operator")
-                .status("ACTIVE")
-                .build();
         Route route = Route.builder()
                 .id(1L)
-                .operator(operator)
+                .operator(operator())
                 .routeCode("METRO-001")
                 .routeName("Metro Line 1")
                 .transportType("METRO")
@@ -532,6 +658,42 @@ class TransactionServiceTest {
                 .deviceType("QR_SCANNER_SIMULATOR")
                 .direction(direction)
                 .status(PredefinedDeviceStatus.ACTIVE)
+                .build();
+    }
+
+    private Operator operator() {
+        return Operator.builder()
+                .id(1L)
+                .operatorCode("HCMC-METRO")
+                .operatorName("HCMC Metro")
+                .status("ACTIVE")
+                .build();
+    }
+
+    private Transaction transaction(String transactionId, Device device) {
+        Card card = activeCard("CARD-000001");
+        Ticket ticket = ticket("TICKET-000001", "CARD-000001", PredefinedLevel5BusinessSync.UNUSED);
+        ticket.setCard(card);
+        return Transaction.builder()
+                .id(transactionId)
+                .eventId(transactionId)
+                .operator(device.getStation().getRoute().getOperator())
+                .route(device.getStation().getRoute())
+                .station(device.getStation())
+                .device(device)
+                .mediaType("VIRTUAL_QR")
+                .card(card)
+                .ticket(ticket)
+                .qrId("QR-000001")
+                .qrPayloadHash("hash")
+                .tapType("TAP_IN")
+                .occurredAt(LocalDateTime.of(2026, 6, 15, 10, 21, 5))
+                .receivedAt(LocalDateTime.of(2026, 6, 15, 10, 21, 6))
+                .decision(PredefinedTransactionDecision.OPEN_GATE)
+                .reason(PredefinedTransactionReason.VALID)
+                .syncStatus("PENDING")
+                .createdAt(LocalDateTime.of(2026, 6, 15, 10, 21, 6))
+                .updatedAt(LocalDateTime.of(2026, 6, 15, 10, 21, 6))
                 .build();
     }
 
@@ -577,4 +739,5 @@ class TransactionServiceTest {
                 .syncedAt(LocalDateTime.now())
                 .build();
     }
+
 }

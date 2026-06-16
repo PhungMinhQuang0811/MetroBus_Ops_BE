@@ -2300,7 +2300,7 @@ Response:
 
 #### API-AFC-017 - Search Transactions
 
-`GET /afc-ops/search-transactions?from=&to=&routeId=&stationId=&deviceId=&cardId=&ticketId=&entitlementId=&decision=&syncStatus=&ticketProcessingStatus=&page=0&size=20`
+`GET /transaction/search-transactions?from=&to=&routeId=&stationId=&deviceId=&cardId=&ticketId=&entitlementId=&tapType=&decision=&reason=&syncStatus=&ticketProcessingStatus=&page=0&size=20`
 
 Permission: `TRANSACTION_READ`.
 
@@ -2316,7 +2316,11 @@ Response:
         "id": "uuid",
         "eventId": "QR-BT-001-20260604-000001",
         "routeId": 1,
+        "routeCode": "METRO-001",
+        "routeName": "Metro Line 1",
         "stationId": 1,
+        "stationCode": "ST-001",
+        "stationName": "Ben Thanh",
         "deviceId": 10,
         "deviceCode": "QR-BT-001",
         "mediaType": "VIRTUAL_QR",
@@ -2343,7 +2347,7 @@ Response:
 
 #### API-AFC-018 - Get Transaction Detail
 
-`GET /afc-ops/get-transaction-detail?transactionId={transactionId}`
+`GET /transaction/get-transaction-detail?transactionId={transactionId}`
 
 Permission: `TRANSACTION_READ`.
 
@@ -2357,17 +2361,30 @@ Response:
     "id": "uuid",
     "eventId": "QR-BT-001-20260604-000001",
     "operatorId": 1,
+    "operatorCode": "HCMC-METRO",
+    "operatorName": "HCMC Metro",
     "routeId": 1,
+    "routeCode": "METRO-001",
+    "routeName": "Metro Line 1",
     "stationId": 1,
+    "stationCode": "ST-001",
+    "stationName": "Ben Thanh",
     "deviceId": 10,
     "deviceCode": "QR-BT-001",
+    "deviceType": "QR_SCANNER_SIMULATOR",
+    "deviceDirection": "ENTRY",
     "mediaType": "VIRTUAL_QR",
     "cardId": "CARD-000001",
+    "cardUid": "04AABBCCDD",
+    "cardStatus": "ACTIVE",
     "ticketId": null,
+    "ticketUsageStatus": null,
     "entitlementId": "ENT-000001",
+    "entitlementStatus": "ACTIVE",
     "qrId": "QR-SESSION-000001",
     "qrPayloadHash": "sha256-qr-payload",
     "tapType": "TAP_IN",
+    "journeyRef": null,
     "occurredAt": "2026-06-04T10:05:00+07:00",
     "receivedAt": "2026-06-04T10:05:01+07:00",
     "decision": "OPEN_GATE",
@@ -2375,12 +2392,17 @@ Response:
     "syncStatus": "PENDING",
     "ticketProcessingStatus": null,
     "batchId": null,
-    "rawEvent": {
-      "deviceSequence": 1001
-    }
+    "rawEventRef": null,
+    "rawEventAvailable": false,
+    "ticketUsageResultAvailable": false,
+    "auditAvailable": false,
+    "createdAt": "2026-06-04T10:05:01+07:00",
+    "updatedAt": "2026-06-04T10:05:01+07:00"
   }
 }
 ```
+
+UC11 core lấy dữ liệu từ RDBMS. Các tab `Raw device event`, `Ticket usage result`, `Audit liên quan` sẽ đọc MongoDB sau; hiện API trả các flag `*Available`/`rawEventRef` để FE hiển thị empty state hoặc disable tab.
 
 ### UC13 - Theo Dõi Incident Thiết Bị
 

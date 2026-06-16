@@ -29,6 +29,7 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -54,6 +55,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String accountId = signedJWT.getJWTClaimsSet().getSubject();
                 String username = signedJWT.getJWTClaimsSet().getStringClaim("username");
                 String operatorCode = signedJWT.getJWTClaimsSet().getStringClaim("operatorCode");
+                List<String> roles = resolveStringListClaim(signedJWT, "roles");
+                List<Long> stationIds = resolveLongListClaim(signedJWT, "stationIds");
 
                 if (tokenStatusService.isAccountDisabled(accountId)) {
                     throw new AppException(ErrorCode.ACCOUNT_DISABLED);
@@ -67,6 +70,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .id(accountId)
                         .username(username)
                         .operatorCode(operatorCode)
+                        .roles(roles)
+                        .stationIds(stationIds)
                         .authorities(authorities)
                         .build();
 
@@ -114,5 +119,45 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 .filter(StringUtils::hasText)
                 .map(SimpleGrantedAuthority::new)
                 .toList();
+    }
+
+    private List<String> resolveStringListClaim(SignedJWT signedJWT, String claimName) throws ParseException {
+        Object claim = signedJWT.getJWTClaimsSet().getClaim(claimName);
+        if (claim instanceof List<?> values) {
+            return values.stream()
+                    .map(String::valueOf)
+                    .filter(StringUtils::hasText)
+                    .toList();
+        }
+        String singleValue = signedJWT.getJWTClaimsSet().getStringClaim(claimName);
+        if (!StringUtils.hasText(singleValue)) {
+            return List.of();
+        }
+        return Arrays.stream(singleValue.split("\\s+|,"))
+                .filter(StringUtils::hasText)
+                .toList();
+    }
+
+    private List<Long> resolveLongListClaim(SignedJWT signedJWT, String claimName) throws ParseException {
+        Object claim = signedJWT.getJWTClaimsSet().getClaim(claimName);
+        if (!(claim instanceof List<?> values)) {
+            return List.of();
+        }
+        return values.stream()
+                .map(this::toLong)
+                .filter(value -> value != null && value > 0)
+                .distinct()
+                .toList();
+    }
+
+    private Long toLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }
