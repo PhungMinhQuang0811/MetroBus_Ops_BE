@@ -52,7 +52,7 @@ class TransactionControllerTest {
                 .serverTime(LocalDateTime.of(2026, 6, 13, 17, 30))
                 .build());
 
-        mockMvc.perform(post("/submit-tap-event")
+        mockMvc.perform(post("/transaction/submit-tap-event")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -74,7 +74,7 @@ class TransactionControllerTest {
 
     @Test
     void submitTransaction_MissingQrPayload_ReturnsBadRequest() throws Exception {
-        mockMvc.perform(post("/submit-tap-event")
+        mockMvc.perform(post("/transaction/submit-tap-event")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -107,7 +107,7 @@ class TransactionControllerTest {
                         .totalPages(1)
                         .build());
 
-        mockMvc.perform(get("/search-transactions")
+        mockMvc.perform(get("/transaction/search-transactions")
                         .param("from", "2026-06-15T00:00:00")
                         .param("to", "2026-06-15T23:59:00")
                         .param("routeId", "1")
@@ -142,7 +142,7 @@ class TransactionControllerTest {
                         .rawEventAvailable(false)
                         .build());
 
-        mockMvc.perform(get("/get-transaction-detail")
+        mockMvc.perform(get("/transaction/get-transaction-detail")
                         .param("transactionId", "TX-000001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.id").value("TX-000001"))

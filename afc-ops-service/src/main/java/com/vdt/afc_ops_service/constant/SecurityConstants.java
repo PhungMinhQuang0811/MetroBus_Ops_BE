@@ -34,7 +34,9 @@ public final class SecurityConstants {
             entry("/device/preview-import-devices", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/device/confirm-import-devices", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/search-transactions", PredefinedAfcPermission.TRANSACTION_READ),
-            entry("/get-transaction-detail", PredefinedAfcPermission.TRANSACTION_READ)
+            entry("/get-transaction-detail", PredefinedAfcPermission.TRANSACTION_READ),
+            entry("/batch/create-batch", PredefinedAfcPermission.BATCH_WRITE),
+            entry("/batch/list-batches", PredefinedAfcPermission.BATCH_READ)
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {

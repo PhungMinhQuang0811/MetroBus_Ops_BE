@@ -85,41 +85,6 @@ public class SecurityUtils {
                 .toList();
     }
 
-    public static boolean hasCurrentRole(String roleName) {
-        String normalizedRoleName = SearchFilterUtil.normalizeUppercase(roleName);
-        if (normalizedRoleName == null) {
-            return false;
-        }
-        AfcUserDetails user = getCurrentUser();
-        boolean hasRoleClaim = user != null
-                && user.getRoles() != null
-                && user.getRoles().stream()
-                .map(SearchFilterUtil::normalizeUppercase)
-                .anyMatch(normalizedRoleName::equals);
-        return hasRoleClaim || getCurrentAuthorities().stream()
-                .map(SearchFilterUtil::normalizeUppercase)
-                .anyMatch(normalizedRoleName::equals);
-    }
-
-    public static boolean isCurrentStationOperator() {
-        return hasCurrentRole(PredefinedAuthRole.STATION_OPERATOR);
-    }
-
-    public static boolean isCurrentOperatorManager() {
-        return hasCurrentRole(PredefinedAuthRole.OPERATOR_MANAGER);
-    }
-
-    public static List<Long> getCurrentStationIds() {
-        AfcUserDetails user = getCurrentUser();
-        if (user == null || user.getStationIds() == null) {
-            return List.of();
-        }
-        return user.getStationIds().stream()
-                .filter(stationId -> stationId != null && stationId > 0)
-                .distinct()
-                .toList();
-    }
-
     public static boolean isAuthenticated() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return authentication != null && authentication.isAuthenticated()

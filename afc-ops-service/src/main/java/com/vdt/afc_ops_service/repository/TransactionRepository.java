@@ -4,6 +4,7 @@ import com.vdt.afc_ops_service.entity.Transaction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -87,4 +88,28 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
                                                       @Param("operatorId") Long operatorId);
 
     boolean existsById(String transactionId);
+
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+            "WHERE t.operator.id = :operatorId " +
+            "AND t.syncStatus = :syncStatus " +
+            "AND t.batchId IS NULL " +
+            "AND t.occurredAt >= :fromTime " +
+            "AND t.occurredAt <= :toTime")
+    long countEligibleForBatch(@Param("operatorId") Long operatorId,
+                               @Param("syncStatus") String syncStatus,
+                               @Param("fromTime") LocalDateTime fromTime,
+                               @Param("toTime") LocalDateTime toTime);
+
+    @Modifying
+    @Query("UPDATE Transaction t SET t.batchId = :batchId " +
+            "WHERE t.operator.id = :operatorId " +
+            "AND t.syncStatus = :syncStatus " +
+            "AND t.batchId IS NULL " +
+            "AND t.occurredAt >= :fromTime " +
+            "AND t.occurredAt <= :toTime")
+    int assignBatchToEligibleTransactions(@Param("batchId") String batchId,
+                                          @Param("operatorId") Long operatorId,
+                                          @Param("syncStatus") String syncStatus,
+                                          @Param("fromTime") LocalDateTime fromTime,
+                                          @Param("toTime") LocalDateTime toTime);
 }

@@ -2734,7 +2734,7 @@ Response:
 
 #### API-AFC-028 - Create Batch
 
-`POST /afc-ops/create-batch`
+`POST /batch/create-batch`
 
 Permission: `BATCH_WRITE`.
 
@@ -2742,10 +2742,12 @@ Request:
 
 ```json
 {
-  "fromTime": "2026-06-04T00:00:00+07:00",
-  "toTime": "2026-06-04T23:59:59+07:00"
+  "fromTime": "2026-06-04T00:00:00",
+  "toTime": "2026-06-04T23:59:59"
 }
 ```
+
+> Lưu ý: `fromTime`/`toTime` là `LocalDateTime` theo định dạng ISO không kèm offset/`Z` (ví dụ `2026-06-04T00:00:00`). Nếu gửi kèm offset (`+07:00`) hoặc hậu tố `Z`, Jackson không parse được và trả `2000 - Request body is invalid`. Service hiểu thời gian theo timezone `Asia/Ho_Chi_Minh`.
 
 Response:
 
@@ -2771,9 +2773,24 @@ Luồng:
 3. Gắn `batch_id` vào transaction.
 4. Không gửi Cấp 5 ở bước này.
 
+Lỗi chính:
+
+| Code | Message | HTTP |
+| --- | --- | --- |
+| `2000` | Request body is invalid (body sai cú pháp JSON, sai kiểu, hoặc datetime kèm offset/`Z`) | 400 |
+| `2000` | fromTime is required (thiếu `fromTime`) | 400 |
+| `2000` | toTime is required (thiếu `toTime`) | 400 |
+| `2020` | Batch from time must be before or equal to to time (`fromTime` > `toTime`) | 400 |
+| `3025` | No eligible transactions found for the selected time range (không có transaction `PENDING` trong khoảng) | 400 |
+| `3003` | Operator not found (operator scope không tồn tại) | 404 |
+| `4002` | Unauthenticated access (chưa đăng nhập / token không hợp lệ) | 401 |
+| `4007` | You do not have permission to access this resource (thiếu permission `BATCH_WRITE`) | 403 |
+| `4012` | Operator scope is required (account chưa gắn operator scope) | 403 |
+| `4000` | Uncategorized error (lỗi hệ thống ngoài dự kiến) | 500 |
+
 #### API-AFC-029 - List Batches
 
-`GET /afc-ops/list-batches?status=&from=&to=&page=0&size=20`
+`GET /batch/list-batches?status=&from=&to=&page=0&size=20`
 
 Permission: `BATCH_READ`.
 
@@ -2805,11 +2822,26 @@ Response:
 }
 ```
 
+Lỗi chính:
+
+| Code | Message | HTTP |
+| --- | --- | --- |
+| `2000` | from is required / to is required (query param sai định dạng datetime ISO) | 400 |
+| `2001` | Page must be >= 0 and size must be between 1 and 100 (`page` < 0, hoặc `size` < 1, hoặc `size` > 100) | 400 |
+| `2020` | Batch from time must be before or equal to to time (`from` > `to` khi cả hai cùng có) | 400 |
+| `3003` | Operator not found (operator scope không tồn tại) | 404 |
+| `4002` | Unauthenticated access (chưa đăng nhập / token không hợp lệ) | 401 |
+| `4007` | You do not have permission to access this resource (thiếu permission `BATCH_READ`) | 403 |
+| `4012` | Operator scope is required (account chưa gắn operator scope) | 403 |
+| `4000` | Uncategorized error (lỗi hệ thống ngoài dự kiến) | 500 |
+
+> Lưu ý: `status` là filter tùy chọn, không phân biệt hoa thường (được chuẩn hóa về uppercase). `from`/`to` ở dạng query param dùng định dạng ISO datetime (ví dụ `2026-06-04T00:00:00`); nếu bỏ trống sẽ mặc định lấy toàn bộ khoảng thời gian.
+
 ### UC20 - Gửi Batch Dữ Liệu Lên Cấp 5
 
 #### API-AFC-030 - Submit Batch To Level 5
 
-`POST /afc-ops/submit-batch-to-level5/{batchId}`
+`POST /batch/submit-batch-to-level5/{batchId}`
 
 Permission: `BATCH_WRITE`.
 
