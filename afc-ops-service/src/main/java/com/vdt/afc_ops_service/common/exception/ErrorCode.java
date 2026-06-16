@@ -70,6 +70,7 @@ public enum ErrorCode {
     TRANSACTION_NOT_FOUND(3023, "Transaction not found", HttpStatus.NOT_FOUND),
     BATCH_NOT_FOUND(3024, "Batch not found", HttpStatus.NOT_FOUND),
     BATCH_NO_ELIGIBLE_TRANSACTIONS(3025, "No eligible transactions found for the selected time range", HttpStatus.BAD_REQUEST),
+    DEVICE_DISABLED(3026, "Device is disabled", HttpStatus.FORBIDDEN),
 
     /**
      * Range 4xxx: Security, Authentication & System errors
@@ -80,7 +81,8 @@ public enum ErrorCode {
     ACCESS_DENIED(4007, "You do not have permission to access this resource", HttpStatus.FORBIDDEN),
     INVALID_CSRF_TOKEN(4009, "Missing or invalid CSRF token", HttpStatus.FORBIDDEN),
     OPERATOR_SCOPE_REQUIRED(4012, "Operator scope is required", HttpStatus.FORBIDDEN),
-    OPERATOR_ACCESS_DENIED(4013, "You do not have permission to access data from another operator", HttpStatus.FORBIDDEN);
+    OPERATOR_ACCESS_DENIED(4013, "You do not have permission to access data from another operator", HttpStatus.FORBIDDEN),
+    DEVICE_AUTH_FAILED(4014, "Device authentication failed", HttpStatus.UNAUTHORIZED);
 
     int code;
     String message;
