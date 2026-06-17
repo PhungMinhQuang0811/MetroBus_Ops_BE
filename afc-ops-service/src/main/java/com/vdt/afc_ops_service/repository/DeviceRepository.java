@@ -55,4 +55,26 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
                                @Param("status") String status,
                                @Param("keywordPattern") String keywordPattern,
                                Pageable pageable);
+
+    @Query(
+            value = "SELECT d FROM Device d " +
+                    "JOIN d.station s " +
+                    "JOIN s.route r " +
+                    "WHERE r.operator.id = :operatorId " +
+                    "AND (:routeId IS NULL OR r.id = :routeId) " +
+                    "AND (:stationId IS NULL OR s.id = :stationId) " +
+                    "AND (:status IS NULL OR d.status = :status)",
+            countQuery = "SELECT COUNT(d) FROM Device d " +
+                    "JOIN d.station s " +
+                    "JOIN s.route r " +
+                    "WHERE r.operator.id = :operatorId " +
+                    "AND (:routeId IS NULL OR r.id = :routeId) " +
+                    "AND (:stationId IS NULL OR s.id = :stationId) " +
+                    "AND (:status IS NULL OR d.status = :status)"
+    )
+    Page<Device> searchDeviceStatus(@Param("operatorId") Long operatorId,
+                                    @Param("routeId") Long routeId,
+                                    @Param("stationId") Long stationId,
+                                    @Param("status") String status,
+                                    Pageable pageable);
 }

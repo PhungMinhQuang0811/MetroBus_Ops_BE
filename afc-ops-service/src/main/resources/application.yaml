@@ -42,8 +42,8 @@ app:
   domain-name: localhost
   timezone: ${APP_TIMEZONE}
   init:
-    enabled: false
-    sync-auth-permissions-enabled: false
+    enabled: true
+    sync-auth-permissions-enabled: true
   message-broker:
     auth-permission-sync:
       exchange: auth.ops

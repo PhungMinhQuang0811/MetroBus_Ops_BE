@@ -71,6 +71,7 @@ public enum ErrorCode {
     BATCH_NOT_FOUND(3024, "Batch not found", HttpStatus.NOT_FOUND),
     BATCH_NO_ELIGIBLE_TRANSACTIONS(3025, "No eligible transactions found for the selected time range", HttpStatus.BAD_REQUEST),
     DEVICE_DISABLED(3026, "Device is disabled", HttpStatus.FORBIDDEN),
+    INCIDENT_NOT_FOUND(3027, "Incident not found", HttpStatus.NOT_FOUND),
 
     /**
      * Range 4xxx: Security, Authentication & System errors

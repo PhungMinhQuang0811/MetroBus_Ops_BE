@@ -55,13 +55,19 @@ public class AuthPermissionSyncPublisher {
                                         PredefinedAfcPermission.MASTER_DATA_WRITE,
                                         PredefinedAfcPermission.TRANSACTION_READ,
                                         PredefinedAfcPermission.BATCH_READ,
-                                        PredefinedAfcPermission.BATCH_WRITE
+                                        PredefinedAfcPermission.BATCH_WRITE,
+                                        PredefinedAfcPermission.DEVICE_MONITOR_READ,
+                                        PredefinedAfcPermission.INCIDENT_READ,
+                                        PredefinedAfcPermission.DEVICE_READ
                                 )
                         ),
                         Map.of(
                                 "roleName", PredefinedAuthRole.STATION_OPERATOR,
                                 "permissions", List.of(
-                                        PredefinedAfcPermission.TRANSACTION_READ
+                                        PredefinedAfcPermission.TRANSACTION_READ,
+                                        PredefinedAfcPermission.DEVICE_MONITOR_READ,
+                                        PredefinedAfcPermission.INCIDENT_READ,
+                                        PredefinedAfcPermission.DEVICE_READ
                                 )
                         )
                 )

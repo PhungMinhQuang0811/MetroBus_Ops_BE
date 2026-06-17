@@ -1,4 +1,4 @@
-﻿# API Contract AFC Cấp 3 Và Cấp 4
+# API Contract AFC Cấp 3 Và Cấp 4
 
 Tài liệu này mô tả API contract tạm chốt cho scope AFC Cấp 3/Cấp 4, bám theo:
 
@@ -24,7 +24,7 @@ Ví dụ:
 
 - Dùng `/account/create-account` thay vì `POST /auth/accounts`.
 - Dùng `/route/create-route` thay vì `POST /route/routes`.
-- Dùng `/afc-ops/submit-tap-event` thay vì `POST /afc-ops/device-api/tap-events`.
+- Dùng `/transaction/submit-tap-event` thay vì `POST /afc-ops/device-api/tap-events`.
 
 ### 1.2. Response Chuẩn
 
@@ -2168,7 +2168,7 @@ Luồng:
 
 #### API-AFC-014 - Submit Tap Event
 
-`POST /afc-ops/submit-tap-event`
+`POST /transaction/submit-tap-event`
 
 Auth MVP: `deviceCode` + `deviceSecret` trong request body.
 
@@ -2296,6 +2296,43 @@ Response:
 }
 ```
 
+#### API-AFC-016B - Get Device Heartbeat History
+
+`GET /afc-ops/get-device-heartbeats?deviceId={deviceId}&page=0&size=20`
+
+Permission: `DEVICE_MONITOR_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "id": "mongo-heartbeat-id",
+        "deviceId": 10,
+        "deviceCode": "QR-BT-001",
+        "stationId": 1,
+        "status": "ACTIVE",
+        "firmwareVersion": "1.0.7",
+        "sentAt": "2026-06-04T10:21:00+07:00",
+        "receivedAt": "2026-06-04T10:21:05+07:00",
+        "payload": {
+          "cpuUsage": 12.5,
+          "memoryUsage": 64.2
+        }
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
 ### UC11 - Tra Cứu Transaction Vận Hành
 
 #### API-AFC-017 - Search Transactions
@@ -2408,7 +2445,7 @@ UC11 core lấy dữ liệu từ RDBMS. Các tab `Raw device event`, `Ticket usa
 
 #### API-AFC-019 - Search Incidents
 
-`GET /afc-ops/search-incidents?from=&to=&stationId=&deviceId=&severity=&incidentType=&page=0&size=20`
+`GET /afc-ops/search-incidents?from=&to=&stationId=&deviceId=&severity=&incidentType=&resolved=&page=0&size=20`
 
 Permission: `INCIDENT_READ`.
 
@@ -2429,13 +2466,52 @@ Response:
         "severity": "HIGH",
         "message": "Gate arm jammed",
         "occurredAt": "2026-06-04T10:10:00+07:00",
-        "receivedAt": "2026-06-04T10:10:02+07:00"
+        "receivedAt": "2026-06-04T10:10:02+07:00",
+        "resolvedAt": null
       }
     ],
     "page": 0,
     "size": 20,
     "totalElements": 1,
     "totalPages": 1
+  }
+}
+```
+
+#### API-AFC-019B - Get Incident Detail
+
+`GET /afc-ops/get-incident/{incidentId}`
+
+Permission: `INCIDENT_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": "mongo-id",
+    "deviceId": 10,
+    "deviceCode": "QR-BT-001",
+    "deviceType": "QR_SCANNER_SIMULATOR",
+    "deviceStatus": "ACTIVE",
+    "stationId": 1,
+    "stationCode": "ST-001",
+    "stationName": "Ben Thanh",
+    "routeId": 1,
+    "routeCode": "METRO-001",
+    "routeName": "Metro Line 1",
+    "incidentType": "GATE_JAMMED",
+    "severity": "HIGH",
+    "message": "Gate arm jammed",
+    "occurredAt": "2026-06-04T10:10:00+07:00",
+    "receivedAt": "2026-06-04T10:10:02+07:00",
+    "resolvedAt": null,
+    "payload": {
+      "barrierErrorCode": "ERR_BARRIER_MOTOR_OVERHEAT",
+      "retryCount": 3
+    }
   }
 }
 ```
@@ -3029,7 +3105,7 @@ Các nghiệp vụ App khác không thuộc `afc-ops-service`. Cấp 3/Cấp 4 c
 - `entitlements`;
 - trạng thái card/blacklist hiện hành.
 
-Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 scan QR và gọi `POST /afc-ops/submit-tap-event`.
+Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 scan QR và gọi `POST /transaction/submit-tap-event`.
 
 ## 11. Luồng API Theo UC
 
@@ -3042,7 +3118,7 @@ Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 sc
 
 ### Luồng B - Thiết Bị Gửi Tap Event
 
-1. Mock Cấp 2 gọi `POST /afc-ops/submit-tap-event`.
+1. Mock Cấp 2 gọi `POST /transaction/submit-tap-event`.
 2. System xác thực device và ghi transaction.
 3. System trả `OPEN_GATE` hoặc `DENY`.
 4. Cấp 4 có thể tra cứu bằng `GET /afc-ops/search-transactions`.
@@ -3077,7 +3153,7 @@ Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 sc
 1. App/C5 tạo card, ticket hoặc entitlement ở hệ sở hữu nghiệp vụ.
 2. C5 đồng bộ read model sang C4 qua RabbitMQ realtime event hoặc snapshot trigger `POST /api/afc/sync*` ở C5.
 3. App gọi `POST /afc-ops/generate-dynamic-qr` để lấy QR payload ngắn hạn từ card đã đồng bộ.
-4. Mock C2 scan QR và gọi `POST /afc-ops/submit-tap-event`.
+4. Mock C2 scan QR và gọi `POST /transaction/submit-tap-event`.
 5. C4 verify QR, card status, ticket/entitlement và blacklist rồi trả `OPEN_GATE` hoặc `DENY`.
 
 ## 12. Error Code Đề Xuất

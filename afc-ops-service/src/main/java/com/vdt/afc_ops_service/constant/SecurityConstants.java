@@ -25,8 +25,8 @@ public final class SecurityConstants {
             entry("/station/disable-station/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/station/preview-import-stations", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/station/confirm-import-stations", PredefinedAfcPermission.MASTER_DATA_WRITE),
-            entry("/device/list-devices", PredefinedAfcPermission.MASTER_DATA_READ),
-            entry("/device/get-device/**", PredefinedAfcPermission.MASTER_DATA_READ),
+            entry("/device/list-devices", PredefinedAfcPermission.DEVICE_READ),
+            entry("/device/get-device/**", PredefinedAfcPermission.DEVICE_READ),
             entry("/device/create-device", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/device/update-device/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
             entry("/device/enable-device/**", PredefinedAfcPermission.MASTER_DATA_WRITE),
@@ -36,7 +36,11 @@ public final class SecurityConstants {
             entry("/search-transactions", PredefinedAfcPermission.TRANSACTION_READ),
             entry("/get-transaction-detail", PredefinedAfcPermission.TRANSACTION_READ),
             entry("/batch/create-batch", PredefinedAfcPermission.BATCH_WRITE),
-            entry("/batch/list-batches", PredefinedAfcPermission.BATCH_READ)
+            entry("/batch/list-batches", PredefinedAfcPermission.BATCH_READ),
+            entry("/afc-ops/get-device-status", PredefinedAfcPermission.DEVICE_MONITOR_READ),
+            entry("/afc-ops/get-device-heartbeats", PredefinedAfcPermission.DEVICE_MONITOR_READ),
+            entry("/afc-ops/search-incidents", PredefinedAfcPermission.INCIDENT_READ),
+            entry("/afc-ops/get-incident/**", PredefinedAfcPermission.INCIDENT_READ)
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {

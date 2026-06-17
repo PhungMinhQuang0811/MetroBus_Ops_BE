@@ -23,12 +23,16 @@ import java.util.Map;
 @CompoundIndexes({
     @CompoundIndex(name = "idx_device_occurred", def = "{'device_id': 1, 'occurred_at': -1}"),
     @CompoundIndex(name = "idx_station_occurred", def = "{'station_id': 1, 'occurred_at': -1}"),
-    @CompoundIndex(name = "idx_severity_occurred", def = "{'severity': 1, 'occurred_at': -1}")
+    @CompoundIndex(name = "idx_severity_occurred", def = "{'severity': 1, 'occurred_at': -1}"),
+    @CompoundIndex(name = "idx_operator_occurred", def = "{'operator_id': 1, 'occurred_at': -1}")
 })
 public class DeviceIncident {
 
     @Id
     private String id;
+
+    @Field("operator_id")
+    private Long operatorId;
 
     @Field("device_id")
     private Long deviceId;

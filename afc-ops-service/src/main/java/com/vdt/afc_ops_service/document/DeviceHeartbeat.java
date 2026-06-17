@@ -22,12 +22,16 @@ import java.util.Map;
 @Builder
 @CompoundIndexes({
     @CompoundIndex(name = "idx_device_received", def = "{'device_id': 1, 'received_at': -1}"),
-    @CompoundIndex(name = "idx_station_received", def = "{'station_id': 1, 'received_at': -1}")
+    @CompoundIndex(name = "idx_station_received", def = "{'station_id': 1, 'received_at': -1}"),
+    @CompoundIndex(name = "idx_operator_received", def = "{'operator_id': 1, 'received_at': -1}")
 })
 public class DeviceHeartbeat {
 
     @Id
     private String id;
+
+    @Field("operator_id")
+    private Long operatorId;
 
     @Field("device_id")
     private Long deviceId;
