@@ -13,6 +13,8 @@ public class PredefinedAfcPermission {
     public static final String BATCH_WRITE = "BATCH_WRITE";
     public static final String DEVICE_MONITOR_READ = "DEVICE_MONITOR_READ";
     public static final String INCIDENT_READ = "INCIDENT_READ";
+    public static final String CONTROL_PACKAGE_READ = "CONTROL_PACKAGE_READ";
+    public static final String CONTROL_PACKAGE_WRITE = "CONTROL_PACKAGE_WRITE";
 
     @Getter
     @RequiredArgsConstructor
@@ -24,7 +26,9 @@ public class PredefinedAfcPermission {
         BATCH_READ(PredefinedAfcPermission.BATCH_READ, "Xem batch dữ liệu vận hành gửi Cấp 5"),
         BATCH_WRITE(PredefinedAfcPermission.BATCH_WRITE, "Tạo và gửi batch dữ liệu vận hành lên Cấp 5"),
         DEVICE_MONITOR_READ(PredefinedAfcPermission.DEVICE_MONITOR_READ, "Theo dõi trạng thái hoạt động thiết bị"),
-        INCIDENT_READ(PredefinedAfcPermission.INCIDENT_READ, "Theo dõi incident thiết bị");
+        INCIDENT_READ(PredefinedAfcPermission.INCIDENT_READ, "Theo dõi incident thiết bị"),
+        CONTROL_PACKAGE_READ(PredefinedAfcPermission.CONTROL_PACKAGE_READ, "Xem gói cấu hình vận hành AFC"),
+        CONTROL_PACKAGE_WRITE(PredefinedAfcPermission.CONTROL_PACKAGE_WRITE, "Tạo, cập nhật và phát hành gói cấu hình vận hành AFC");
 
         private final String name;
         private final String description;

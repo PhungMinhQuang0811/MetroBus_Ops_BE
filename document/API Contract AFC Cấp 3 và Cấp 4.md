@@ -2170,14 +2170,12 @@ Luồng:
 
 `POST /transaction/submit-tap-event`
 
-Auth MVP: `deviceCode` + `deviceSecret` trong request body.
+Auth: `X-Device-Code`, `X-Device-Secret` trong HTTP headers.
 
 Request:
 
 ```json
 {
-  "deviceCode": "GATE-001",
-  "deviceSecret": "device-secret",
   "qrPayload": "AFCQR:v1:QR-SESSION-000001"
 }
 ```
@@ -2201,7 +2199,7 @@ Response:
 
 Luồng:
 
-1. Xác thực device bằng `deviceCode` và `deviceSecret`.
+1. Xác thực device bằng `X-Device-Code` và `X-Device-Secret` truyền trong HTTP headers.
 2. Cấp 4 tự set `occurredAt/receivedAt = now()`.
 3. Kiểm tra device active và lấy direction từ cấu hình device.
 4. Parse `qrId` từ payload dạng `AFCQR:v1:{qrId}`.
@@ -2577,7 +2575,7 @@ UC14 hiện chỉ triển khai phần đồng bộ dữ liệu nền từ C5 qua
 
 #### API-AFC-022 - Create Control Package
 
-`POST /afc-ops/create-control-package`
+`POST /control-package/create`
 
 Permission: `CONTROL_PACKAGE_WRITE`.
 
@@ -2616,9 +2614,79 @@ Ghi chú:
 - Không tạo tay `MEDIA_ACCESS_RULES` toàn mạng ở API này.
 - `MEDIA_ACCESS_RULES` có thể phát sinh từ UC14 khi C4 nhận card status/blacklist qua RabbitMQ từ C5.
 
+#### API-AFC-022A - Update Control Package Draft
+
+`POST /control-package/update/{packageId}`
+
+Permission: `CONTROL_PACKAGE_WRITE`.
+
+Mô tả: Cập nhật dữ liệu payload của gói cấu hình ở trạng thái nháp (`CREATED`). Chỉ áp dụng với gói do Cấp 4 tạo (`LEVEL4_CREATED`) và chưa có bản ghi phát hành (`station_control_syncs`).
+
+Request:
+
+```json
+{
+  "payload": {
+    "maxOfflineSeconds": 90,
+    "allowOfflineValidation": true,
+    "deviceTypes": ["QR_SCANNER_SIMULATOR"]
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 101,
+    "version": 13,
+    "packageType": "DEVICE_CONFIG",
+    "sourceType": "LEVEL4_CREATED",
+    "status": "CREATED",
+    "updatedAt": "2026-06-04T10:30:00+07:00"
+  }
+}
+```
+
+#### API-AFC-022B - Get Control Package Detail
+
+`GET /control-package/get-detail?packageId={packageId}`
+
+Permission: `CONTROL_PACKAGE_READ`.
+
+Mô tả: Lấy thông tin chi tiết bao gồm siêu dữ liệu (metadata) của gói cấu hình và payload chi tiết được tải từ MongoDB.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "id": 101,
+    "version": 13,
+    "packageType": "DEVICE_CONFIG",
+    "sourceType": "LEVEL4_CREATED",
+    "status": "CREATED",
+    "payload": {
+      "maxOfflineSeconds": 90,
+      "allowOfflineValidation": true,
+      "deviceTypes": ["QR_SCANNER_SIMULATOR"]
+    },
+    "createdByAccountId": "3c02cb1d-91b5-4b08-bdf4-f9ef6a575a7c",
+    "createdAt": "2026-06-04T10:20:00+07:00",
+    "updatedAt": "2026-06-04T10:30:00+07:00",
+    "publishedAt": null
+  }
+}
+```
+
 #### API-AFC-023 - List Control Packages
 
-`GET /afc-ops/list-control-packages?packageType=&sourceType=&status=&page=0&size=20`
+`GET /control-package/list?packageType=&sourceType=&status=&page=0&size=20`
 
 Permission: `CONTROL_PACKAGE_READ`.
 
@@ -2653,7 +2721,7 @@ Response:
 
 #### API-AFC-024 - Publish Control Package
 
-`POST /afc-ops/publish-control-package/{packageId}`
+`POST /control-package/publish/{packageId}`
 
 Permission: `CONTROL_PACKAGE_WRITE`.
 
@@ -2696,7 +2764,7 @@ Luồng:
 
 #### API-AFC-025 - Station Pull Pending Packages
 
-`GET /afc-ops/pull-pending-control-packages?stationCode=BEN-THANH&currentVersion=11`
+`GET /control-package/pull-pending?stationCode=BEN-THANH&currentVersion=11`
 
 Auth: Station/device integration credential hoặc service credential nội bộ.
 
@@ -2731,7 +2799,7 @@ Response:
 
 #### API-AFC-026 - Ack Control Package Apply
 
-`POST /afc-ops/ack-control-package-apply/{syncId}`
+`POST /control-package/ack-apply/{syncId}`
 
 Auth: Station/device integration credential hoặc service credential nội bộ.
 
@@ -2754,6 +2822,83 @@ Response:
   "result": {
     "syncId": 500,
     "syncStatus": "APPLIED"
+  }
+}
+```
+
+#### API-AFC-026A - List Station Control Syncs
+
+`GET /control-package/search-syncs?packageType=&version=&stationId=&status=&page=0&size=20`
+
+Permission: `CONTROL_PACKAGE_READ`.
+
+Mô tả: Lấy danh sách phân trang trạng thái áp dụng cấu hình của các trạm Cấp 3 đối với các gói cấu hình.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "syncId": 500,
+        "stationId": 1,
+        "stationCode": "ST-BT",
+        "stationName": "Bến Thành",
+        "packageId": 101,
+        "packageType": "DEVICE_CONFIG",
+        "version": 13,
+        "syncStatus": "FAILED",
+        "retryCount": 2,
+        "lastAttemptAt": "2026-06-04T10:40:00+07:00",
+        "appliedAt": null,
+        "updatedAt": "2026-06-04T10:40:00+07:00",
+        "errorMessage": "Không đọc được payload_ref"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  }
+}
+```
+
+#### API-AFC-026B - Get Station Control Sync Detail
+
+`GET /control-package/get-sync-detail?syncId={syncId}`
+
+Permission: `CONTROL_PACKAGE_READ`.
+
+Mô tả: Lấy thông tin chi tiết về trạng thái áp dụng của một gói cấu hình tại một trạm cụ thể, hữu ích để xem chi tiết log lỗi khi áp dụng thất bại.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "syncId": 500,
+    "stationId": 1,
+    "stationCode": "ST-BT",
+    "stationName": "Bến Thành",
+    "routeId": 1,
+    "routeName": "Metro Line 1",
+    "packageId": 101,
+    "version": 13,
+    "packageType": "DEVICE_CONFIG",
+    "sourceType": "LEVEL4_CREATED",
+    "packageStatus": "PUBLISHED",
+    "syncStatus": "FAILED",
+    "retryCount": 2,
+    "lastAttemptAt": "2026-06-04T10:40:00+07:00",
+    "appliedAt": null,
+    "errorMessage": "Không đọc được payload_ref",
+    "createdAt": "2026-06-04T10:30:00+07:00",
+    "updatedAt": "2026-06-04T10:40:00+07:00"
   }
 }
 ```

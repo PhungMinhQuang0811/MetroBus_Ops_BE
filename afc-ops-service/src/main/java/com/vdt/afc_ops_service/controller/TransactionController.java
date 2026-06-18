@@ -25,9 +25,13 @@ public class TransactionController {
     ITransactionService transactionService;
 
     @PostMapping("/submit-tap-event")
-    public ApiResponse<SubmitTransactionResponse> submitTransaction(@Valid @RequestBody SubmitTransactionRequest request) {
+    public ApiResponse<SubmitTransactionResponse> submitTransaction(
+            @RequestHeader("X-Device-Code") String deviceCode,
+            @RequestHeader("X-Device-Secret") String deviceSecret,
+            @Valid @RequestBody SubmitTransactionRequest request
+    ) {
         return ApiResponse.<SubmitTransactionResponse>builder()
-                .result(transactionService.submit(request))
+                .result(transactionService.submit(deviceCode, deviceSecret, request))
                 .build();
     }
 

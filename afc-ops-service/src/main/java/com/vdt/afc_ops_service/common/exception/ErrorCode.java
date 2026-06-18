@@ -40,6 +40,15 @@ public enum ErrorCode {
     INVALID_TRANSACTION_ID(2018, "Transaction id is invalid", HttpStatus.BAD_REQUEST),
     INVALID_TRANSACTION_TIME_RANGE(2019, "Transaction from time must be before or equal to to time", HttpStatus.BAD_REQUEST),
     INVALID_BATCH_TIME_RANGE(2020, "Batch from time must be before or equal to to time", HttpStatus.BAD_REQUEST),
+    INVALID_CONTROL_PACKAGE_ID(2021, "Control package id is invalid", HttpStatus.BAD_REQUEST),
+    INVALID_CONTROL_PACKAGE_TYPE(2022, "Invalid control package type", HttpStatus.BAD_REQUEST),
+    INVALID_CONTROL_PACKAGE_SOURCE_TYPE(2023, "Invalid control package source type", HttpStatus.BAD_REQUEST),
+    INVALID_CONTROL_PACKAGE_STATUS(2024, "Invalid control package status", HttpStatus.BAD_REQUEST),
+    INVALID_CONTROL_PACKAGE_PAYLOAD(2025, "Control package payload is required", HttpStatus.BAD_REQUEST),
+    INVALID_STATION_LIST(2026, "Station list is required", HttpStatus.BAD_REQUEST),
+    INVALID_CONTROL_SYNC_ID(2027, "Control sync id is invalid", HttpStatus.BAD_REQUEST),
+    INVALID_CONTROL_SYNC_STATUS(2028, "Invalid control sync status", HttpStatus.BAD_REQUEST),
+    INVALID_CONTROL_PACKAGE_VERSION(2029, "Control package version is invalid", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
@@ -72,6 +81,11 @@ public enum ErrorCode {
     BATCH_NO_ELIGIBLE_TRANSACTIONS(3025, "No eligible transactions found for the selected time range", HttpStatus.BAD_REQUEST),
     DEVICE_DISABLED(3026, "Device is disabled", HttpStatus.FORBIDDEN),
     INCIDENT_NOT_FOUND(3027, "Incident not found", HttpStatus.NOT_FOUND),
+    CONTROL_PACKAGE_NOT_FOUND(3028, "Control package not found", HttpStatus.NOT_FOUND),
+    CONTROL_PACKAGE_NOT_EDITABLE(3029, "Control package is not editable", HttpStatus.BAD_REQUEST),
+    CONTROL_PACKAGE_ALREADY_PUBLISHED(3030, "Control package is already published", HttpStatus.BAD_REQUEST),
+    CONTROL_PACKAGE_SYNC_NOT_FOUND(3031, "Control package sync not found", HttpStatus.NOT_FOUND),
+    CONTROL_PACKAGE_PAYLOAD_NOT_FOUND(3032, "Control package payload not found", HttpStatus.NOT_FOUND),
 
     /**
      * Range 4xxx: Security, Authentication & System errors

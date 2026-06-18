@@ -66,12 +66,12 @@ public class TransactionService implements ITransactionService {
 
     @Override
     @Transactional
-    public SubmitTransactionResponse submit(SubmitTransactionRequest request) {
+    public SubmitTransactionResponse submit(String deviceCode, String deviceSecret, SubmitTransactionRequest request) {
         LocalDateTime now = LocalDateTime.now();
-        String deviceCode = SearchFilterUtil.normalize(request.getDeviceCode());
-        Device device = deviceRepository.findByDeviceCode(deviceCode)
+        String normalizedDeviceCode = SearchFilterUtil.normalize(deviceCode);
+        Device device = deviceRepository.findByDeviceCode(normalizedDeviceCode)
                 .orElseThrow(() -> new AppException(ErrorCode.DEVICE_NOT_FOUND));
-        if (!Objects.equals(SearchFilterUtil.normalize(request.getDeviceSecret()), device.getDeviceSecret())) {
+        if (!Objects.equals(SearchFilterUtil.normalize(deviceSecret), device.getDeviceSecret())) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
 

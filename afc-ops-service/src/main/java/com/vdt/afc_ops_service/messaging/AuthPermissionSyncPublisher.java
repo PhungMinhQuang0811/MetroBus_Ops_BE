@@ -58,7 +58,9 @@ public class AuthPermissionSyncPublisher {
                                         PredefinedAfcPermission.BATCH_WRITE,
                                         PredefinedAfcPermission.DEVICE_MONITOR_READ,
                                         PredefinedAfcPermission.INCIDENT_READ,
-                                        PredefinedAfcPermission.DEVICE_READ
+                                        PredefinedAfcPermission.DEVICE_READ,
+                                        PredefinedAfcPermission.CONTROL_PACKAGE_READ,
+                                        PredefinedAfcPermission.CONTROL_PACKAGE_WRITE
                                 )
                         ),
                         Map.of(
@@ -67,7 +69,8 @@ public class AuthPermissionSyncPublisher {
                                         PredefinedAfcPermission.TRANSACTION_READ,
                                         PredefinedAfcPermission.DEVICE_MONITOR_READ,
                                         PredefinedAfcPermission.INCIDENT_READ,
-                                        PredefinedAfcPermission.DEVICE_READ
+                                        PredefinedAfcPermission.DEVICE_READ,
+                                        PredefinedAfcPermission.CONTROL_PACKAGE_READ
                                 )
                         )
                 )

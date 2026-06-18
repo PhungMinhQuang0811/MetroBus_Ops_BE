@@ -40,14 +40,23 @@ public final class SecurityConstants {
             entry("/afc-ops/get-device-status", PredefinedAfcPermission.DEVICE_MONITOR_READ),
             entry("/afc-ops/get-device-heartbeats", PredefinedAfcPermission.DEVICE_MONITOR_READ),
             entry("/afc-ops/search-incidents", PredefinedAfcPermission.INCIDENT_READ),
-            entry("/afc-ops/get-incident/**", PredefinedAfcPermission.INCIDENT_READ)
+            entry("/afc-ops/get-incident/**", PredefinedAfcPermission.INCIDENT_READ),
+            entry("/control-package/create", PredefinedAfcPermission.CONTROL_PACKAGE_WRITE),
+            entry("/control-package/update/**", PredefinedAfcPermission.CONTROL_PACKAGE_WRITE),
+            entry("/control-package/get-detail", PredefinedAfcPermission.CONTROL_PACKAGE_READ),
+            entry("/control-package/list", PredefinedAfcPermission.CONTROL_PACKAGE_READ),
+            entry("/control-package/publish/**", PredefinedAfcPermission.CONTROL_PACKAGE_WRITE),
+            entry("/control-package/search-syncs", PredefinedAfcPermission.CONTROL_PACKAGE_READ),
+            entry("/control-package/get-sync-detail", PredefinedAfcPermission.CONTROL_PACKAGE_READ)
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {
             "/generate-dynamic-qr",
             "/submit-tap-event",
             "/afc-ops/submit-heartbeat",
-            "/afc-ops/submit-device-incident"
+            "/afc-ops/submit-device-incident",
+            "/control-package/pull-pending",
+            "/control-package/ack-apply/**"
     };
 
     private SecurityConstants() {}

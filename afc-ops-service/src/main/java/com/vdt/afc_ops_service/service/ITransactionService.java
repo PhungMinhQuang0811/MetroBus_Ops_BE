@@ -9,7 +9,7 @@ import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemRespo
 import java.time.LocalDateTime;
 
 public interface ITransactionService {
-    SubmitTransactionResponse submit(SubmitTransactionRequest request);
+    SubmitTransactionResponse submit(String deviceCode, String deviceSecret, SubmitTransactionRequest request);
 
     PageResponse<TransactionListItemResponse> searchTransactions(LocalDateTime from, LocalDateTime to,
                                                                  Long routeId, Long stationId, Long deviceId,

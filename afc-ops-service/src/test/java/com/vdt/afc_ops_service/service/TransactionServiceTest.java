@@ -92,7 +92,7 @@ class TransactionServiceTest {
         Ticket ticket = ticket("TICKET-000001", "CARD-000001", PredefinedLevel5BusinessSync.UNUSED);
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001")).thenReturn(Optional.of(ticket));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.OPEN_GATE, response.getDecision());
         assertEquals(PredefinedTransactionReason.VALID, response.getReason());
@@ -116,7 +116,7 @@ class TransactionServiceTest {
         Ticket ticket = ticket("TICKET-000001", "CARD-000001", PredefinedLevel5BusinessSync.IN_USE);
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001")).thenReturn(Optional.of(ticket));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.OPEN_GATE, response.getDecision());
         assertEquals(PredefinedLevel5BusinessSync.USED, ticket.getUsageStatus());
@@ -132,7 +132,7 @@ class TransactionServiceTest {
         when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
                 .thenReturn(Optional.of(entitlement("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.ACTIVE)));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.OPEN_GATE, response.getDecision());
         assertEquals("ENT-000001", savedTransaction().getEntitlement().getId());
@@ -147,7 +147,7 @@ class TransactionServiceTest {
         Ticket ticket = ticket("TICKET-000001", "CARD-000001", PredefinedLevel5BusinessSync.UNUSED);
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001")).thenReturn(Optional.of(ticket));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.OPEN_GATE, response.getDecision());
         verify(dynamicQrSessionStore).markUsed(eq("QR-000001"), any(DynamicQrSession.class));
@@ -157,7 +157,7 @@ class TransactionServiceTest {
     void submit_DeviceNotFound_ThrowsDeviceNotFound() {
         when(deviceRepository.findByDeviceCode("GATE-001")).thenReturn(Optional.empty());
 
-        AppException exception = assertThrows(AppException.class, () -> service.submit(request()));
+        AppException exception = assertThrows(AppException.class, () -> service.submit("GATE-001", "secret", request()));
 
         assertEquals(ErrorCode.DEVICE_NOT_FOUND, exception.getErrorCode());
         verify(transactionRepository, never()).save(any());
@@ -169,7 +169,7 @@ class TransactionServiceTest {
         device.setStatus(PredefinedDeviceStatus.DISABLED);
         mockDevice(device);
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.DENY, response.getDecision());
         assertEquals(PredefinedTransactionReason.DEVICE_DISABLED, response.getReason());
@@ -181,7 +181,7 @@ class TransactionServiceTest {
     void submit_InvalidDirection_Denies() {
         mockDevice(activeDevice(PredefinedDeviceDirection.BOTH));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.DENY, response.getDecision());
         assertEquals(PredefinedTransactionReason.INVALID_DIRECTION, response.getReason());
@@ -191,7 +191,7 @@ class TransactionServiceTest {
     void submit_InvalidQrPayload_Denies() {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
 
-        var response = service.submit(requestWithQr("not-a-qr"));
+        var response = service.submit("GATE-001", "secret", requestWithQr("not-a-qr"));
 
         assertEquals(PredefinedTransactionDecision.DENY, response.getDecision());
         assertEquals(PredefinedTransactionReason.QR_INVALID, response.getReason());
@@ -203,7 +203,7 @@ class TransactionServiceTest {
         when(dynamicQrSessionStore.parseQrId("AFCQR:v1:QR-000001")).thenReturn("QR-000001");
         when(dynamicQrSessionStore.find("QR-000001")).thenReturn(null);
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.DENY, response.getDecision());
         assertEquals(PredefinedTransactionReason.QR_EXPIRED, response.getReason());
@@ -214,7 +214,7 @@ class TransactionServiceTest {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session("CARD-000001", "TICKET-000001", null, false, -1));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.DENY, response.getDecision());
         assertEquals(PredefinedTransactionReason.QR_EXPIRED, response.getReason());
@@ -226,7 +226,7 @@ class TransactionServiceTest {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session("CARD-000001", "TICKET-000001", null, true, 60));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.DENY, response.getDecision());
         assertEquals(PredefinedTransactionReason.QR_REPLAYED, response.getReason());
@@ -237,7 +237,7 @@ class TransactionServiceTest {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session(null, "TICKET-000001", null, false, 60));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.UNKNOWN_MEDIA, response.getReason());
     }
@@ -248,7 +248,7 @@ class TransactionServiceTest {
         mockQrSession(session("CARD-000001", "TICKET-000001", null, false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.empty());
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.UNKNOWN_MEDIA, response.getReason());
     }
@@ -261,7 +261,7 @@ class TransactionServiceTest {
         card.setStatus(PredefinedLevel5BusinessSync.BLACKLISTED);
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.DENY, response.getDecision());
         assertEquals(PredefinedTransactionReason.MEDIA_BLACKLISTED, response.getReason());
@@ -275,7 +275,7 @@ class TransactionServiceTest {
         card.setStatus(PredefinedLevel5BusinessSync.CANCELLED);
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.CARD_CANCELLED, response.getReason());
     }
@@ -288,7 +288,7 @@ class TransactionServiceTest {
         card.setStatus(PredefinedLevel5BusinessSync.INACTIVE);
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.CARD_INACTIVE, response.getReason());
     }
@@ -302,7 +302,7 @@ class TransactionServiceTest {
         ticket.setValidTo(LocalDateTime.now().minusMinutes(1));
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001")).thenReturn(Optional.of(ticket));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.TICKET_EXPIRED, response.getReason());
     }
@@ -315,7 +315,7 @@ class TransactionServiceTest {
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001"))
                 .thenReturn(Optional.of(ticket("TICKET-000001", "CARD-000001", PredefinedLevel5BusinessSync.USED)));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.TICKET_ALREADY_USED, response.getReason());
     }
@@ -329,7 +329,7 @@ class TransactionServiceTest {
         entitlement.setValidTo(LocalDateTime.now().minusMinutes(1));
         when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.of(entitlement));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.ENTITLEMENT_EXPIRED, response.getReason());
     }
@@ -342,7 +342,7 @@ class TransactionServiceTest {
         when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
                 .thenReturn(Optional.of(entitlement("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.INACTIVE)));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.ENTITLEMENT_INACTIVE, response.getReason());
     }
@@ -353,7 +353,7 @@ class TransactionServiceTest {
         mockQrSession(session("CARD-000001", "TICKET-000001", "ENT-000001", false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.ACTIVE_PRODUCT_CONFLICT, response.getReason());
     }
@@ -364,7 +364,7 @@ class TransactionServiceTest {
         mockQrSession(session("CARD-000001", null, null, false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.ACTIVE_PRODUCT_NOT_FOUND, response.getReason());
     }
@@ -376,7 +376,7 @@ class TransactionServiceTest {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001")).thenReturn(Optional.empty());
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.TICKET_INVALID, response.getReason());
     }
@@ -389,7 +389,7 @@ class TransactionServiceTest {
         Ticket ticket = ticket("TICKET-000001", "CARD-000001", PredefinedLevel5BusinessSync.UNUSED);
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001")).thenReturn(Optional.of(ticket));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.TICKET_INVALID, response.getReason());
         verify(ticketRepository, never()).save(any());
@@ -403,7 +403,7 @@ class TransactionServiceTest {
         Ticket ticket = ticket("TICKET-000001", "CARD-000001", PredefinedLevel5BusinessSync.IN_USE);
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001")).thenReturn(Optional.of(ticket));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.TICKET_INVALID, response.getReason());
         verify(ticketRepository, never()).save(any());
@@ -417,7 +417,7 @@ class TransactionServiceTest {
         when(ticketRepository.findByIdAndCardId("TICKET-000001", "CARD-000001"))
                 .thenReturn(Optional.of(ticket("TICKET-000001", "CARD-000001", "SUSPENDED")));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.TICKET_INVALID, response.getReason());
     }
@@ -429,7 +429,7 @@ class TransactionServiceTest {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
         when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.empty());
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.ENTITLEMENT_INACTIVE, response.getReason());
     }
@@ -443,7 +443,7 @@ class TransactionServiceTest {
         entitlement.setValidFrom(LocalDateTime.now().plusMinutes(1));
         when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.of(entitlement));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.ENTITLEMENT_EXPIRED, response.getReason());
     }
@@ -456,7 +456,7 @@ class TransactionServiceTest {
         when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
                 .thenReturn(Optional.of(entitlement("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.EXPIRED)));
 
-        var response = service.submit(request());
+        var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionReason.ENTITLEMENT_EXPIRED, response.getReason());
     }
@@ -466,9 +466,7 @@ class TransactionServiceTest {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
 
         AppException exception = assertThrows(AppException.class,
-                () -> service.submit(SubmitTransactionRequest.builder()
-                        .deviceCode("GATE-001")
-                        .deviceSecret("bad-secret")
+                () -> service.submit("GATE-001", "bad-secret", SubmitTransactionRequest.builder()
                         .qrPayload("AFCQR:v1:QR-000001")
                         .build()));
 
@@ -620,8 +618,6 @@ class TransactionServiceTest {
 
     private SubmitTransactionRequest requestWithQr(String qrPayload) {
         return SubmitTransactionRequest.builder()
-                .deviceCode(" GATE-001 ")
-                .deviceSecret("secret")
                 .qrPayload(qrPayload)
                 .build();
     }

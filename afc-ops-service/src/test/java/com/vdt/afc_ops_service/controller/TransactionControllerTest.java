@@ -1,5 +1,6 @@
 package com.vdt.afc_ops_service.controller;
 
+import com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.SubmitTransactionResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailResponse;
@@ -45,19 +46,20 @@ class TransactionControllerTest {
 
     @Test
     void submitTransaction_UsesRootPath() throws Exception {
-        when(transactionService.submit(any())).thenReturn(SubmitTransactionResponse.builder()
-                .transactionId("TXN-000001")
-                .decision("OPEN_GATE")
-                .reason("VALID")
-                .serverTime(LocalDateTime.of(2026, 6, 13, 17, 30))
-                .build());
+        when(transactionService.submit(eq("GATE-001"), eq("secret"), any(SubmitTransactionRequest.class)))
+                .thenReturn(SubmitTransactionResponse.builder()
+                        .transactionId("TXN-000001")
+                        .decision("OPEN_GATE")
+                        .reason("VALID")
+                        .serverTime(LocalDateTime.of(2026, 6, 13, 17, 30))
+                        .build());
 
         mockMvc.perform(post("/transaction/submit-tap-event")
+                        .header("X-Device-Code", "GATE-001")
+                        .header("X-Device-Secret", "secret")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "deviceCode": "GATE-001",
-                                  "deviceSecret": "secret",
                                   "qrPayload": "AFCQR:v1:QR-000001"
                                 }
                                 """))
@@ -68,20 +70,19 @@ class TransactionControllerTest {
 
         ArgumentCaptor<com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest> requestCaptor =
                 ArgumentCaptor.forClass(com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest.class);
-        verify(transactionService).submit(requestCaptor.capture());
-        assertEquals("GATE-001", requestCaptor.getValue().getDeviceCode());
+        verify(transactionService).submit(eq("GATE-001"), eq("secret"), requestCaptor.capture());
+        assertEquals("AFCQR:v1:QR-000001", requestCaptor.getValue().getQrPayload());
     }
 
     @Test
     void submitTransaction_MissingQrPayload_ReturnsBadRequest() throws Exception {
         mockMvc.perform(post("/transaction/submit-tap-event")
+                        .header("X-Device-Code", "GATE-001")
+                        .header("X-Device-Secret", "secret")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                  "deviceCode": "GATE-001",
-                                  "deviceSecret": "secret"
-                                }
-                """))
+                                {}
+                                """))
                 .andExpect(status().isBadRequest());
     }
 

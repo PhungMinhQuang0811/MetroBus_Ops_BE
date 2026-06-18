@@ -16,14 +16,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class SubmitTransactionRequest {
 
-    @RequiredField(fieldName = "deviceCode")
-    @Size(max = 100, message = "INVALID_DEVICE_CODE_LENGTH")
-    String deviceCode;
-
-    @RequiredField(fieldName = "deviceSecret")
-    @Size(max = 255, message = "INVALID_DEVICE_SECRET_LENGTH")
-    String deviceSecret;
-
     @RequiredField(fieldName = "qrPayload")
     @Size(max = 255, message = "INVALID_SEARCH_KEYWORD")
     String qrPayload;
