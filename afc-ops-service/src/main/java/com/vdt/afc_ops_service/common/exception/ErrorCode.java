@@ -51,6 +51,7 @@ public enum ErrorCode {
     INVALID_CONTROL_PACKAGE_VERSION(2029, "Control package version is invalid", HttpStatus.BAD_REQUEST),
     INVALID_DASHBOARD_TIME_RANGE(2030, "Dashboard from time must be before or equal to to time", HttpStatus.BAD_REQUEST),
     INVALID_DASHBOARD_BUCKET(2031, "Invalid dashboard bucket", HttpStatus.BAD_REQUEST),
+    INVALID_AUDIT_TIME_RANGE(2032, "Audit from time must be before or equal to to time", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors

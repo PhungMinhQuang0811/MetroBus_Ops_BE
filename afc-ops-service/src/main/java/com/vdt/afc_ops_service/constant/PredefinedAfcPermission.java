@@ -16,6 +16,7 @@ public class PredefinedAfcPermission {
     public static final String CONTROL_PACKAGE_READ = "CONTROL_PACKAGE_READ";
     public static final String CONTROL_PACKAGE_WRITE = "CONTROL_PACKAGE_WRITE";
     public static final String DASHBOARD_READ = "DASHBOARD_READ";
+    public static final String AUDIT_READ = "AUDIT_READ";
 
     @Getter
     @RequiredArgsConstructor
@@ -30,7 +31,8 @@ public class PredefinedAfcPermission {
         INCIDENT_READ(PredefinedAfcPermission.INCIDENT_READ, "Theo dõi incident thiết bị"),
         CONTROL_PACKAGE_READ(PredefinedAfcPermission.CONTROL_PACKAGE_READ, "Xem gói cấu hình vận hành AFC"),
         CONTROL_PACKAGE_WRITE(PredefinedAfcPermission.CONTROL_PACKAGE_WRITE, "Tạo, cập nhật và phát hành gói cấu hình vận hành AFC"),
-        DASHBOARD_READ(PredefinedAfcPermission.DASHBOARD_READ, "Xem dashboard vận hành AFC");
+        DASHBOARD_READ(PredefinedAfcPermission.DASHBOARD_READ, "Xem dashboard vận hành AFC"),
+        AUDIT_READ(PredefinedAfcPermission.AUDIT_READ, "Xem audit log vận hành AFC");
 
         private final String name;
         private final String description;

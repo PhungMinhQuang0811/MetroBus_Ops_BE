@@ -15,7 +15,8 @@ public final class SecurityConstants {
             "/account/preview-import-accounts", PredefinedPermission.ACCOUNT_WRITE,
             "/account/confirm-import-accounts", PredefinedPermission.ACCOUNT_WRITE,
             "/account/reset-password", PredefinedPermission.ACCOUNT_WRITE,
-            "/auth/search-audit-logs", PredefinedPermission.AUDIT_READ
+            "/auth/search-audit-logs", PredefinedPermission.AUDIT_READ,
+            "/auth/get-audit-log/**", PredefinedPermission.AUDIT_READ
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {
