@@ -15,6 +15,7 @@ public class PredefinedAfcPermission {
     public static final String INCIDENT_READ = "INCIDENT_READ";
     public static final String CONTROL_PACKAGE_READ = "CONTROL_PACKAGE_READ";
     public static final String CONTROL_PACKAGE_WRITE = "CONTROL_PACKAGE_WRITE";
+    public static final String DASHBOARD_READ = "DASHBOARD_READ";
 
     @Getter
     @RequiredArgsConstructor
@@ -28,7 +29,8 @@ public class PredefinedAfcPermission {
         DEVICE_MONITOR_READ(PredefinedAfcPermission.DEVICE_MONITOR_READ, "Theo dõi trạng thái hoạt động thiết bị"),
         INCIDENT_READ(PredefinedAfcPermission.INCIDENT_READ, "Theo dõi incident thiết bị"),
         CONTROL_PACKAGE_READ(PredefinedAfcPermission.CONTROL_PACKAGE_READ, "Xem gói cấu hình vận hành AFC"),
-        CONTROL_PACKAGE_WRITE(PredefinedAfcPermission.CONTROL_PACKAGE_WRITE, "Tạo, cập nhật và phát hành gói cấu hình vận hành AFC");
+        CONTROL_PACKAGE_WRITE(PredefinedAfcPermission.CONTROL_PACKAGE_WRITE, "Tạo, cập nhật và phát hành gói cấu hình vận hành AFC"),
+        DASHBOARD_READ(PredefinedAfcPermission.DASHBOARD_READ, "Xem dashboard vận hành AFC");
 
         private final String name;
         private final String description;

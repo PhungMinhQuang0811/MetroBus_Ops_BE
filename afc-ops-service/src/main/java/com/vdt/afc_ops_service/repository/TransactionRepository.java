@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 
 public interface TransactionRepository extends JpaRepository<Transaction, String> {
 
@@ -47,17 +48,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
                     "WHERE o.id = :operatorId " +
                     "AND t.occurredAt >= :fromTime " +
                     "AND t.occurredAt <= :toTime " +
-                    "AND (:hasRouteId = false OR r.id = :routeId) " +
-                    "AND (:hasStationId = false OR s.id = :stationId) " +
-                    "AND (:hasDeviceId = false OR d.id = :deviceId) " +
-                    "AND (:hasCardId = false OR c.id = :cardId) " +
-                    "AND (:hasTicketId = false OR tk.id = :ticketId) " +
-                    "AND (:hasEntitlementId = false OR e.id = :entitlementId) " +
-                    "AND (:hasTapType = false OR t.tapType = :tapType) " +
-                    "AND (:hasDecision = false OR t.decision = :decision) " +
-                    "AND (:hasReason = false OR t.reason = :reason) " +
-                    "AND (:hasSyncStatus = false OR t.syncStatus = :syncStatus) " +
-                    "AND (:hasTicketProcessingStatus = false OR t.ticketProcessingStatus = :ticketProcessingStatus)"
+                    "AND (:routeId IS NULL OR r.id = :routeId) " +
+                    "AND (:stationId IS NULL OR s.id = :stationId) " +
+                    "AND (:deviceId IS NULL OR d.id = :deviceId) " +
+                    "AND (:cardId IS NULL OR c.id = :cardId) " +
+                    "AND (:ticketId IS NULL OR tk.id = :ticketId) " +
+                    "AND (:entitlementId IS NULL OR e.id = :entitlementId) " +
+                    "AND (:tapType IS NULL OR t.tapType = :tapType) " +
+                    "AND (:decision IS NULL OR t.decision = :decision) " +
+                    "AND (:reason IS NULL OR t.reason = :reason) " +
+                    "AND (:syncStatus IS NULL OR t.syncStatus = :syncStatus) " +
+                    "AND (:ticketProcessingStatus IS NULL OR t.ticketProcessingStatus = :ticketProcessingStatus)"
     )
     Page<Transaction> searchTransactions(@Param("operatorId") Long operatorId,
                                          @Param("fromTime") LocalDateTime from,
@@ -112,4 +113,74 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
                                           @Param("syncStatus") String syncStatus,
                                           @Param("fromTime") LocalDateTime fromTime,
                                           @Param("toTime") LocalDateTime toTime);
+
+    @Query(value = """
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN t.decision = 'OPEN_GATE' THEN 1 ELSE 0 END), 0) AS open_gate,
+                COALESCE(SUM(CASE WHEN t.decision = 'DENY' THEN 1 ELSE 0 END), 0) AS deny,
+                COALESCE(SUM(CASE WHEN t.decision = 'ACCEPTED_FOR_FORWARDING' THEN 1 ELSE 0 END), 0) AS accepted_forwarding
+            FROM transactions t
+            WHERE t.operator_id = :operatorId
+              AND t.occurred_at >= :fromTime
+              AND t.occurred_at <= :toTime
+              AND (:routeId IS NULL OR t.route_id = :routeId)
+              AND (:stationId IS NULL OR t.station_id = :stationId)
+            """, nativeQuery = true)
+    List<Object[]> getDashboardTransactionSummary(@Param("operatorId") Long operatorId,
+                                                  @Param("fromTime") LocalDateTime fromTime,
+                                                  @Param("toTime") LocalDateTime toTime,
+                                                  @Param("routeId") Long routeId,
+                                                  @Param("stationId") Long stationId);
+
+    @Query(value = """
+            SELECT
+                date_trunc(cast(:bucket as text), t.occurred_at) AS bucket_time,
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN t.decision = 'OPEN_GATE' THEN 1 ELSE 0 END), 0) AS open_gate,
+                COALESCE(SUM(CASE WHEN t.decision = 'DENY' THEN 1 ELSE 0 END), 0) AS deny,
+                COALESCE(SUM(CASE WHEN t.decision = 'ACCEPTED_FOR_FORWARDING' THEN 1 ELSE 0 END), 0) AS accepted_forwarding
+            FROM transactions t
+            WHERE t.operator_id = :operatorId
+              AND t.occurred_at >= :fromTime
+              AND t.occurred_at <= :toTime
+              AND (:routeId IS NULL OR t.route_id = :routeId)
+              AND (:stationId IS NULL OR t.station_id = :stationId)
+            GROUP BY 1
+            ORDER BY 1
+            """, nativeQuery = true)
+    List<Object[]> getDashboardTransactionTimeline(@Param("operatorId") Long operatorId,
+                                                   @Param("fromTime") LocalDateTime fromTime,
+                                                   @Param("toTime") LocalDateTime toTime,
+                                                   @Param("routeId") Long routeId,
+                                                   @Param("stationId") Long stationId,
+                                                   @Param("bucket") String bucket);
+
+    @Query(value = """
+            SELECT
+                r.id AS route_id,
+                r.route_code AS route_code,
+                r.route_name AS route_name,
+                s.id AS station_id,
+                s.station_code AS station_code,
+                s.station_name AS station_name,
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN t.decision = 'OPEN_GATE' THEN 1 ELSE 0 END), 0) AS open_gate,
+                COALESCE(SUM(CASE WHEN t.decision = 'DENY' THEN 1 ELSE 0 END), 0) AS deny
+            FROM transactions t
+            JOIN routes r ON t.route_id = r.id
+            JOIN stations s ON t.station_id = s.id
+            WHERE t.operator_id = :operatorId
+              AND t.occurred_at >= :fromTime
+              AND t.occurred_at <= :toTime
+              AND (:routeId IS NULL OR r.id = :routeId)
+              AND (:stationId IS NULL OR s.id = :stationId)
+            GROUP BY r.id, r.route_code, r.route_name, s.id, s.station_code, s.station_name, s.station_order
+            ORDER BY r.route_code, s.station_order
+            """, nativeQuery = true)
+    List<Object[]> getDashboardRouteStationSummaries(@Param("operatorId") Long operatorId,
+                                                     @Param("fromTime") LocalDateTime fromTime,
+                                                     @Param("toTime") LocalDateTime toTime,
+                                                     @Param("routeId") Long routeId,
+                                                     @Param("stationId") Long stationId);
 }

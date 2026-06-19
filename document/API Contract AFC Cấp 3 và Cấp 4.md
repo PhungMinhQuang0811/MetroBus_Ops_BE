@@ -14,7 +14,7 @@ Mục tiêu là đủ rõ để triển khai `auth-ops-service`, `afc-ops-servic
 | Service | Base path | Vai trò |
 | --- | --- | --- |
 | `auth-ops-service` | `/auth` | Đăng nhập, refresh token, account nội bộ, đổi/reset mật khẩu |
-| `afc-ops-service` | `/afc-ops` | Master data, thiết bị, transaction, control package, batch, dashboard và dữ liệu card/ticket/entitlement đồng bộ từ Cấp 5 |
+| `afc-ops-service` | Theo từng controller nghiệp vụ | Master data, thiết bị, transaction, control package, batch, dashboard và dữ liệu card/ticket/entitlement đồng bộ từ Cấp 5 |
 
 ### 1.1.1. Quy Ước Đặt Tên API
 
@@ -2907,9 +2907,9 @@ Response:
 
 ### UC18 - Dashboard Vận Hành Cấp 4
 
-#### API-AFC-027 - Get Operations Dashboard
+#### API-AFC-027 - Get Operations Summary
 
-`GET /afc-ops/get-operations-dashboard?from=&to=&routeId=&stationId=`
+`GET /dashboard/summary?from=&to=&routeId=&stationId=`
 
 Permission: `DASHBOARD_READ`.
 
@@ -2929,15 +2929,20 @@ Response:
     "transactionSummary": {
       "total": 1500,
       "openGate": 1400,
-      "deny": 100
+      "deny": 100,
+      "acceptedForForwarding": 0,
+      "denyRate": 6.67
     },
     "incidentSummary": {
       "total": 5,
+      "open": 3,
       "high": 1
     },
     "batchSummary": {
       "created": 1,
       "submitted": 2,
+      "accepted": 0,
+      "rejected": 0,
       "failed": 0
     },
     "controlSyncSummary": {
@@ -2945,6 +2950,116 @@ Response:
       "applied": 20,
       "failed": 1
     }
+  }
+}
+```
+
+#### API-AFC-027A - Get Transaction Timeline
+
+`GET /dashboard/transaction-timeline?from=&to=&routeId=&stationId=&bucket=hour`
+
+Permission: `DASHBOARD_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "bucket": "hour",
+    "items": [
+      {
+        "timeLabel": "09:00",
+        "total": 120,
+        "openGate": 110,
+        "deny": 10
+      }
+    ]
+  }
+}
+```
+
+#### API-AFC-027B - Get Route Station Summaries
+
+`GET /dashboard/route-station-summaries?from=&to=&routeId=&stationId=`
+
+Permission: `DASHBOARD_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "routeId": 1,
+        "routeCode": "METRO-001",
+        "stationId": 10,
+        "stationCode": "ST-BT",
+        "total": 8120,
+        "openGate": 7980,
+        "deny": 140
+      }
+    ]
+  }
+}
+```
+
+#### API-AFC-027C - Get Recent Incidents
+
+`GET /dashboard/recent-incidents?from=&to=&routeId=&stationId=&severity=&limit=10`
+
+Permission: `DASHBOARD_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "incidentId": "mongo-id",
+        "occurredAt": "2026-06-04T10:30:00+07:00",
+        "stationId": 10,
+        "stationCode": "ST-BT",
+        "deviceId": 5,
+        "deviceCode": "DEV-001",
+        "severity": "HIGH",
+        "incidentType": "DEVICE_OFFLINE",
+        "resolved": false
+      }
+    ]
+  }
+}
+```
+
+#### API-AFC-027D - Get Dashboard Alerts
+
+`GET /dashboard/alerts?from=&to=&routeId=&stationId=&limit=10`
+
+Permission: `DASHBOARD_READ`.
+
+Response:
+
+```json
+{
+  "code": 1000,
+  "message": "Success",
+  "result": {
+    "items": [
+      {
+        "type": "DEVICE_OFFLINE",
+        "severity": "HIGH",
+        "message": "Thiết bị offline lâu",
+        "resourceType": "DEVICE",
+        "resourceId": "5"
+      }
+    ]
   }
 }
 ```
@@ -3116,7 +3231,7 @@ Lỗi chính:
 
 #### API-AFC-031 - Search AFC Audit Logs
 
-`GET /afc-ops/search-audit-logs?from=&to=&accountId=&action=&resourceType=&resourceId=&page=0&size=20`
+`GET /audit/search-audit-logs?from=&to=&accountId=&action=&resourceType=&resourceId=&page=0&size=20`
 
 Permission: `AUDIT_READ`.
 
@@ -3193,7 +3308,7 @@ Passenger App chỉ gọi trực tiếp `afc-ops-service` để lấy dynamic QR
 
 #### API-AFC-032 - Generate Dynamic QR
 
-`POST /afc-ops/generate-dynamic-qr`
+`POST /qr/generate-dynamic-qr`
 
 Auth: `X-External-User-Id` trong MVP, production có thể thay bằng token App/C5.
 
@@ -3258,30 +3373,31 @@ Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 sc
 
 1. FE gọi `POST /auth/login`.
 2. Trình duyệt nhận access token và refresh token qua HttpOnly cookie.
-3. FE gọi `GET /afc-ops/get-operations-dashboard`.
-4. FE gọi thêm `GET /afc-ops/get-device-status` nếu cần bảng thiết bị.
+3. FE gọi `GET /dashboard/summary`.
+4. FE gọi song song `GET /dashboard/transaction-timeline`, `GET /dashboard/route-station-summaries`, `GET /dashboard/recent-incidents` và `GET /dashboard/alerts` nếu cần đầy đủ widget.
+5. FE gọi thêm `GET /afc-ops/get-device-status` nếu cần bảng thiết bị.
 
 ### Luồng B - Thiết Bị Gửi Tap Event
 
 1. Mock Cấp 2 gọi `POST /transaction/submit-tap-event`.
 2. System xác thực device và ghi transaction.
 3. System trả `OPEN_GATE` hoặc `DENY`.
-4. Cấp 4 có thể tra cứu bằng `GET /afc-ops/search-transactions`.
+4. Cấp 4 có thể tra cứu bằng `GET /transaction/search-transactions`.
 
 ### Luồng C - Card Status/Blacklist Từ Cấp 5 Xuống Thiết Bị
 
 1. Cấp 5 publish RabbitMQ `card.status.changed`, `blacklist.added` hoặc `blacklist.removed`.
 2. System cập nhật read model `cards` và có thể tạo control package `MEDIA_ACCESS_RULES`, `LEVEL5_SYNCED`, `CREATED`.
-3. Manager gọi `POST /afc-ops/publish-control-package/{packageId}`.
-4. Cấp 3/station gọi `GET /afc-ops/pull-pending-control-packages`.
-5. Cấp 3/station apply rule local và gọi `POST /afc-ops/ack-control-package-apply/{syncId}`.
+3. Manager gọi `POST /control-package/publish/{packageId}`.
+4. Cấp 3/station gọi `GET /control-package/pull-pending`.
+5. Cấp 3/station apply rule local và gọi `POST /control-package/ack-apply/{syncId}`.
 6. Tap event sau đó nếu card nằm blacklist thì API-AFC-014 trả `DENY` với `reason = MEDIA_BLACKLISTED`.
 
 ### Luồng D - Tạo Và Gửi Batch Lên Cấp 5
 
-1. Manager gọi `POST /afc-ops/create-batch`.
+1. Manager gọi `POST /batch/create-batch`.
 2. System gom transaction `PENDING` thành batch `CREATED`.
-3. Manager hoặc scheduler gọi `POST /afc-ops/submit-batch-to-level5/{batchId}`.
+3. Manager hoặc scheduler gọi `POST /batch/submit-batch-to-level5/{batchId}`.
 4. System gửi payload sang Cấp 5/mock.
 5. Cập nhật batch `ACCEPTED`, `REJECTED` hoặc `FAILED`.
 
@@ -3297,7 +3413,7 @@ Mock App trong MVP gọi API-AFC-032 để lấy QR payload, sau đó mock C2 sc
 
 1. App/C5 tạo card, ticket hoặc entitlement ở hệ sở hữu nghiệp vụ.
 2. C5 đồng bộ read model sang C4 qua RabbitMQ realtime event hoặc snapshot trigger `POST /api/afc/sync*` ở C5.
-3. App gọi `POST /afc-ops/generate-dynamic-qr` để lấy QR payload ngắn hạn từ card đã đồng bộ.
+3. App gọi `POST /qr/generate-dynamic-qr` để lấy QR payload ngắn hạn từ card đã đồng bộ.
 4. Mock C2 scan QR và gọi `POST /transaction/submit-tap-event`.
 5. C4 verify QR, card status, ticket/entitlement và blacklist rồi trả `OPEN_GATE` hoặc `DENY`.
 

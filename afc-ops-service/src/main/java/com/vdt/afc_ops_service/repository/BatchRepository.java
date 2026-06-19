@@ -38,4 +38,21 @@ public interface BatchRepository extends JpaRepository<Batch, String> {
                               @Param("fromTime") LocalDateTime fromTime,
                               @Param("toTime") LocalDateTime toTime,
                               Pageable pageable);
+
+    @Query(value = """
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN b.status = 'CREATED' THEN 1 ELSE 0 END), 0) AS created,
+                COALESCE(SUM(CASE WHEN b.status = 'SUBMITTED' THEN 1 ELSE 0 END), 0) AS submitted,
+                COALESCE(SUM(CASE WHEN b.status = 'ACCEPTED' THEN 1 ELSE 0 END), 0) AS accepted,
+                COALESCE(SUM(CASE WHEN b.status = 'REJECTED' THEN 1 ELSE 0 END), 0) AS rejected,
+                COALESCE(SUM(CASE WHEN b.status = 'FAILED' THEN 1 ELSE 0 END), 0) AS failed
+            FROM batches b
+            WHERE b.operator_id = :operatorId
+              AND b.created_at >= :fromTime
+              AND b.created_at <= :toTime
+            """, nativeQuery = true)
+    List<Object[]> getDashboardBatchSummary(@Param("operatorId") Long operatorId,
+                                            @Param("fromTime") LocalDateTime fromTime,
+                                            @Param("toTime") LocalDateTime toTime);
 }

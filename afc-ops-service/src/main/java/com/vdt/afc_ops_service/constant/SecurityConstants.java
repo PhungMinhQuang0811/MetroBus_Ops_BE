@@ -37,6 +37,7 @@ public final class SecurityConstants {
             entry("/get-transaction-detail", PredefinedAfcPermission.TRANSACTION_READ),
             entry("/batch/create-batch", PredefinedAfcPermission.BATCH_WRITE),
             entry("/batch/list-batches", PredefinedAfcPermission.BATCH_READ),
+            entry("/dashboard/**", PredefinedAfcPermission.DASHBOARD_READ),
             entry("/afc-ops/get-device-status", PredefinedAfcPermission.DEVICE_MONITOR_READ),
             entry("/afc-ops/get-device-heartbeats", PredefinedAfcPermission.DEVICE_MONITOR_READ),
             entry("/afc-ops/search-incidents", PredefinedAfcPermission.INCIDENT_READ),

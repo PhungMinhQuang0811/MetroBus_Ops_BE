@@ -36,6 +36,9 @@ public interface StationRepository extends JpaRepository<Station, Long> {
     List<String> findStationCodesByRouteAndPrefix(@Param("route") Route route,
                                                   @Param("prefix") String prefix);
 
+    @Query("SELECT s.id FROM Station s WHERE s.route.id = :routeId")
+    List<Long> findIdsByRouteId(@Param("routeId") Long routeId);
+
     @Query(
             value = "SELECT s FROM Station s " +
                     "JOIN s.route r " +

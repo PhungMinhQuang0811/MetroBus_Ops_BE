@@ -49,6 +49,8 @@ public enum ErrorCode {
     INVALID_CONTROL_SYNC_ID(2027, "Control sync id is invalid", HttpStatus.BAD_REQUEST),
     INVALID_CONTROL_SYNC_STATUS(2028, "Invalid control sync status", HttpStatus.BAD_REQUEST),
     INVALID_CONTROL_PACKAGE_VERSION(2029, "Control package version is invalid", HttpStatus.BAD_REQUEST),
+    INVALID_DASHBOARD_TIME_RANGE(2030, "Dashboard from time must be before or equal to to time", HttpStatus.BAD_REQUEST),
+    INVALID_DASHBOARD_BUCKET(2031, "Invalid dashboard bucket", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 3xxx: Business logic & Database errors
@@ -86,6 +88,7 @@ public enum ErrorCode {
     CONTROL_PACKAGE_ALREADY_PUBLISHED(3030, "Control package is already published", HttpStatus.BAD_REQUEST),
     CONTROL_PACKAGE_SYNC_NOT_FOUND(3031, "Control package sync not found", HttpStatus.NOT_FOUND),
     CONTROL_PACKAGE_PAYLOAD_NOT_FOUND(3032, "Control package payload not found", HttpStatus.NOT_FOUND),
+    DASHBOARD_QUERY_TOO_WIDE(3033, "Dashboard query range is too wide", HttpStatus.BAD_REQUEST),
 
     /**
      * Range 4xxx: Security, Authentication & System errors

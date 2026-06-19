@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 public interface StationControlSyncRepository extends JpaRepository<StationControlSync, Long> {
 
@@ -61,4 +62,26 @@ public interface StationControlSyncRepository extends JpaRepository<StationContr
             "WHERE scs.id = :syncId AND r.operator.id = :operatorId")
     Optional<StationControlSync> findDetailByIdAndOperatorId(@Param("syncId") Long syncId,
                                                              @Param("operatorId") Long operatorId);
+
+    @Query(value = """
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN scs.sync_status = 'PENDING' THEN 1 ELSE 0 END), 0) AS pending,
+                COALESCE(SUM(CASE WHEN scs.sync_status = 'APPLIED' THEN 1 ELSE 0 END), 0) AS applied,
+                COALESCE(SUM(CASE WHEN scs.sync_status = 'FAILED' THEN 1 ELSE 0 END), 0) AS failed
+            FROM station_control_syncs scs
+            JOIN control_packages cp ON scs.control_package_id = cp.id
+            JOIN stations s ON scs.station_id = s.id
+            JOIN routes r ON s.route_id = r.id
+            WHERE cp.operator_id = :operatorId
+              AND scs.created_at >= :fromTime
+              AND scs.created_at <= :toTime
+              AND (:routeId IS NULL OR r.id = :routeId)
+              AND (:stationId IS NULL OR s.id = :stationId)
+            """, nativeQuery = true)
+    List<Object[]> getDashboardControlSyncSummary(@Param("operatorId") Long operatorId,
+                                                  @Param("fromTime") LocalDateTime fromTime,
+                                                  @Param("toTime") LocalDateTime toTime,
+                                                  @Param("routeId") Long routeId,
+                                                  @Param("stationId") Long stationId);
 }

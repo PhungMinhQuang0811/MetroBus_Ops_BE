@@ -77,4 +77,21 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
                                     @Param("stationId") Long stationId,
                                     @Param("status") String status,
                                     Pageable pageable);
+
+    @Query(value = """
+            SELECT
+                COALESCE(SUM(CASE WHEN d.status = 'ACTIVE' THEN 1 ELSE 0 END), 0) AS active,
+                COALESCE(SUM(CASE WHEN d.status = 'OFFLINE' THEN 1 ELSE 0 END), 0) AS offline,
+                COALESCE(SUM(CASE WHEN d.status = 'MAINTENANCE' THEN 1 ELSE 0 END), 0) AS maintenance,
+                COALESCE(SUM(CASE WHEN d.status = 'DISABLED' THEN 1 ELSE 0 END), 0) AS disabled
+            FROM devices d
+            JOIN stations s ON d.station_id = s.id
+            JOIN routes r ON s.route_id = r.id
+            WHERE r.operator_id = :operatorId
+              AND (:routeId IS NULL OR r.id = :routeId)
+              AND (:stationId IS NULL OR s.id = :stationId)
+            """, nativeQuery = true)
+    List<Object[]> getDashboardDeviceSummary(@Param("operatorId") Long operatorId,
+                                                       @Param("routeId") Long routeId,
+                                                       @Param("stationId") Long stationId);
 }
