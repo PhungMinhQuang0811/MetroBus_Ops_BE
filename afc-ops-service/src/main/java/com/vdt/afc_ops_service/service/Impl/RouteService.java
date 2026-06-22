@@ -13,6 +13,8 @@ import com.vdt.afc_ops_service.dto.response.route.RouteResponse;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.mapper.RouteMapper;
+import com.vdt.afc_ops_service.messaging.StationRouteSyncPublisher;
+import com.vdt.afc_ops_service.messaging.dto.RouteSyncMessage;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
@@ -38,6 +40,7 @@ public class RouteService implements IRouteService {
     RouteMapper routeMapper;
     RouteCodeGenerator routeCodeGenerator;
     SecurityUtils securityUtils;
+    StationRouteSyncPublisher stationRouteSyncPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -94,7 +97,10 @@ public class RouteService implements IRouteService {
                 .createdByAccountId(accountId)
                 .build();
 
-        return routeMapper.toRouteResponse(routeRepository.save(route));
+        Route savedRoute = routeRepository.save(route);
+        RouteResponse response = routeMapper.toRouteResponse(savedRoute);
+        stationRouteSyncPublisher.publishRouteSync(toRouteSyncMessage(savedRoute));
+        return response;
     }
 
     @Override
@@ -108,7 +114,10 @@ public class RouteService implements IRouteService {
 
         route.setRouteName(routeName);
         route.setTransportType(transportType);
-        return routeMapper.toRouteResponse(routeRepository.save(route));
+        Route savedRoute = routeRepository.save(route);
+        RouteResponse response = routeMapper.toRouteResponse(savedRoute);
+        stationRouteSyncPublisher.publishRouteSync(toRouteSyncMessage(savedRoute));
+        return response;
     }
 
     @Override
@@ -119,7 +128,10 @@ public class RouteService implements IRouteService {
             throw new AppException(ErrorCode.ROUTE_ALREADY_ENABLED);
         }
         route.setStatus(PredefinedMasterDataStatus.ACTIVE);
-        return routeMapper.toRouteResponse(routeRepository.save(route));
+        Route savedRoute = routeRepository.save(route);
+        RouteResponse response = routeMapper.toRouteResponse(savedRoute);
+        stationRouteSyncPublisher.publishRouteSync(toRouteSyncMessage(savedRoute));
+        return response;
     }
 
     @Override
@@ -130,7 +142,20 @@ public class RouteService implements IRouteService {
             throw new AppException(ErrorCode.ROUTE_ALREADY_DISABLED);
         }
         route.setStatus(PredefinedMasterDataStatus.DISABLED);
-        return routeMapper.toRouteResponse(routeRepository.save(route));
+        Route savedRoute = routeRepository.save(route);
+        RouteResponse response = routeMapper.toRouteResponse(savedRoute);
+        stationRouteSyncPublisher.publishRouteSync(toRouteSyncMessage(savedRoute));
+        return response;
+    }
+
+    private RouteSyncMessage toRouteSyncMessage(Route route) {
+        return RouteSyncMessage.builder()
+                .routeCode(route.getRouteCode())
+                .routeName(route.getRouteName())
+                .transportType(route.getTransportType())
+                .operatorCode(route.getOperator() != null ? route.getOperator().getOperatorCode() : null)
+                .status(route.getStatus())
+                .build();
     }
 
     private Route getRoute(Long routeId, Operator operator) {

@@ -13,6 +13,8 @@ import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.entity.Station;
 import com.vdt.afc_ops_service.mapper.StationMapper;
+import com.vdt.afc_ops_service.messaging.StationRouteSyncPublisher;
+import com.vdt.afc_ops_service.messaging.dto.StationSyncMessage;
 import com.vdt.afc_ops_service.repository.DeviceRepository;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
@@ -41,6 +43,7 @@ public class StationService implements IStationService {
     StationMapper stationMapper;
     StationCodeGenerator stationCodeGenerator;
     SecurityUtils securityUtils;
+    StationRouteSyncPublisher stationRouteSyncPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -95,7 +98,9 @@ public class StationService implements IStationService {
                 .createdByAccountId(SecurityUtils.getRequiredCurrentAccountId())
                 .build();
 
-        return stationMapper.toStationResponse(stationRepository.save(station));
+        Station savedStation = stationRepository.save(station);
+        stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+        return stationMapper.toStationResponse(savedStation);
     }
 
     @Override
@@ -110,7 +115,9 @@ public class StationService implements IStationService {
         station.setRoute(route);
         station.setStationName(SearchFilterUtil.normalize(request.getStationName()));
         station.setStationOrder(request.getStationOrder());
-        return stationMapper.toStationResponse(stationRepository.save(station));
+        Station savedStation = stationRepository.save(station);
+        stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+        return stationMapper.toStationResponse(savedStation);
     }
 
     @Override
@@ -121,7 +128,9 @@ public class StationService implements IStationService {
             throw new AppException(ErrorCode.STATION_ALREADY_ENABLED);
         }
         station.setStatus(PredefinedMasterDataStatus.ACTIVE);
-        return stationMapper.toStationResponse(stationRepository.save(station));
+        Station savedStation = stationRepository.save(station);
+        stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+        return stationMapper.toStationResponse(savedStation);
     }
 
     @Override
@@ -132,7 +141,9 @@ public class StationService implements IStationService {
             throw new AppException(ErrorCode.STATION_ALREADY_DISABLED);
         }
         station.setStatus(PredefinedMasterDataStatus.DISABLED);
-        return stationMapper.toStationResponse(stationRepository.save(station));
+        Station savedStation = stationRepository.save(station);
+        stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+        return stationMapper.toStationResponse(savedStation);
     }
 
     private Route getRoute(Long routeId, Operator operator) {
@@ -197,5 +208,15 @@ public class StationService implements IStationService {
         if (stationId == null || stationId <= 0) {
             throw new AppException(ErrorCode.INVALID_STATION_ID);
         }
+    }
+
+    private StationSyncMessage toStationSyncMessage(Station station) {
+        return StationSyncMessage.builder()
+                .stationCode(station.getStationCode())
+                .stationName(station.getStationName())
+                .stationOrder(station.getStationOrder())
+                .routeCode(station.getRoute() != null ? station.getRoute().getRouteCode() : null)
+                .status(station.getStatus())
+                .build();
     }
 }

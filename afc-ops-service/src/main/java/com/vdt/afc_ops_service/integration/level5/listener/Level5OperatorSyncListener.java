@@ -1,5 +1,6 @@
 package com.vdt.afc_ops_service.integration.level5.listener;
 
+import com.vdt.afc_ops_service.integration.level5.dto.message.operator.C5OperatorEventMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.message.operator.C5OperatorSyncMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.response.Level5BusinessSyncItemResult;
 import com.vdt.afc_ops_service.integration.level5.service.ILevel5OperatorSyncService;
@@ -21,6 +22,8 @@ import java.io.IOException;
 public class Level5OperatorSyncListener {
 
     static final String SYNC_OPERATOR_ALL = "sync.operator.all";
+    static final String OPERATOR_CREATED  = "operator.created";
+    static final String OPERATOR_UPDATED  = "operator.updated";
 
     ILevel5OperatorSyncService level5OperatorSyncService;
     ObjectMapper objectMapper;
@@ -32,6 +35,17 @@ public class Level5OperatorSyncListener {
             case SYNC_OPERATOR_ALL -> level5OperatorSyncService.processOperatorSnapshot(
                     readPayload(message, C5OperatorSyncMessage.class)
             );
+            case OPERATOR_CREATED, OPERATOR_UPDATED -> {
+                C5OperatorEventMessage event = readPayload(message, C5OperatorEventMessage.class);
+                yield level5OperatorSyncService.processOperatorSnapshot(
+                        C5OperatorSyncMessage.builder()
+                                .id(event.getOperatorId())
+                                .code(event.getCode())
+                                .name(event.getName())
+                                .status(event.getStatus())
+                                .build()
+                );
+            }
             default -> {
                 log.warn("Ignored unsupported Level 5 operator routing key: {}", routingKey);
                 yield null;

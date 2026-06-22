@@ -13,6 +13,8 @@ import com.vdt.afc_ops_service.dto.response.route.ImportRoutePreviewResponse;
 import com.vdt.afc_ops_service.dto.response.route.ImportRouteRowError;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
+                     import com.vdt.afc_ops_service.messaging.StationRouteSyncPublisher;
+import com.vdt.afc_ops_service.messaging.dto.RouteSyncMessage;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.generator.RouteCodeGenerator;
@@ -41,6 +43,7 @@ public class RouteImportService {
     RouteRepository routeRepository;
     RouteCodeGenerator routeCodeGenerator;
     SecurityUtils securityUtils;
+    StationRouteSyncPublisher stationRouteSyncPublisher;
 
     @Transactional(readOnly = true)
     public ImportRoutePreviewResponse preview(MultipartFile file) {
@@ -69,6 +72,7 @@ public class RouteImportService {
                     .build();
 
             Route savedRoute = routeRepository.save(route);
+            stationRouteSyncPublisher.publishRouteSync(toRouteSyncMessage(savedRoute));
             importedItems.add(ImportRouteItemResponse.builder()
                     .row(item.getRow())
                     .id(savedRoute.getId())
@@ -83,6 +87,16 @@ public class RouteImportService {
         return ImportRouteConfirmResponse.builder()
                 .imported(importedItems.size())
                 .items(importedItems)
+                .build();
+    }
+
+    private RouteSyncMessage toRouteSyncMessage(Route route) {
+        return RouteSyncMessage.builder()
+                .routeCode(route.getRouteCode())
+                .routeName(route.getRouteName())
+                .transportType(route.getTransportType())
+                .operatorCode(route.getOperator() != null ? route.getOperator().getOperatorCode() : null)
+                .status(route.getStatus())
                 .build();
     }
 

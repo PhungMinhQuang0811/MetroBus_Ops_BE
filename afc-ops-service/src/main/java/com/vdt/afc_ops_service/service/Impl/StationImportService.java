@@ -13,6 +13,8 @@ import com.vdt.afc_ops_service.dto.response.station.ImportStationRowError;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.entity.Station;
+import com.vdt.afc_ops_service.messaging.StationRouteSyncPublisher;
+import com.vdt.afc_ops_service.messaging.dto.StationSyncMessage;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
@@ -48,6 +50,7 @@ public class StationImportService {
     StationRepository stationRepository;
     StationCodeGenerator stationCodeGenerator;
     SecurityUtils securityUtils;
+    StationRouteSyncPublisher stationRouteSyncPublisher;
 
     @Transactional(readOnly = true)
     public ImportStationPreviewResponse preview(MultipartFile file) {
@@ -78,6 +81,7 @@ public class StationImportService {
                     .build();
 
             Station savedStation = stationRepository.save(station);
+            stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
             importedItems.add(ImportStationItemResponse.builder()
                     .row(item.getRow())
                     .id(savedStation.getId())
@@ -194,6 +198,16 @@ public class StationImportService {
                 .row(row)
                 .field(field)
                 .message(message)
+                .build();
+    }
+
+    private StationSyncMessage toStationSyncMessage(Station station) {
+        return StationSyncMessage.builder()
+                .stationCode(station.getStationCode())
+                .stationName(station.getStationName())
+                .stationOrder(station.getStationOrder())
+                .routeCode(station.getRoute() != null ? station.getRoute().getRouteCode() : null)
+                .status(station.getStatus())
                 .build();
     }
 

@@ -64,7 +64,7 @@ app:
     level5-operator-sync:
       exchange: afc.exchange
       queue: afc.level5-operator-sync
-      routing-keys: "sync.operator.all"
+      routing-keys: "sync.operator.all,operator.created,operator.updated"
   security:
     csrf-header-name: X-CSRF-TOKEN
     csrf-cookie-name: XSRF-TOKEN
