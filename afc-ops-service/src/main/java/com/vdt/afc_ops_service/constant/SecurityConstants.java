@@ -59,7 +59,9 @@ public final class SecurityConstants {
             "/afc-ops/submit-heartbeat",
             "/afc-ops/submit-device-incident",
             "/control-package/pull-pending",
-            "/control-package/ack-apply/**"
+            "/control-package/ack-apply/**",
+            "/internal/route/publish-all",
+            "/internal/station/publish-all"
     };
 
     private SecurityConstants() {}

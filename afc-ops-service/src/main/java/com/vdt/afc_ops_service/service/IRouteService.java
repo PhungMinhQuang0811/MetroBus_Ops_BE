@@ -19,4 +19,6 @@ public interface IRouteService {
     RouteResponse enableRoute(Long routeId);
 
     RouteResponse disableRoute(Long routeId);
+
+    void publishAllRoutes();
 }

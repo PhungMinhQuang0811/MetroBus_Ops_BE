@@ -219,4 +219,13 @@ public class StationService implements IStationService {
                 .status(station.getStatus())
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void publishAllStations() {
+        var stations = stationRepository.findAll();
+        for (var station : stations) {
+            stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(station));
+        }
+    }
 }

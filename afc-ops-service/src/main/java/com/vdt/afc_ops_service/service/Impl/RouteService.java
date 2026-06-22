@@ -202,4 +202,13 @@ public class RouteService implements IRouteService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public void publishAllRoutes() {
+        var routes = routeRepository.findAll();
+        for (var route : routes) {
+            stationRouteSyncPublisher.publishRouteSync(toRouteSyncMessage(route));
+        }
+    }
+
 }

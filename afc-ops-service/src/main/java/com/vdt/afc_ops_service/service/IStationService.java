@@ -19,4 +19,6 @@ public interface IStationService {
     StationResponse enableStation(Long stationId);
 
     StationResponse disableStation(Long stationId);
+
+    void publishAllStations();
 }
