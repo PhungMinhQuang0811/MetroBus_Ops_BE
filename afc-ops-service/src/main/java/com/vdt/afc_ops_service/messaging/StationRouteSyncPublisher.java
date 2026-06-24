@@ -32,10 +32,13 @@ public class StationRouteSyncPublisher {
 
     public void publishStationSync(StationSyncMessage message) {
         try {
+            log.info("Publishing station sync: stationCode={}, stationName={}, stationOrder={}, routeCode={}, status={}, distance={}",
+                    message.getStationCode(), message.getStationName(), message.getStationOrder(),
+                    message.getRouteCode(), message.getStatus(), message.getDistance());
             rabbitTemplate.convertAndSend(AFC_EXCHANGE, STATION_SYNCED_ROUTING_KEY, message);
-            log.info("Published station sync message: {}", message.getStationCode());
+            log.info("Published station sync successfully: {}", message.getStationCode());
         } catch (Exception e) {
-            log.error("Failed to publish station sync message: {}", message.getStationCode(), e);
+            log.error("Failed to publish station sync: stationCode={}, distance={}", message.getStationCode(), message.getDistance(), e);
         }
     }
 }

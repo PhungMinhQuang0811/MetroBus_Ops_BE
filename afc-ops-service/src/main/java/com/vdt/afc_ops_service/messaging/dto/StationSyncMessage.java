@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,4 +19,5 @@ public class StationSyncMessage {
     private Integer stationOrder;
     private String routeCode;
     private String status;
+    private BigDecimal distance;
 }

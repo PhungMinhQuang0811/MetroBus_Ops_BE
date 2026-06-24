@@ -228,6 +228,7 @@ public class StationImportService {
                 .stationOrder(station.getStationOrder())
                 .routeCode(station.getRoute() != null ? station.getRoute().getRouteCode() : null)
                 .status(station.getStatus())
+                .distance(station.getDistance())
                 .build();
     }
 
