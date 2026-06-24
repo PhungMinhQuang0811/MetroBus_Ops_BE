@@ -11,6 +11,7 @@ import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.entity.Station;
 import com.vdt.afc_ops_service.mapper.StationMapper;
+import com.vdt.afc_ops_service.messaging.StationRouteSyncPublisher;
 import com.vdt.afc_ops_service.repository.DeviceRepository;
 import com.vdt.afc_ops_service.repository.OperatorRepository;
 import com.vdt.afc_ops_service.repository.RouteRepository;
@@ -60,6 +61,9 @@ class StationServiceTest {
     @Mock
     DeviceRepository deviceRepository;
 
+    @Mock
+    StationRouteSyncPublisher stationRouteSyncPublisher;
+
     Validator validator;
     StationService stationService;
     Operator operator;
@@ -74,7 +78,8 @@ class StationServiceTest {
                 routeRepository,
                 new StationMapper(),
                 new StationCodeGenerator(stationRepository),
-                new SecurityUtils(operatorRepository)
+                new SecurityUtils(operatorRepository),
+                stationRouteSyncPublisher
         );
         operator = Operator.builder().id(1L).operatorCode("HCMC-METRO").build();
         route = Route.builder().id(10L).operator(operator).routeCode("METRO-001").build();

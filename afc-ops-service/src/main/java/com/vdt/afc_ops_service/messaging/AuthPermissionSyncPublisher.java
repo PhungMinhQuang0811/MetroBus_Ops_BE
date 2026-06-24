@@ -61,7 +61,8 @@ public class AuthPermissionSyncPublisher {
                                         PredefinedAfcPermission.DEVICE_READ,
                                         PredefinedAfcPermission.CONTROL_PACKAGE_READ,
                                         PredefinedAfcPermission.CONTROL_PACKAGE_WRITE,
-                                        PredefinedAfcPermission.DASHBOARD_READ
+                                        PredefinedAfcPermission.DASHBOARD_READ,
+                                        PredefinedAfcPermission.RECONCILIATION_READ
                                 )
                         ),
                         Map.of(

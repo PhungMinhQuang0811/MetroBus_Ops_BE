@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -23,6 +24,7 @@ public class StationDetailResponse {
     String stationCode;
     String stationName;
     Integer stationOrder;
+    BigDecimal distance;
     String status;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

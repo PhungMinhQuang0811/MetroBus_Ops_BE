@@ -8,6 +8,7 @@ import com.vdt.afc_ops_service.dto.response.route.ImportRouteConfirmResponse;
 import com.vdt.afc_ops_service.dto.response.route.ImportRoutePreviewResponse;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
+import com.vdt.afc_ops_service.messaging.StationRouteSyncPublisher;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.security.entity.AfcUserDetails;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
@@ -53,6 +54,9 @@ class RouteImportServiceTest {
 
     @Mock
     SecurityUtils securityUtils;
+
+    @Mock
+    StationRouteSyncPublisher stationRouteSyncPublisher;
 
     @InjectMocks
     RouteImportService routeImportService;

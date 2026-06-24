@@ -1,4 +1,4 @@
-package com.vdt.afc_ops_service.dto.response.station;
+package com.vdt.afc_ops_service.dto.response.reconciliation;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -15,15 +15,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class StationResponse {
+public class SettlementResponse {
     Long id;
-    Long routeId;
-    String routeCode;
-    String stationCode;
-    String stationName;
-    Integer stationOrder;
-    BigDecimal distance;
-    String status;
+    String settlementId;
+    String period;
+    String operatorCode;
+    BigDecimal allocatedAmount;
+    BigDecimal totalKm;
+    Integer totalTrips;
+    BigDecimal kmRatio;
     LocalDateTime createdAt;
-    LocalDateTime updatedAt;
 }

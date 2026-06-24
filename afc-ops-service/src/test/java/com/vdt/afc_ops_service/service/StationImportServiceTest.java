@@ -8,6 +8,7 @@ import com.vdt.afc_ops_service.dto.response.station.ImportStationPreviewResponse
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.entity.Station;
+import com.vdt.afc_ops_service.messaging.StationRouteSyncPublisher;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.entity.AfcUserDetails;
@@ -61,6 +62,9 @@ class StationImportServiceTest {
     @Mock
     SecurityUtils securityUtils;
 
+    @Mock
+    StationRouteSyncPublisher stationRouteSyncPublisher;
+
     @InjectMocks
     StationImportService stationImportService;
 
@@ -94,8 +98,8 @@ class StationImportServiceTest {
         when(stationRepository.existsByRouteAndStationOrder(eq(route), anyInt())).thenReturn(false);
 
         ImportStationPreviewResponse response = stationImportService.preview(xlsx(
-                row(" METRO-001 ", " Ben Thanh ", "1"),
-                row("METRO-001", "Opera House", "2")
+                row(" METRO-001 ", " Ben Thanh ", "1", "0.00"),
+                row("METRO-001", "Opera House", "2", "0.96")
         ));
 
         assertEquals(2, response.getTotalRows());
@@ -125,10 +129,10 @@ class StationImportServiceTest {
         assertEquals(0, response.getInvalidRows());
         assertTrue(response.getErrors().isEmpty());
         assertEquals("METRO-001", response.getItems().get(0).getRouteCode());
-        assertEquals("Ben Thanh", response.getItems().get(0).getStationName());
-        assertEquals(2, response.getItems().get(0).getStationOrder());
-        assertEquals("Opera House", response.getItems().get(1).getStationName());
-        assertEquals(3, response.getItems().get(1).getStationOrder());
+        assertEquals("Cat Linh", response.getItems().get(0).getStationName());
+        assertEquals(1, response.getItems().get(0).getStationOrder());
+        assertEquals("La Thanh", response.getItems().get(1).getStationName());
+        assertEquals(2, response.getItems().get(1).getStationOrder());
     }
 
     @Test
@@ -139,9 +143,9 @@ class StationImportServiceTest {
         when(stationRepository.existsByRouteAndStationOrder(route, 1)).thenReturn(true);
 
         ImportStationPreviewResponse response = stationImportService.preview(xlsx(
-                row("", "", "0"),
-                row("MISSING", "Station", "abc"),
-                row("METRO-001", "Existing", "1")
+                row("", "", "0", ""),
+                row("MISSING", "Station", "abc", "1.5"),
+                row("METRO-001", "Existing", "1", "3.0")
         ));
 
         assertEquals(0, response.getValidRows());
@@ -156,8 +160,8 @@ class StationImportServiceTest {
         when(stationRepository.existsByRouteAndStationOrder(route, 1)).thenReturn(false);
 
         ImportStationPreviewResponse response = stationImportService.preview(xlsx(
-                row("METRO-001", "Ben Thanh", "1"),
-                row("METRO-001", "Opera House", "1")
+                row("METRO-001", "Ben Thanh", "1", "0.00"),
+                row("METRO-001", "Opera House", "1", "1.50")
         ));
 
         assertEquals(1, response.getValidRows());
@@ -169,7 +173,7 @@ class StationImportServiceTest {
         when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator);
 
         AppException exception = assertThrows(AppException.class,
-                () -> stationImportService.confirm(xlsx(row("", "Ben Thanh", "1"))));
+                () -> stationImportService.confirm(xlsx(row("", "Ben Thanh", "1", "0.00"))));
 
         assertEquals(ErrorCode.IMPORT_FILE_HAS_ERRORS, exception.getErrorCode());
         verify(stationRepository, never()).save(any());
@@ -190,8 +194,8 @@ class StationImportServiceTest {
         });
 
         ImportStationConfirmResponse response = stationImportService.confirm(xlsx(
-                row("METRO-001", "Ben Thanh", "1"),
-                row("METRO-001", "Opera House", "2")
+                row("METRO-001", "Ben Thanh", "1", "0.00"),
+                row("METRO-001", "Opera House", "2", "0.96")
         ));
 
         assertEquals(2, response.getImported());
@@ -206,16 +210,17 @@ class StationImportServiceTest {
         }
     }
 
-    private Object[] row(String routeCode, String stationName, String stationOrder) {
-        return new Object[]{routeCode, stationName, stationOrder};
+    private Object[] row(String routeCode, String stationName, String stationOrder, String distance) {
+        return new Object[]{routeCode, stationName, stationOrder, distance};
     }
 
     private MockMultipartFile xlsx(Object[]... rows) throws IOException {
-        return xlsxWithHeader("routeCode", "stationName", "stationOrder", rows);
+        return xlsxWithHeader("routeCode", "stationName", "stationOrder", "distance", rows);
     }
 
     private MockMultipartFile xlsxWithHeader(String routeCodeHeader, String stationNameHeader,
-                                             String stationOrderHeader, Object[]... rows) throws IOException {
+                                              String stationOrderHeader, String distanceHeader,
+                                              Object[]... rows) throws IOException {
         try (Workbook workbook = new XSSFWorkbook();
              ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("stations");
@@ -223,12 +228,14 @@ class StationImportServiceTest {
             header.createCell(0).setCellValue(routeCodeHeader);
             header.createCell(1).setCellValue(stationNameHeader);
             header.createCell(2).setCellValue(stationOrderHeader);
+            header.createCell(3).setCellValue(distanceHeader);
 
             for (int index = 0; index < rows.length; index++) {
                 Row row = sheet.createRow(index + 1);
                 row.createCell(0).setCellValue((String) rows[index][0]);
                 row.createCell(1).setCellValue((String) rows[index][1]);
                 row.createCell(2).setCellValue((String) rows[index][2]);
+                row.createCell(3).setCellValue((String) rows[index][3]);
             }
 
             workbook.write(outputStream);

@@ -18,6 +18,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -45,6 +46,10 @@ public class Station {
 
     @Column(name = "station_order", nullable = false)
     private Integer stationOrder;
+
+    @Column(name = "distance", precision = 5, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal distance = BigDecimal.ZERO;
 
     @Column(nullable = false, length = 30)
     private String status;

@@ -1,6 +1,8 @@
 package com.vdt.afc_ops_service.dto.request.station;
 
 import com.vdt.afc_ops_service.validation.RequiredField;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
@@ -9,6 +11,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -27,4 +30,8 @@ public class UpdateStationRequest {
     @RequiredField(fieldName = "stationOrder")
     @Min(value = 1, message = "INVALID_STATION_ORDER")
     Integer stationOrder;
+
+    @DecimalMin(value = "0.00", message = "INVALID_STATION_DISTANCE")
+    @DecimalMax(value = "999.99", message = "INVALID_STATION_DISTANCE")
+    BigDecimal distance;
 }

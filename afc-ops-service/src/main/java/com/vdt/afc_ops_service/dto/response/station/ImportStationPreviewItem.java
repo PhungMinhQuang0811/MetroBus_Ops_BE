@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -20,6 +21,7 @@ public class ImportStationPreviewItem {
     String routeCode;
     String stationName;
     Integer stationOrder;
+    BigDecimal distance;
     Boolean valid;
     List<ImportStationRowError> errors;
 }

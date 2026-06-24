@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -40,11 +41,13 @@ public class StationImportService {
     static final int ROUTE_CODE_COLUMN_INDEX = 0;
     static final int STATION_NAME_COLUMN_INDEX = 1;
     static final int STATION_ORDER_COLUMN_INDEX = 2;
+    static final int DISTANCE_COLUMN_INDEX = 3;
     static final int MAX_STATION_NAME_LENGTH = 255;
     static final String ROUTE_CODE_HEADER = "routeCode";
     static final String STATION_NAME_HEADER = "stationName";
     static final String STATION_ORDER_HEADER = "stationOrder";
-    static final List<String> IMPORT_HEADERS = List.of(ROUTE_CODE_HEADER, STATION_NAME_HEADER, STATION_ORDER_HEADER);
+    static final String DISTANCE_HEADER = "distance";
+    static final List<String> IMPORT_HEADERS = List.of(ROUTE_CODE_HEADER, STATION_NAME_HEADER, STATION_ORDER_HEADER, DISTANCE_HEADER);
 
     RouteRepository routeRepository;
     StationRepository stationRepository;
@@ -76,6 +79,7 @@ public class StationImportService {
                     .stationCode(stationCodeGenerator.generate(route))
                     .stationName(item.getStationName())
                     .stationOrder(item.getStationOrder())
+                    .distance(item.getDistance() != null ? item.getDistance() : BigDecimal.ZERO)
                     .status(PredefinedMasterDataStatus.ACTIVE)
                     .createdByAccountId(accountId)
                     .build();
@@ -90,6 +94,7 @@ public class StationImportService {
                     .stationCode(savedStation.getStationCode())
                     .stationName(savedStation.getStationName())
                     .stationOrder(savedStation.getStationOrder())
+                    .distance(savedStation.getDistance())
                     .status(savedStation.getStatus())
                     .build());
         }
@@ -108,7 +113,8 @@ public class StationImportService {
                         row.rowNumber(),
                         row.getValue(ROUTE_CODE_COLUMN_INDEX),
                         row.getValue(STATION_NAME_COLUMN_INDEX),
-                        row.getValue(STATION_ORDER_COLUMN_INDEX)
+                        row.getValue(STATION_ORDER_COLUMN_INDEX),
+                        row.getValue(DISTANCE_COLUMN_INDEX)
                 ),
                 ErrorCode.IMPORT_FILE_INVALID
         );
@@ -137,6 +143,7 @@ public class StationImportService {
         String routeCode = SearchFilterUtil.normalize(row.routeCode());
         String stationName = SearchFilterUtil.normalize(row.stationName());
         Integer stationOrder = parseStationOrder(row.stationOrder());
+        BigDecimal distance = parseDistance(row.distance());
         List<ImportStationRowError> errors = new ArrayList<>();
         Route route = null;
 
@@ -176,6 +183,7 @@ public class StationImportService {
                 .routeCode(routeCode)
                 .stationName(stationName)
                 .stationOrder(stationOrder)
+                .distance(distance)
                 .valid(errors.isEmpty())
                 .errors(errors)
                 .build();
@@ -190,6 +198,18 @@ public class StationImportService {
             return Integer.valueOf(normalizedValue);
         } catch (NumberFormatException exception) {
             return null;
+        }
+    }
+
+    private BigDecimal parseDistance(String value) {
+        String normalizedValue = SearchFilterUtil.normalize(value);
+        if (normalizedValue == null) {
+            return BigDecimal.ZERO;
+        }
+        try {
+            return new BigDecimal(normalizedValue);
+        } catch (NumberFormatException exception) {
+            return BigDecimal.ZERO;
         }
     }
 
@@ -211,6 +231,6 @@ public class StationImportService {
                 .build();
     }
 
-    private record ImportStationRow(Integer rowNumber, String routeCode, String stationName, String stationOrder) {
+    private record ImportStationRow(Integer rowNumber, String routeCode, String stationName, String stationOrder, String distance) {
     }
 }

@@ -66,6 +66,15 @@ public class MessageBrokerConfig {
     }
 
     @Bean
+    Level5SyncProperties level5SettlementSyncProperties(
+            @Value("${app.message-broker.level5-settlement-sync.exchange}") String exchange,
+            @Value("${app.message-broker.level5-settlement-sync.queue}") String queue,
+            @Value("${app.message-broker.level5-settlement-sync.routing-keys}") String routingKeys
+    ) {
+        return new Level5SyncProperties(exchange, queue, splitRoutingKeys(routingKeys));
+    }
+
+    @Bean
     RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(new JacksonJsonMessageConverter());
@@ -119,6 +128,11 @@ public class MessageBrokerConfig {
     }
 
     @Bean
+    Queue level5SettlementSyncQueue(@Qualifier("level5SettlementSyncProperties") Level5SyncProperties properties) {
+        return new Queue(properties.queue(), true);
+    }
+
+    @Bean
     Declarables level5CardSyncBindings(
             @Qualifier("level5CardSyncQueue") Queue level5CardSyncQueue,
             @Qualifier("level5BusinessSyncExchange") TopicExchange level5BusinessSyncExchange,
@@ -152,6 +166,15 @@ public class MessageBrokerConfig {
             @Qualifier("level5OperatorSyncProperties") Level5SyncProperties properties
     ) {
         return level5Bindings(level5OperatorSyncQueue, level5BusinessSyncExchange, properties);
+    }
+
+    @Bean
+    Declarables level5SettlementSyncBindings(
+            @Qualifier("level5SettlementSyncQueue") Queue level5SettlementSyncQueue,
+            @Qualifier("level5BusinessSyncExchange") TopicExchange level5BusinessSyncExchange,
+            @Qualifier("level5SettlementSyncProperties") Level5SyncProperties properties
+    ) {
+        return level5Bindings(level5SettlementSyncQueue, level5BusinessSyncExchange, properties);
     }
 
     private Declarables level5Bindings(Queue queue, TopicExchange exchange, Level5SyncProperties properties) {

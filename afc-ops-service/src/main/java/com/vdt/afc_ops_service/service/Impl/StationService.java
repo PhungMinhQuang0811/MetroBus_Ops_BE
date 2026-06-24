@@ -29,6 +29,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -94,6 +96,7 @@ public class StationService implements IStationService {
                 .stationCode(stationCodeGenerator.generate(route))
                 .stationName(SearchFilterUtil.normalize(request.getStationName()))
                 .stationOrder(request.getStationOrder())
+                .distance(resolveDistance(request.getDistance()))
                 .status(PredefinedMasterDataStatus.ACTIVE)
                 .createdByAccountId(SecurityUtils.getRequiredCurrentAccountId())
                 .build();
@@ -115,6 +118,7 @@ public class StationService implements IStationService {
         station.setRoute(route);
         station.setStationName(SearchFilterUtil.normalize(request.getStationName()));
         station.setStationOrder(request.getStationOrder());
+        station.setDistance(resolveDistance(request.getDistance()));
         Station savedStation = stationRepository.save(station);
         stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
         return stationMapper.toStationResponse(savedStation);
@@ -144,6 +148,10 @@ public class StationService implements IStationService {
         Station savedStation = stationRepository.save(station);
         stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
         return stationMapper.toStationResponse(savedStation);
+    }
+
+    private BigDecimal resolveDistance(BigDecimal distance) {
+        return distance != null ? distance : BigDecimal.ZERO;
     }
 
     private Route getRoute(Long routeId, Operator operator) {

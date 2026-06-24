@@ -1,5 +1,7 @@
 package com.vdt.afc_ops_service.dto.response.station;
 
+import java.math.BigDecimal;
+
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,5 +22,6 @@ public class ImportStationItemResponse {
     String stationCode;
     String stationName;
     Integer stationOrder;
+    BigDecimal distance;
     String status;
 }

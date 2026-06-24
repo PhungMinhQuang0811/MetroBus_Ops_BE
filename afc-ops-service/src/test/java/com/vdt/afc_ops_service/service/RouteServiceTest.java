@@ -10,6 +10,7 @@ import com.vdt.afc_ops_service.dto.response.route.RouteResponse;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.mapper.RouteMapper;
+import com.vdt.afc_ops_service.messaging.StationRouteSyncPublisher;
 import com.vdt.afc_ops_service.repository.OperatorRepository;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
@@ -55,6 +56,9 @@ class RouteServiceTest {
     @Mock
     StationRepository stationRepository;
 
+    @Mock
+    StationRouteSyncPublisher stationRouteSyncPublisher;
+
     RouteMapper routeMapper = new RouteMapper();
 
     Validator validator;
@@ -69,7 +73,8 @@ class RouteServiceTest {
                 stationRepository,
                 routeMapper,
                 new RouteCodeGenerator(routeRepository),
-                new SecurityUtils(operatorRepository)
+                new SecurityUtils(operatorRepository),
+                stationRouteSyncPublisher
         );
         AfcUserDetails principal = AfcUserDetails.builder()
                 .id("account-1")
