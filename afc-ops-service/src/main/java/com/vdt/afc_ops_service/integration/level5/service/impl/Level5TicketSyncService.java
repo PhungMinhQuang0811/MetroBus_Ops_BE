@@ -1,7 +1,6 @@
 package com.vdt.afc_ops_service.integration.level5.service.impl;
 
 import com.vdt.afc_ops_service.integration.level5.constant.PredefinedLevel5BusinessSync;
-import com.vdt.afc_ops_service.constant.PredefinedTransportType;
 import com.vdt.afc_ops_service.integration.level5.dto.message.ticket.C5TicketMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.message.ticket.C5TicketSyncMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.message.ticket.C5TicketUnlinkedMessage;
@@ -17,6 +16,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -28,6 +28,9 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class Level5TicketSyncService implements ILevel5TicketSyncService {
 
+    static final String SINGLE_TRIP = "SINGLE_TRIP";
+    static final String MONTHLY_PASS = "MONTHLY_PASS";
+
     CardRepository cardRepository;
     TicketRepository ticketRepository;
 
@@ -37,15 +40,16 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
         if (message == null || message.getTicketId() == null) {
             return rejected(null, null, "INVALID_TICKET_MESSAGE", "ticketId is required");
         }
-        if (!"SINGLE_TRIP".equals(normalizeUppercase(message.getType()))) {
-            return ignored(message.getTicketId().toString(), null, "Ticket sync ignores non single-trip messages");
-        }
-        if (message.getCardId() == null) {
-            return rejected(message.getTicketId().toString(), null,
-                    "CARD_ID_REQUIRED", "ticket cardId is required");
+        String type = normalizeUppercase(message.getType());
+        if (!SINGLE_TRIP.equals(type) && !MONTHLY_PASS.equals(type)) {
+            return ignored(message.getTicketId().toString(), null, "Unsupported ticket type: " + type);
         }
 
-        Card card = createCardPlaceholderIfMissing(message.getCardId());
+        Card card = null;
+        if (message.getCardId() != null) {
+            card = createCardPlaceholderIfMissing(message.getCardId());
+        }
+
         String ticketId = message.getTicketId().toString();
         Long sourceVersion = toSourceVersion(message.getIssuedAt());
         Optional<Ticket> existingTicket = ticketRepository.findById(ticketId);
@@ -55,13 +59,14 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
 
         Ticket ticket = existingTicket.orElseGet(() -> Ticket.builder().id(ticketId).build());
         ticket.setCard(card);
-        ticket.setTicketType(PredefinedLevel5BusinessSync.METRO_SINGLE_RIDE);
-        ticket.setRouteScopeType(PredefinedLevel5BusinessSync.NETWORK);
+        ticket.setType(type);
+        ticket.setScope(normalizeUppercase(message.getScope()));
+        ticket.setMode(normalizeUppercase(message.getMode()));
         ticket.setOperatorRef("*");
         ticket.setRouteRef("*");
         ticket.setFromStationRef(normalize(message.getFromStationCode()));
         ticket.setToStationRef(normalize(message.getToStationCode()));
-        ticket.setTransportType(mapC5TransportType(message.getMode()));
+        ticket.setPrice(message.getFareAmount());
         ticket.setUsageStatus(mapC5TicketStatus(message.getStatus()));
         ticket.setValidFrom(toStartOfDay(message.getValidFrom()));
         ticket.setValidTo(toStartOfDay(message.getValidTo()));
@@ -81,7 +86,7 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
         if (message == null || message.getId() == null) {
             return rejected(null, null, "INVALID_TICKET_SYNC_MESSAGE", "id is required");
         }
-        return processTicket(C5TicketMessage.builder()
+        C5TicketMessage c5Msg = C5TicketMessage.builder()
                 .ticketId(message.getId())
                 .type(message.getType())
                 .mode(message.getMode())
@@ -96,7 +101,8 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
                 .validTo(message.getValidTo())
                 .usedAt(message.getUsedAt())
                 .issuedAt(message.getPurchasedAt())
-                .build());
+                .build();
+        return processTicket(c5Msg);
     }
 
     @Override
@@ -105,13 +111,11 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
         if (message == null || message.getTicketId() == null) {
             return rejected(null, null, "INVALID_TICKET_UNLINKED_MESSAGE", "ticketId is required");
         }
-
         String ticketId = message.getTicketId().toString();
         Optional<Ticket> ticket = ticketRepository.findById(ticketId);
         if (ticket.isEmpty()) {
             return ignored(ticketId, null, "Ticket sync ignores unlink for non-ticket product");
         }
-
         Long sourceVersion = System.currentTimeMillis();
         Ticket existingTicket = ticket.get();
         existingTicket.setUsageStatus(PredefinedLevel5BusinessSync.CANCELLED);
@@ -125,7 +129,7 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
         String normalizedCardId = cardId.toString();
         return cardRepository.findById(normalizedCardId).orElseGet(() -> cardRepository.save(Card.builder()
                 .id(normalizedCardId)
-                .cardType(PredefinedLevel5BusinessSync.PHYSICAL)
+                .cardType(PredefinedLevel5BusinessSync.IDENTIFIED)
                 .status(PredefinedLevel5BusinessSync.ACTIVE)
                 .sourceVersion(0L)
                 .syncedAt(LocalDateTime.now())
@@ -136,27 +140,14 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
         return currentVersion != null && incomingVersion != null && currentVersion >= incomingVersion;
     }
 
-    private String mapC5TransportType(String c5Mode) {
-        String mode = normalizeUppercase(c5Mode);
-        if (mode == null) {
-            return PredefinedTransportType.METRO;
-        }
-        return switch (mode) {
-            case "BUS" -> PredefinedTransportType.BUS;
-            case "ANY" -> PredefinedLevel5BusinessSync.ALL;
-            default -> PredefinedTransportType.METRO;
-        };
-    }
-
     private String mapC5TicketStatus(String c5Status) {
         String status = normalizeUppercase(c5Status);
-        if (status == null) {
-            return PredefinedLevel5BusinessSync.UNUSED;
-        }
+        if (status == null) return PredefinedLevel5BusinessSync.UNUSED;
         return switch (status) {
             case "USED" -> PredefinedLevel5BusinessSync.USED;
             case "EXPIRED" -> PredefinedLevel5BusinessSync.EXPIRED;
             case "CANCELLED", "REVOKED" -> PredefinedLevel5BusinessSync.CANCELLED;
+            case "ACTIVE" -> PredefinedLevel5BusinessSync.ACTIVE;
             default -> PredefinedLevel5BusinessSync.UNUSED;
         };
     }
@@ -174,31 +165,15 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
     }
 
     private Level5BusinessSyncItemResult success(String externalId, String result, Long currentVersion) {
-        return Level5BusinessSyncItemResult.builder()
-                .externalId(externalId)
-                .result(result)
-                .currentVersion(currentVersion)
-                .build();
+        return Level5BusinessSyncItemResult.builder().externalId(externalId).result(result).currentVersion(currentVersion).build();
     }
 
     private Level5BusinessSyncItemResult ignored(String externalId, Long currentVersion, String message) {
-        return Level5BusinessSyncItemResult.builder()
-                .externalId(externalId)
-                .result(PredefinedLevel5BusinessSync.IGNORED_SAME_VERSION)
-                .currentVersion(currentVersion)
-                .message(message)
-                .build();
+        return Level5BusinessSyncItemResult.builder().externalId(externalId).result(PredefinedLevel5BusinessSync.IGNORED_SAME_VERSION).currentVersion(currentVersion).message(message).build();
     }
 
-    private Level5BusinessSyncItemResult rejected(String externalId, Long currentVersion,
-                                                  String errorCode, String message) {
-        return Level5BusinessSyncItemResult.builder()
-                .externalId(externalId)
-                .result(PredefinedLevel5BusinessSync.REJECTED)
-                .currentVersion(currentVersion)
-                .errorCode(errorCode)
-                .message(message)
-                .build();
+    private Level5BusinessSyncItemResult rejected(String externalId, Long currentVersion, String errorCode, String message) {
+        return Level5BusinessSyncItemResult.builder().externalId(externalId).result(PredefinedLevel5BusinessSync.REJECTED).currentVersion(currentVersion).errorCode(errorCode).message(message).build();
     }
 
     private String normalizeUppercase(String value) {
@@ -207,9 +182,7 @@ public class Level5TicketSyncService implements ILevel5TicketSyncService {
     }
 
     private String normalize(String value) {
-        if (value == null) {
-            return null;
-        }
+        if (value == null) return null;
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
     }

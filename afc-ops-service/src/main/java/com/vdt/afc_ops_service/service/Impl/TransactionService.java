@@ -14,7 +14,6 @@ import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailRespons
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemResponse;
 import com.vdt.afc_ops_service.entity.Card;
 import com.vdt.afc_ops_service.entity.Device;
-import com.vdt.afc_ops_service.entity.Entitlement;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Ticket;
 import com.vdt.afc_ops_service.entity.Transaction;
@@ -25,7 +24,6 @@ import com.vdt.afc_ops_service.qr.DynamicQrSession;
 import com.vdt.afc_ops_service.qr.DynamicQrSessionStore;
 import com.vdt.afc_ops_service.repository.CardRepository;
 import com.vdt.afc_ops_service.repository.DeviceRepository;
-import com.vdt.afc_ops_service.repository.EntitlementRepository;
 import com.vdt.afc_ops_service.repository.TicketRepository;
 import com.vdt.afc_ops_service.repository.TransactionRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
@@ -58,7 +56,6 @@ public class TransactionService implements ITransactionService {
     DeviceRepository deviceRepository;
     CardRepository cardRepository;
     TicketRepository ticketRepository;
-    EntitlementRepository entitlementRepository;
     TransactionRepository transactionRepository;
     DynamicQrSessionStore dynamicQrSessionStore;
     TransactionMapper transactionMapper;
@@ -248,21 +245,22 @@ public class TransactionService implements ITransactionService {
     }
 
     private TransactionEvaluation evaluateEntitlement(String qrId, DynamicQrSession session, Card card, LocalDateTime now) {
-        Entitlement entitlement = entitlementRepository.findByIdAndCardId(session.entitlementId(), card.getId()).orElse(null);
-        if (entitlement == null) {
+        // Entitlement merged into Ticket — lookup as monthly pass via ticketId
+        Ticket ticket = ticketRepository.findByIdAndCardId(session.entitlementId(), card.getId()).orElse(null);
+        if (ticket == null) {
             return transactionMapper.denyCard(qrId, session, card, PredefinedTransactionReason.ENTITLEMENT_INACTIVE);
         }
-        if (PredefinedLevel5BusinessSync.EXPIRED.equals(entitlement.getStatus())
-                || now.isBefore(entitlement.getValidFrom())
-                || now.isAfter(entitlement.getValidTo())) {
-            return transactionMapper.denyEntitlement(qrId, session, card, entitlement,
+        if (PredefinedLevel5BusinessSync.EXPIRED.equals(ticket.getUsageStatus())
+                || now.isBefore(ticket.getValidFrom())
+                || now.isAfter(ticket.getValidTo())) {
+            return transactionMapper.denyTicket(qrId, session, card, ticket,
                     PredefinedTransactionReason.ENTITLEMENT_EXPIRED);
         }
-        if (!PredefinedLevel5BusinessSync.ACTIVE.equals(entitlement.getStatus())) {
-            return transactionMapper.denyEntitlement(qrId, session, card, entitlement,
+        if (!PredefinedLevel5BusinessSync.ACTIVE.equals(ticket.getUsageStatus())) {
+            return transactionMapper.denyTicket(qrId, session, card, ticket,
                     PredefinedTransactionReason.ENTITLEMENT_INACTIVE);
         }
-        return transactionMapper.allowEntitlement(qrId, session, card, entitlement);
+        return transactionMapper.allowTicket(qrId, session, card, ticket);
     }
 
     private String validateCard(Card card) {

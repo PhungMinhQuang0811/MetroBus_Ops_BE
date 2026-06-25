@@ -271,6 +271,7 @@ Hàng đợi lưu trữ giao dịch tạm thời tại máy chủ Ga.
 1. **Ngày 1-2**: Thực hiện chạy migration SQL cập nhật bảng `stations` (thêm cột `distance` DECIMAL(5, 2)). Chỉnh sửa Java Entity `Station`, DTO, REST API tương ứng và cập nhật logic Import Excel Master Data để hỗ trợ lưu cự ly ga.
 2. **Ngày 3-4**: Tạo bảng `operator_settlements`. Định nghĩa cấu trúc Java Record `SettlementConfirmedEvent` và `CompanyShareMessage`. Khai báo cấu hình RabbitMQ (Queue, Exchange, Routing Key) trong `application.yaml` và `MessageBrokerConfig`. Viết `Level5SettlementSyncListener` để lắng nghe sự kiện đối soát từ Cấp 5, lọc theo `operatorCode` và lưu thông tin vào DB.
 3. **Ngày 5**: Viết API tra cứu lịch sử quyết toán doanh thu `/reconciliation/settlements` và bổ sung Unit Test bao phủ logic đối soát đạt > 80% coverage.
+4. Sửa thiết kế ticket, card (UC22) để đồng bộ với c5
 
 ### Tuần 2: Hàng đợi Ngoại tuyến & Phân hệ Ca trực (Làm sau)
 1. **Ngày 6-7**: Tạo bảng `offline_transactions`. Xây dựng Scheduler ngầm tại Cấp 3 để gửi lô giao dịch và API đồng bộ lô `/transactions/sync-batch` tại Cấp 4.

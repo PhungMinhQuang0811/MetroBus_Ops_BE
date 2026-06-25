@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -30,15 +31,15 @@ public class Ticket {
     @Column(length = 100)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "card_id", nullable = false, foreignKey = @ForeignKey(name = "fk_tickets_card"))
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "card_id", foreignKey = @ForeignKey(name = "fk_tickets_card"))
     private Card card;
 
-    @Column(name = "ticket_type", nullable = false, length = 50)
-    private String ticketType;
+    @Column(name = "user_id", length = 36)
+    private String userId;
 
-    @Column(name = "route_scope_type", nullable = false, length = 30)
-    private String routeScopeType;
+    @Column(name = "ticket_type", nullable = false, length = 30)
+    private String type;
 
     @Column(name = "operator_ref", length = 100)
     private String operatorRef;
@@ -52,8 +53,23 @@ public class Ticket {
     @Column(name = "to_station_ref", length = 100)
     private String toStationRef;
 
-    @Column(name = "transport_type", nullable = false, length = 30)
-    private String transportType;
+    @Column(length = 30)
+    private String scope;
+
+    @Column(length = 30)
+    private String mode;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal price;
+
+    @Column(name = "fare_rule_id", length = 36)
+    private String fareRuleId;
+
+    @Column(name = "discount_id", length = 36)
+    private String discountId;
+
+    @Column(name = "passenger_type", length = 50)
+    private String passengerType;
 
     @Column(name = "usage_status", nullable = false, length = 30)
     private String usageStatus;
@@ -63,6 +79,9 @@ public class Ticket {
 
     @Column(name = "valid_to", nullable = false)
     private LocalDateTime validTo;
+
+    @Column(name = "purchased_at")
+    private LocalDateTime purchasedAt;
 
     @Column(name = "first_tap_at")
     private LocalDateTime firstTapAt;

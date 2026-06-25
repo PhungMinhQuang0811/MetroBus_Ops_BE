@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -18,10 +19,13 @@ public class Level5TicketPayload {
     private String ticketId;
     private String cardId;
     private String ticketType;
-    private String routeScopeType;
+    private String scope;
+    private String mode;
     private String operatorRef;
     private String routeRef;
-    private String transportType;
+    private String fromStationRef;
+    private String toStationRef;
+    private BigDecimal price;
     private String usageStatus;
     private LocalDateTime validFrom;
     private LocalDateTime validTo;

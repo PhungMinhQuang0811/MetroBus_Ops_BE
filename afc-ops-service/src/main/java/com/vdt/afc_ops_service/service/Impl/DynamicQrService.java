@@ -6,13 +6,11 @@ import com.vdt.afc_ops_service.common.util.SearchFilterUtil;
 import com.vdt.afc_ops_service.dto.request.qr.GenerateDynamicQrRequest;
 import com.vdt.afc_ops_service.dto.response.qr.DynamicQrResponse;
 import com.vdt.afc_ops_service.entity.Card;
-import com.vdt.afc_ops_service.entity.Entitlement;
 import com.vdt.afc_ops_service.entity.Ticket;
 import com.vdt.afc_ops_service.integration.level5.constant.PredefinedLevel5BusinessSync;
 import com.vdt.afc_ops_service.mapper.DynamicQrMapper;
 import com.vdt.afc_ops_service.qr.DynamicQrSessionStore;
 import com.vdt.afc_ops_service.repository.CardRepository;
-import com.vdt.afc_ops_service.repository.EntitlementRepository;
 import com.vdt.afc_ops_service.repository.TicketRepository;
 import com.vdt.afc_ops_service.service.IDynamicQrService;
 import lombok.AccessLevel;
@@ -35,7 +33,6 @@ public class DynamicQrService implements IDynamicQrService {
 
     CardRepository cardRepository;
     TicketRepository ticketRepository;
-    EntitlementRepository entitlementRepository;
     DynamicQrSessionStore dynamicQrSessionStore;
     DynamicQrMapper dynamicQrMapper;
 
@@ -82,35 +79,25 @@ public class DynamicQrService implements IDynamicQrService {
     }
 
     private ActiveProduct resolveActiveProduct(String cardId, LocalDateTime now) {
-        List<Ticket> tickets = ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
+        List<Ticket> singleTickets = ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
                 cardId,
                 List.of(PredefinedLevel5BusinessSync.UNUSED, PredefinedLevel5BusinessSync.IN_USE),
                 now
         );
-
-        List<Entitlement> entitlements = entitlementRepository.findAllByCardIdAndStatusAndValidToAfter(
-                cardId,
-                PredefinedLevel5BusinessSync.ACTIVE,
-                now
+        List<Ticket> monthlyPasses = ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
+                cardId, "MONTHLY_PASS", PredefinedLevel5BusinessSync.ACTIVE, now
         );
 
-        int activeProductCount = tickets.size() + entitlements.size();
-        if (activeProductCount == 0) {
-            throw new AppException(ErrorCode.ACTIVE_PRODUCT_NOT_FOUND);
-        }
-        if (activeProductCount > 1) {
-            throw new AppException(ErrorCode.ACTIVE_PRODUCT_CONFLICT);
-        }
-        if (!tickets.isEmpty()) {
-            return new ActiveProduct(tickets.get(0).getId(), null);
-        }
-        return new ActiveProduct(null, entitlements.get(0).getId());
+        int count = singleTickets.size() + monthlyPasses.size();
+        if (count == 0) throw new AppException(ErrorCode.ACTIVE_PRODUCT_NOT_FOUND);
+        if (count > 1) throw new AppException(ErrorCode.ACTIVE_PRODUCT_CONFLICT);
+        if (!singleTickets.isEmpty()) return new ActiveProduct(singleTickets.get(0).getId(), null);
+        return new ActiveProduct(null, monthlyPasses.get(0).getId());
     }
 
     private long toEpochSecond(LocalDateTime dateTime) {
         return dateTime.atZone(ZoneId.systemDefault()).toEpochSecond();
     }
 
-    private record ActiveProduct(String ticketId, String entitlementId) {
-    }
+    private record ActiveProduct(String ticketId, String entitlementId) {}
 }

@@ -18,9 +18,9 @@ public class Level5BusinessSyncResult {
     private String syncType;
     private String correlationId;
     private int processedCount;
-    private int createdCount;
-    private int updatedCount;
-    private int ignoredCount;
-    private int rejectedCount;
+    private Long createdCount;
+    private Long updatedCount;
+    private Long ignoredCount;
+    private Long rejectedCount;
     private List<Level5BusinessSyncItemResult> items;
 }

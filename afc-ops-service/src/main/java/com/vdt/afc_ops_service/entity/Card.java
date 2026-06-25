@@ -41,6 +41,14 @@ public class Card {
     @Column(name = "status_reason", length = 100)
     private String statusReason;
 
+    @Column(name = "supports_metro", nullable = false)
+    @Builder.Default
+    private Boolean supportsMetro = true;
+
+    @Column(name = "supports_bus", nullable = false)
+    @Builder.Default
+    private Boolean supportsBus = true;
+
     @Column(name = "source_version", nullable = false)
     private Long sourceVersion;
 

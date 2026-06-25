@@ -61,10 +61,6 @@ public class Transaction {
     @JoinColumn(name = "ticket_id", foreignKey = @ForeignKey(name = "fk_afc_transactions_ticket"))
     private Ticket ticket;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "entitlement_id", foreignKey = @ForeignKey(name = "fk_afc_transactions_entitlement"))
-    private Entitlement entitlement;
-
     @Column(name = "qr_id", length = 100)
     private String qrId;
 

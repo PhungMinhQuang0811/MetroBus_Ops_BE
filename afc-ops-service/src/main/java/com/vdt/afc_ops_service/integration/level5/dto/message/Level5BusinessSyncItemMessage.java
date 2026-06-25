@@ -17,5 +17,4 @@ public class Level5BusinessSyncItemMessage {
     private Long sourceVersion;
     private Level5CardPayload card;
     private Level5TicketPayload ticket;
-    private Level5EntitlementPayload entitlement;
 }

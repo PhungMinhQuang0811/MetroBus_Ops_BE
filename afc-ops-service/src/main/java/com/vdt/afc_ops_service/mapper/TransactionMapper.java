@@ -11,7 +11,6 @@ import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailRespons
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemResponse;
 import com.vdt.afc_ops_service.entity.Card;
 import com.vdt.afc_ops_service.entity.Device;
-import com.vdt.afc_ops_service.entity.Entitlement;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.entity.Station;
@@ -27,40 +26,28 @@ public class TransactionMapper {
 
     public TransactionEvaluation deny(String reason) {
         return new TransactionEvaluation(PredefinedTransactionDecision.DENY, reason,
-                null, null, null, null, null);
+                null, null, null, null);
     }
 
     public TransactionEvaluation denyQr(String qrId, DynamicQrSession session, String reason) {
         return new TransactionEvaluation(PredefinedTransactionDecision.DENY, reason,
-                qrId, session, null, null, null);
+                qrId, session, null, null);
     }
 
     public TransactionEvaluation denyCard(String qrId, DynamicQrSession session, Card card, String reason) {
         return new TransactionEvaluation(PredefinedTransactionDecision.DENY, reason,
-                qrId, session, card, null, null);
+                qrId, session, card, null);
     }
 
     public TransactionEvaluation denyTicket(String qrId, DynamicQrSession session, Card card,
                                             Ticket ticket, String reason) {
         return new TransactionEvaluation(PredefinedTransactionDecision.DENY, reason,
-                qrId, session, card, ticket, null);
-    }
-
-    public TransactionEvaluation denyEntitlement(String qrId, DynamicQrSession session, Card card,
-                                                 Entitlement entitlement, String reason) {
-        return new TransactionEvaluation(PredefinedTransactionDecision.DENY, reason,
-                qrId, session, card, null, entitlement);
+                qrId, session, card, ticket);
     }
 
     public TransactionEvaluation allowTicket(String qrId, DynamicQrSession session, Card card, Ticket ticket) {
         return new TransactionEvaluation(PredefinedTransactionDecision.OPEN_GATE, PredefinedTransactionReason.VALID,
-                qrId, session, card, ticket, null);
-    }
-
-    public TransactionEvaluation allowEntitlement(String qrId, DynamicQrSession session, Card card,
-                                                  Entitlement entitlement) {
-        return new TransactionEvaluation(PredefinedTransactionDecision.OPEN_GATE, PredefinedTransactionReason.VALID,
-                qrId, session, card, null, entitlement);
+                qrId, session, card, ticket);
     }
 
     public Transaction toTransaction(SubmitTransactionRequest request, Device device, String direction,
@@ -76,7 +63,6 @@ public class TransactionMapper {
                 .mediaType("VIRTUAL_QR")
                 .card(evaluation.card())
                 .ticket(evaluation.ticket())
-                .entitlement(evaluation.entitlement())
                 .qrId(evaluation.qrId())
                 .qrPayloadHash(CryptoHashUtil.sha256Base64Url(SearchFilterUtil.normalize(request.getQrPayload())))
                 .tapType(tapType)
@@ -102,6 +88,7 @@ public class TransactionMapper {
         Route route = transaction.getRoute();
         Station station = transaction.getStation();
         Device device = transaction.getDevice();
+        Ticket ticket = transaction.getTicket();
 
         return TransactionListItemResponse.builder()
                 .id(transaction.getId())
@@ -116,8 +103,8 @@ public class TransactionMapper {
                 .deviceCode(device != null ? device.getDeviceCode() : null)
                 .mediaType(transaction.getMediaType())
                 .cardId(getCardId(transaction.getCard()))
-                .ticketId(getTicketId(transaction.getTicket()))
-                .entitlementId(getEntitlementId(transaction.getEntitlement()))
+                .ticketId(getTicketId(ticket))
+                .entitlementId(null)
                 .qrId(transaction.getQrId())
                 .tapType(transaction.getTapType())
                 .occurredAt(transaction.getOccurredAt())
@@ -136,7 +123,6 @@ public class TransactionMapper {
         Device device = transaction.getDevice();
         Card card = transaction.getCard();
         Ticket ticket = transaction.getTicket();
-        Entitlement entitlement = transaction.getEntitlement();
 
         return TransactionDetailResponse.builder()
                 .id(transaction.getId())
@@ -160,8 +146,8 @@ public class TransactionMapper {
                 .cardStatus(card != null ? card.getStatus() : null)
                 .ticketId(getTicketId(ticket))
                 .ticketUsageStatus(ticket != null ? ticket.getUsageStatus() : null)
-                .entitlementId(getEntitlementId(entitlement))
-                .entitlementStatus(entitlement != null ? entitlement.getStatus() : null)
+                .entitlementId(null)
+                .entitlementStatus(null)
                 .qrId(transaction.getQrId())
                 .qrPayloadHash(transaction.getQrPayloadHash())
                 .tapType(transaction.getTapType())
@@ -191,11 +177,7 @@ public class TransactionMapper {
         return ticket != null ? ticket.getId() : null;
     }
 
-    private String getEntitlementId(Entitlement entitlement) {
-        return entitlement != null ? entitlement.getId() : null;
-    }
-
     public record TransactionEvaluation(String decision, String reason, String qrId, DynamicQrSession session,
-                                        Card card, Ticket ticket, Entitlement entitlement) {
+                                        Card card, Ticket ticket) {
     }
 }

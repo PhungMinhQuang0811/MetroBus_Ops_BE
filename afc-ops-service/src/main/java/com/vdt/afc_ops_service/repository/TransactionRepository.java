@@ -22,7 +22,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
                     "JOIN FETCH t.device d " +
                     "LEFT JOIN FETCH t.card c " +
                     "LEFT JOIN FETCH t.ticket tk " +
-                    "LEFT JOIN FETCH t.entitlement e " +
                     "WHERE o.id = :operatorId " +
                     "AND t.occurredAt >= :fromTime " +
                     "AND t.occurredAt <= :toTime " +
@@ -31,7 +30,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
                     "AND (:deviceId IS NULL OR d.id = :deviceId) " +
                     "AND (:cardId IS NULL OR c.id = :cardId) " +
                     "AND (:ticketId IS NULL OR tk.id = :ticketId) " +
-                    "AND (:entitlementId IS NULL OR e.id = :entitlementId) " +
                     "AND (:tapType IS NULL OR t.tapType = :tapType) " +
                     "AND (:decision IS NULL OR t.decision = :decision) " +
                     "AND (:reason IS NULL OR t.reason = :reason) " +
@@ -44,7 +42,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
                     "JOIN t.device d " +
                     "LEFT JOIN t.card c " +
                     "LEFT JOIN t.ticket tk " +
-                    "LEFT JOIN t.entitlement e " +
                     "WHERE o.id = :operatorId " +
                     "AND t.occurredAt >= :fromTime " +
                     "AND t.occurredAt <= :toTime " +
@@ -53,7 +50,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
                     "AND (:deviceId IS NULL OR d.id = :deviceId) " +
                     "AND (:cardId IS NULL OR c.id = :cardId) " +
                     "AND (:ticketId IS NULL OR tk.id = :ticketId) " +
-                    "AND (:entitlementId IS NULL OR e.id = :entitlementId) " +
                     "AND (:tapType IS NULL OR t.tapType = :tapType) " +
                     "AND (:decision IS NULL OR t.decision = :decision) " +
                     "AND (:reason IS NULL OR t.reason = :reason) " +
@@ -83,7 +79,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
             "JOIN FETCH t.device d " +
             "LEFT JOIN FETCH t.card c " +
             "LEFT JOIN FETCH t.ticket tk " +
-            "LEFT JOIN FETCH t.entitlement e " +
             "WHERE t.id = :transactionId AND o.id = :operatorId")
     Optional<Transaction> findDetailByIdAndOperatorId(@Param("transactionId") String transactionId,
                                                       @Param("operatorId") Long operatorId);

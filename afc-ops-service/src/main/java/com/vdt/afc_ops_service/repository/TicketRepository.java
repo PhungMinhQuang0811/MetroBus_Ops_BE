@@ -13,6 +13,11 @@ public interface TicketRepository extends JpaRepository<Ticket, String> {
     Optional<Ticket> findByIdAndCardId(String id, String cardId);
 
     List<Ticket> findAllByCardIdAndUsageStatusInAndValidToAfter(String cardId,
-                                                                Collection<String> usageStatuses,
-                                                                LocalDateTime now);
+                                                                 Collection<String> usageStatuses,
+                                                                 LocalDateTime now);
+
+    List<Ticket> findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(String cardId,
+                                                                      String type,
+                                                                      String usageStatus,
+                                                                      LocalDateTime now);
 }

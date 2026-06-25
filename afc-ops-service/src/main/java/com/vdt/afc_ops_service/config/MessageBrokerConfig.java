@@ -48,15 +48,6 @@ public class MessageBrokerConfig {
     }
 
     @Bean
-    Level5SyncProperties level5EntitlementSyncProperties(
-            @Value("${app.message-broker.level5-entitlement-sync.exchange}") String exchange,
-            @Value("${app.message-broker.level5-entitlement-sync.queue}") String queue,
-            @Value("${app.message-broker.level5-entitlement-sync.routing-keys}") String routingKeys
-    ) {
-        return new Level5SyncProperties(exchange, queue, splitRoutingKeys(routingKeys));
-    }
-
-    @Bean
     Level5SyncProperties level5OperatorSyncProperties(
             @Value("${app.message-broker.level5-operator-sync.exchange}") String exchange,
             @Value("${app.message-broker.level5-operator-sync.queue}") String queue,
@@ -118,11 +109,6 @@ public class MessageBrokerConfig {
     }
 
     @Bean
-    Queue level5EntitlementSyncQueue(@Qualifier("level5EntitlementSyncProperties") Level5SyncProperties properties) {
-        return new Queue(properties.queue(), true);
-    }
-
-    @Bean
     Queue level5OperatorSyncQueue(@Qualifier("level5OperatorSyncProperties") Level5SyncProperties properties) {
         return new Queue(properties.queue(), true);
     }
@@ -148,15 +134,6 @@ public class MessageBrokerConfig {
             @Qualifier("level5TicketSyncProperties") Level5SyncProperties properties
     ) {
         return level5Bindings(level5TicketSyncQueue, level5BusinessSyncExchange, properties);
-    }
-
-    @Bean
-    Declarables level5EntitlementSyncBindings(
-            @Qualifier("level5EntitlementSyncQueue") Queue level5EntitlementSyncQueue,
-            @Qualifier("level5BusinessSyncExchange") TopicExchange level5BusinessSyncExchange,
-            @Qualifier("level5EntitlementSyncProperties") Level5SyncProperties properties
-    ) {
-        return level5Bindings(level5EntitlementSyncQueue, level5BusinessSyncExchange, properties);
     }
 
     @Bean

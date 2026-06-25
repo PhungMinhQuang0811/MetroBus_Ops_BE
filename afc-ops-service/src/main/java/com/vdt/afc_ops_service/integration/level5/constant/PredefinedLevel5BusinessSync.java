@@ -17,8 +17,8 @@ public final class PredefinedLevel5BusinessSync {
     public static final String IGNORED_STALE_VERSION = "IGNORED_STALE_VERSION";
     public static final String REJECTED = "REJECTED";
 
-    public static final String VIRTUAL_QR = "VIRTUAL_QR";
-    public static final String PHYSICAL = "PHYSICAL";
+    public static final String IDENTIFIED = "IDENTIFIED";
+    public static final String ANON = "ANON";
 
     public static final String ACTIVE = "ACTIVE";
     public static final String INACTIVE = "INACTIVE";
@@ -47,7 +47,7 @@ public final class PredefinedLevel5BusinessSync {
             ENTITLEMENT_STATUS_CHANGED
     );
 
-    public static final Set<String> CARD_TYPES = Set.of(VIRTUAL_QR, PHYSICAL);
+    public static final Set<String> CARD_TYPES = Set.of(IDENTIFIED, ANON);
     public static final Set<String> CARD_STATUSES = Set.of(ACTIVE, INACTIVE, CANCELLED, BLACKLISTED);
     public static final Set<String> ROUTE_SCOPE_TYPES = Set.of(SINGLE_ROUTE, NETWORK);
     public static final Set<String> TICKET_USAGE_STATUSES = Set.of(UNUSED, IN_USE, USED, EXPIRED, CANCELLED);

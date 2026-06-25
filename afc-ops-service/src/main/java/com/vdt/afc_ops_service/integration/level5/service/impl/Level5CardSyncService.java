@@ -37,10 +37,12 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
                 cardId,
                 normalize(message.getCardUid()),
                 null,
-                PredefinedLevel5BusinessSync.VIRTUAL_QR,
+                normalize(message.getType()),
                 mapC5CardStatus(message.getToStatus()),
                 normalize(message.getReason()),
-                toSourceVersion(message.getOccurredAt())
+                toSourceVersion(message.getOccurredAt()),
+                message.getSupportsMetro(),
+                message.getSupportsBus()
         );
     }
 
@@ -56,10 +58,12 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
                 cardId,
                 normalize(message.getCardUid()),
                 toRef(message.getIssuedAtStationId()),
-                PredefinedLevel5BusinessSync.VIRTUAL_QR,
+                normalize(message.getType()),
                 mapC5CardStatus(message.getStatus()),
                 null,
-                toSourceVersion(message.getUpdatedAt() == null ? message.getCreatedAt() : message.getUpdatedAt())
+                toSourceVersion(message.getUpdatedAt() == null ? message.getCreatedAt() : message.getUpdatedAt()),
+                message.getSupportsMetro(),
+                message.getSupportsBus()
         );
     }
 
@@ -77,15 +81,17 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
                 cardId,
                 null,
                 null,
-                PredefinedLevel5BusinessSync.VIRTUAL_QR,
+                PredefinedLevel5BusinessSync.IDENTIFIED,
                 removed ? PredefinedLevel5BusinessSync.ACTIVE : PredefinedLevel5BusinessSync.BLACKLISTED,
                 removed ? null : normalize(message.getReason()),
-                toSourceVersion(message.getOccurredAt())
+                toSourceVersion(message.getOccurredAt()),
+                null,
+                null
         );
     }
 
     private Level5BusinessSyncItemResult upsertCard(String cardId, String cardUid, String issuedAtStationRef, String cardType,
-                                                    String status, String statusReason, Long sourceVersion) {
+                                                    String status, String statusReason, Long sourceVersion, Boolean supportsMetro, Boolean supportsBus) {
         Optional<Card> existingCard = cardRepository.findById(cardId);
         if (existingCard.isPresent() && shouldIgnore(existingCard.get().getSourceVersion(), sourceVersion)) {
             return ignored(cardId, existingCard.get().getSourceVersion(), sourceVersion);
@@ -103,6 +109,8 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
         card.setStatusReason(statusReason);
         card.setSourceVersion(sourceVersion);
         card.setSyncedAt(LocalDateTime.now());
+        card.setSupportsMetro(supportsMetro != null ? supportsMetro : true);
+        card.setSupportsBus(supportsBus != null ? supportsBus : true);
         cardRepository.save(card);
 
         return success(cardId,

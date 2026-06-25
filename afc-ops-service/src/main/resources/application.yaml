@@ -15,8 +15,8 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: false # true for debug
+      ddl-auto: update
+    show-sql: true # true for debug
   data:
     redis:
       host: ${REDIS_HOST}
@@ -56,10 +56,6 @@ app:
     level5-ticket-sync:
       exchange: afc.exchange
       queue: afc.level5-ticket-sync
-      routing-keys: "ticket.*,sync.ticket.all"
-    level5-entitlement-sync:
-      exchange: afc.exchange
-      queue: afc.level5-entitlement-sync
       routing-keys: "ticket.*,sync.ticket.all"
     level5-operator-sync:
       exchange: afc.exchange
