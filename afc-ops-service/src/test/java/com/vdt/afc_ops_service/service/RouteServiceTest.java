@@ -32,6 +32,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -40,9 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RouteServiceTest {
@@ -454,5 +453,54 @@ class RouteServiceTest {
 
         assertTrue(violations.stream()
                 .anyMatch(violation -> ErrorCode.INVALID_TRANSPORT_TYPE.name().equals(violation.getMessage())));
+    }
+
+    @Test
+    void publishAllRoutes_WhenRoutesExist_ShouldPublishAll() {
+        // Given: Khởi tạo dữ liệu giả lập không bị null
+        Route mockRoute1 = Route.builder()
+                .id(1L)
+                .routeCode("METRO-001")
+                .routeName("Metro Line 1")
+                .transportType(PredefinedTransportType.METRO)
+                .status(PredefinedMasterDataStatus.ACTIVE)
+                .build();
+
+        Route mockRoute2 = Route.builder()
+                .id(2L)
+                .routeCode("BUS-002")
+                .routeName("Bus Route 2")
+                .transportType(PredefinedTransportType.BUS)
+                .status(PredefinedMasterDataStatus.ACTIVE)
+                .build();
+
+        List<Route> mockRoutes = List.of(mockRoute1, mockRoute2);
+        when(routeRepository.findAll()).thenReturn(mockRoutes);
+
+        // When: Gọi hàm cần test
+        routeService.publishAllRoutes();
+
+        // Then: Kiểm tra hành vi hệ thống
+        // 1. Kiểm tra routeRepository.findAll() được gọi chính xác 1 lần
+        verify(routeRepository, times(1)).findAll();
+
+        // 2. Kiểm tra publisher được gọi đúng 2 lần tương ứng với 2 route trong DB
+        verify(stationRouteSyncPublisher, times(2)).publishRouteSync(any());
+    }
+
+    @Test
+    void publishAllRoutes_WhenNoRoutesExist_ShouldNotPublishAnything() {
+        // Given: Khi DB trống, không có route nào
+        when(routeRepository.findAll()).thenReturn(Collections.emptyList());
+
+        // When: Gọi hàm cần test
+        routeService.publishAllRoutes();
+
+        // Then:
+        // 1. Kiểm tra findAll() vẫn phải được gọi để check dữ liệu
+        verify(routeRepository, times(1)).findAll();
+
+        // 2. Kiểm tra publisher TUYỆT ĐỐI không được gọi tin nhắn nào đi
+        verify(stationRouteSyncPublisher, never()).publishRouteSync(any());
     }
 }

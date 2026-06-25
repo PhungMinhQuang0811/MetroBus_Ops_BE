@@ -10,7 +10,6 @@ import com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest;
 import com.vdt.afc_ops_service.entity.Transaction;
 import com.vdt.afc_ops_service.entity.Card;
 import com.vdt.afc_ops_service.entity.Device;
-import com.vdt.afc_ops_service.entity.Entitlement;
 import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.entity.Route;
 import com.vdt.afc_ops_service.entity.Station;
@@ -22,7 +21,6 @@ import com.vdt.afc_ops_service.qr.DynamicQrSessionStore;
 import com.vdt.afc_ops_service.repository.TransactionRepository;
 import com.vdt.afc_ops_service.repository.CardRepository;
 import com.vdt.afc_ops_service.repository.DeviceRepository;
-import com.vdt.afc_ops_service.repository.EntitlementRepository;
 import com.vdt.afc_ops_service.repository.TicketRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
 import com.vdt.afc_ops_service.service.Impl.TransactionService;
@@ -63,9 +61,6 @@ class TransactionServiceTest {
     TicketRepository ticketRepository;
 
     @Mock
-    EntitlementRepository entitlementRepository;
-
-    @Mock
     TransactionRepository transactionRepository;
 
     @Mock
@@ -79,7 +74,7 @@ class TransactionServiceTest {
     @BeforeEach
     void setUp() {
         service = new TransactionService(deviceRepository, cardRepository, ticketRepository,
-                entitlementRepository, transactionRepository, dynamicQrSessionStore, new TransactionMapper(),
+                transactionRepository, dynamicQrSessionStore, new TransactionMapper(),
                 securityUtils);
         lenient().when(transactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
@@ -125,17 +120,18 @@ class TransactionServiceTest {
     }
 
     @Test
-    void submit_ValidEntitlement_OpensGateWithoutChangingEntitlement() {
+    void submit_ValidMonthlyPass_OpensGateWithoutChangingTicket() {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session("CARD-000001", null, "ENT-000001", false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
-                .thenReturn(Optional.of(entitlement("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.ACTIVE)));
+        when(ticketRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
+                .thenReturn(Optional.of(monthlyPassTicket("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.ACTIVE)));
 
         var response = service.submit("GATE-001", "secret", request());
 
         assertEquals(PredefinedTransactionDecision.OPEN_GATE, response.getDecision());
-        assertEquals("ENT-000001", savedTransaction().getEntitlement().getId());
+        assertEquals("ENT-000001", savedTransaction().getTicket().getId());
+        assertEquals(PredefinedLevel5BusinessSync.ACTIVE, savedTransaction().getTicket().getUsageStatus());
         verify(ticketRepository, never()).save(any());
     }
 
@@ -321,13 +317,13 @@ class TransactionServiceTest {
     }
 
     @Test
-    void submit_EntitlementExpired_Denies() {
+    void submit_MonthlyPassExpired_Denies() {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session("CARD-000001", null, "ENT-000001", false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        Entitlement entitlement = entitlement("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.ACTIVE);
-        entitlement.setValidTo(LocalDateTime.now().minusMinutes(1));
-        when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.of(entitlement));
+        Ticket pass = monthlyPassTicket("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.ACTIVE);
+        pass.setValidTo(LocalDateTime.now().minusMinutes(1));
+        when(ticketRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.of(pass));
 
         var response = service.submit("GATE-001", "secret", request());
 
@@ -335,12 +331,12 @@ class TransactionServiceTest {
     }
 
     @Test
-    void submit_EntitlementInactive_Denies() {
+    void submit_MonthlyPassInactive_Denies() {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session("CARD-000001", null, "ENT-000001", false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
-                .thenReturn(Optional.of(entitlement("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.INACTIVE)));
+        when(ticketRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
+                .thenReturn(Optional.of(monthlyPassTicket("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.INACTIVE)));
 
         var response = service.submit("GATE-001", "secret", request());
 
@@ -423,11 +419,11 @@ class TransactionServiceTest {
     }
 
     @Test
-    void submit_EntitlementNotFound_DeniesInactiveEntitlement() {
+    void submit_MonthlyPassNotFound_DeniesInactive() {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session("CARD-000001", null, "ENT-000001", false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.empty());
+        when(ticketRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.empty());
 
         var response = service.submit("GATE-001", "secret", request());
 
@@ -435,13 +431,13 @@ class TransactionServiceTest {
     }
 
     @Test
-    void submit_EntitlementStartsInFuture_DeniesExpiredEntitlement() {
+    void submit_MonthlyPassStartsInFuture_DeniesExpired() {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session("CARD-000001", null, "ENT-000001", false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        Entitlement entitlement = entitlement("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.ACTIVE);
-        entitlement.setValidFrom(LocalDateTime.now().plusMinutes(1));
-        when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.of(entitlement));
+        Ticket pass = monthlyPassTicket("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.ACTIVE);
+        pass.setValidFrom(LocalDateTime.now().plusMinutes(1));
+        when(ticketRepository.findByIdAndCardId("ENT-000001", "CARD-000001")).thenReturn(Optional.of(pass));
 
         var response = service.submit("GATE-001", "secret", request());
 
@@ -449,12 +445,12 @@ class TransactionServiceTest {
     }
 
     @Test
-    void submit_ExpiredEntitlementStatus_DeniesExpiredEntitlement() {
+    void submit_ExpiredMonthlyPassStatus_DeniesExpired() {
         mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
         mockQrSession(session("CARD-000001", null, "ENT-000001", false, 60));
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(entitlementRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
-                .thenReturn(Optional.of(entitlement("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.EXPIRED)));
+        when(ticketRepository.findByIdAndCardId("ENT-000001", "CARD-000001"))
+                .thenReturn(Optional.of(monthlyPassTicket("ENT-000001", "CARD-000001", PredefinedLevel5BusinessSync.EXPIRED)));
 
         var response = service.submit("GATE-001", "secret", request());
 
@@ -489,19 +485,10 @@ class TransactionServiceTest {
         var response = service.searchTransactions(
                 LocalDateTime.of(2026, 6, 15, 0, 0),
                 LocalDateTime.of(2026, 6, 15, 23, 59),
-                1L,
-                1L,
-                1L,
-                "CARD-000001",
-                "TICKET-000001",
-                null,
-                "tap_in",
-                "open_gate",
-                "valid",
-                "pending",
-                null,
-                0,
-                20
+                1L, 1L, 1L,
+                "CARD-000001", "TICKET-000001", null,
+                "tap_in", "open_gate", "valid", "pending", null,
+                0, 20
         );
 
         assertEquals(1, response.getTotalElements());
@@ -516,29 +503,14 @@ class TransactionServiceTest {
         when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator());
 
         AppException exception = assertThrows(AppException.class, () -> service.searchTransactions(
-                LocalDateTime.of(2026, 6, 16, 0, 0),
-                LocalDateTime.of(2026, 6, 15, 0, 0),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                0,
-                20
+                LocalDateTime.of(2026, 6, 16, 0, 0), LocalDateTime.of(2026, 6, 15, 0, 0),
+                null, null, null, null, null, null, null, null, null, null, null, 0, 20
         ));
 
         assertEquals(ErrorCode.INVALID_TRANSACTION_TIME_RANGE, exception.getErrorCode());
         verify(transactionRepository, never()).searchTransactions(any(), any(), any(),
-                 any(),  any(),  any(),
-                 any(),  any(),  any(),
-                 any(),  any(),  any(),
-                 any(),  any(), any(Pageable.class));
+                 any(), any(), any(), any(), any(), any(),
+                 any(), any(), any(), any(), any(), any(Pageable.class));
     }
 
     @Test
@@ -546,8 +518,7 @@ class TransactionServiceTest {
         when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator());
 
         AppException exception = assertThrows(AppException.class, () -> service.searchTransactions(
-                null, null, null, null, null, null, null, null, null,
-                null, null, null, null, 0, 101
+                null, null, null, null, null, null, null, null, null, null, null, null, null, 0, 101
         ));
 
         assertEquals(ErrorCode.INVALID_PAGE_REQUEST, exception.getErrorCode());
@@ -617,123 +588,63 @@ class TransactionServiceTest {
     }
 
     private SubmitTransactionRequest requestWithQr(String qrPayload) {
-        return SubmitTransactionRequest.builder()
-                .qrPayload(qrPayload)
-                .build();
+        return SubmitTransactionRequest.builder().qrPayload(qrPayload).build();
     }
 
     private DynamicQrSession session(String cardId, String ticketId, String entitlementId, boolean used, long secondsFromNow) {
         long exp = LocalDateTime.now().plusSeconds(secondsFromNow)
-                .atZone(java.time.ZoneId.systemDefault())
-                .toEpochSecond();
+                .atZone(java.time.ZoneId.systemDefault()).toEpochSecond();
         return new DynamicQrSession(cardId, ticketId, entitlementId, exp, used);
     }
 
     private Device activeDevice(String direction) {
-        Route route = Route.builder()
-                .id(1L)
-                .operator(operator())
-                .routeCode("METRO-001")
-                .routeName("Metro Line 1")
-                .transportType("METRO")
-                .status("ACTIVE")
-                .build();
-        Station station = Station.builder()
-                .id(1L)
-                .route(route)
-                .stationCode("ST-001")
-                .stationName("Ben Thanh")
-                .stationOrder(1)
-                .status("ACTIVE")
-                .build();
-        return Device.builder()
-                .id(1L)
-                .station(station)
-                .deviceCode("GATE-001")
-                .deviceSecret("secret")
-                .deviceType("QR_SCANNER_SIMULATOR")
-                .direction(direction)
-                .status(PredefinedDeviceStatus.ACTIVE)
-                .build();
+        Route route = Route.builder().id(1L).operator(operator()).routeCode("METRO-001").routeName("Metro Line 1")
+                .transportType("METRO").status("ACTIVE").build();
+        Station station = Station.builder().id(1L).route(route).stationCode("ST-001")
+                .stationName("Ben Thanh").stationOrder(1).status("ACTIVE").build();
+        return Device.builder().id(1L).station(station).deviceCode("GATE-001").deviceSecret("secret")
+                .deviceType("QR_SCANNER_SIMULATOR").direction(direction).status(PredefinedDeviceStatus.ACTIVE).build();
     }
 
     private Operator operator() {
-        return Operator.builder()
-                .id(1L)
-                .operatorCode("HCMC-METRO")
-                .operatorName("HCMC Metro")
-                .status("ACTIVE")
-                .build();
+        return Operator.builder().id(1L).operatorCode("HCMC-METRO").operatorName("HCMC Metro").status("ACTIVE").build();
     }
 
     private Transaction transaction(String transactionId, Device device) {
         Card card = activeCard("CARD-000001");
         Ticket ticket = ticket("TICKET-000001", "CARD-000001", PredefinedLevel5BusinessSync.UNUSED);
         ticket.setCard(card);
-        return Transaction.builder()
-                .id(transactionId)
-                .eventId(transactionId)
+        return Transaction.builder().id(transactionId).eventId(transactionId)
                 .operator(device.getStation().getRoute().getOperator())
-                .route(device.getStation().getRoute())
-                .station(device.getStation())
-                .device(device)
-                .mediaType("VIRTUAL_QR")
-                .card(card)
-                .ticket(ticket)
-                .qrId("QR-000001")
-                .qrPayloadHash("hash")
-                .tapType("TAP_IN")
+                .route(device.getStation().getRoute()).station(device.getStation()).device(device)
+                .mediaType("VIRTUAL_QR").card(card).ticket(ticket)
+                .qrId("QR-000001").qrPayloadHash("hash").tapType("TAP_IN")
                 .occurredAt(LocalDateTime.of(2026, 6, 15, 10, 21, 5))
                 .receivedAt(LocalDateTime.of(2026, 6, 15, 10, 21, 6))
-                .decision(PredefinedTransactionDecision.OPEN_GATE)
-                .reason(PredefinedTransactionReason.VALID)
+                .decision(PredefinedTransactionDecision.OPEN_GATE).reason(PredefinedTransactionReason.VALID)
                 .syncStatus("PENDING")
                 .createdAt(LocalDateTime.of(2026, 6, 15, 10, 21, 6))
-                .updatedAt(LocalDateTime.of(2026, 6, 15, 10, 21, 6))
-                .build();
+                .updatedAt(LocalDateTime.of(2026, 6, 15, 10, 21, 6)).build();
     }
 
     private Card activeCard(String cardId) {
-        return Card.builder()
-                .id(cardId)
-                .cardType(PredefinedLevel5BusinessSync.VIRTUAL_QR)
-                .status(PredefinedLevel5BusinessSync.ACTIVE)
-                .sourceVersion(1L)
-                .syncedAt(LocalDateTime.now())
-                .build();
+        return Card.builder().id(cardId).cardType(PredefinedLevel5BusinessSync.IDENTIFIED)
+                .status(PredefinedLevel5BusinessSync.ACTIVE).sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
     }
 
     private Ticket ticket(String ticketId, String cardId, String usageStatus) {
-        return Ticket.builder()
-                .id(ticketId)
-                .card(Card.builder().id(cardId).build())
-                .ticketType(PredefinedLevel5BusinessSync.METRO_SINGLE_RIDE)
-                .routeScopeType(PredefinedLevel5BusinessSync.NETWORK)
-                .transportType("METRO")
+        return Ticket.builder().id(ticketId).card(Card.builder().id(cardId).build())
+                .type(PredefinedLevel5BusinessSync.METRO_SINGLE_RIDE)
                 .usageStatus(usageStatus)
-                .validFrom(LocalDateTime.now().minusMinutes(5))
-                .validTo(LocalDateTime.now().plusDays(1))
-                .sourceVersion(1L)
-                .syncedAt(LocalDateTime.now())
-                .build();
+                .validFrom(LocalDateTime.now().minusMinutes(5)).validTo(LocalDateTime.now().plusDays(1))
+                .sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
     }
 
-    private Entitlement entitlement(String entitlementId, String cardId, String status) {
-        return Entitlement.builder()
-                .id(entitlementId)
-                .card(Card.builder().id(cardId).build())
-                .fareProductCode(PredefinedLevel5BusinessSync.MONTHLY_PASS)
-                .passPeriod(PredefinedLevel5BusinessSync.MONTH)
-                .passScope(PredefinedLevel5BusinessSync.NETWORK)
-                .operatorRef("OP-001")
-                .routeRef("METRO-001")
-                .transportType("METRO")
-                .status(status)
-                .validFrom(LocalDateTime.now().minusDays(1))
-                .validTo(LocalDateTime.now().plusMonths(1))
-                .sourceVersion(1L)
-                .syncedAt(LocalDateTime.now())
-                .build();
+    private Ticket monthlyPassTicket(String ticketId, String cardId, String usageStatus) {
+        return Ticket.builder().id(ticketId).card(Card.builder().id(cardId).build())
+                .type(PredefinedLevel5BusinessSync.MONTHLY_PASS)
+                .usageStatus(usageStatus)
+                .validFrom(LocalDateTime.now().minusDays(1)).validTo(LocalDateTime.now().plusMonths(1))
+                .sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
     }
-
 }

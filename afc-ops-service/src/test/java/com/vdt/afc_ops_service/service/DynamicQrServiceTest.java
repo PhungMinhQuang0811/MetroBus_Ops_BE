@@ -4,14 +4,12 @@ import com.vdt.afc_ops_service.common.exception.AppException;
 import com.vdt.afc_ops_service.common.exception.ErrorCode;
 import com.vdt.afc_ops_service.dto.request.qr.GenerateDynamicQrRequest;
 import com.vdt.afc_ops_service.entity.Card;
-import com.vdt.afc_ops_service.entity.Entitlement;
 import com.vdt.afc_ops_service.entity.Ticket;
 import com.vdt.afc_ops_service.integration.level5.constant.PredefinedLevel5BusinessSync;
 import com.vdt.afc_ops_service.mapper.DynamicQrMapper;
 import com.vdt.afc_ops_service.qr.DynamicQrSession;
 import com.vdt.afc_ops_service.qr.DynamicQrSessionStore;
 import com.vdt.afc_ops_service.repository.CardRepository;
-import com.vdt.afc_ops_service.repository.EntitlementRepository;
 import com.vdt.afc_ops_service.repository.TicketRepository;
 import com.vdt.afc_ops_service.service.Impl.DynamicQrService;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,16 +43,13 @@ class DynamicQrServiceTest {
     TicketRepository ticketRepository;
 
     @Mock
-    EntitlementRepository entitlementRepository;
-
-    @Mock
     DynamicQrSessionStore dynamicQrSessionStore;
 
     DynamicQrService service;
 
     @BeforeEach
     void setUp() {
-        service = new DynamicQrService(cardRepository, ticketRepository, entitlementRepository,
+        service = new DynamicQrService(cardRepository, ticketRepository,
                 dynamicQrSessionStore, new DynamicQrMapper());
         ReflectionTestUtils.setField(service, "ttlSeconds", 30);
     }
@@ -65,14 +60,12 @@ class DynamicQrServiceTest {
         when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
                 eq("CARD-000001"), any(), any(LocalDateTime.class)
         )).thenReturn(List.of(activeTicket("TICKET-000001", "CARD-000001")));
-        when(entitlementRepository.findAllByCardIdAndStatusAndValidToAfter(
-                eq("CARD-000001"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
+        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
+                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
         )).thenReturn(List.of());
         when(dynamicQrSessionStore.buildPayload(any())).thenAnswer(invocation -> "AFCQR:v1:" + invocation.getArgument(0));
 
-        var response = service.generate(GenerateDynamicQrRequest.builder()
-                .cardId("CARD-000001")
-                .build());
+        var response = service.generate(GenerateDynamicQrRequest.builder().cardId("CARD-000001").build());
 
         assertEquals(30, response.getRefreshAfterSeconds());
         assertNotNull(response.getQrId());
@@ -86,19 +79,17 @@ class DynamicQrServiceTest {
     }
 
     @Test
-    void generate_ActiveCardWithEntitlement_ReturnsSessionPayloadAndCachesQr() {
+    void generate_ActiveCardWithMonthlyPass_ReturnsSessionPayloadAndCachesQr() {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
         when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
                 eq("CARD-000001"), any(), any(LocalDateTime.class)
         )).thenReturn(List.of());
-        when(entitlementRepository.findAllByCardIdAndStatusAndValidToAfter(
-                eq("CARD-000001"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of(activeEntitlement("ENT-000001", "CARD-000001")));
+        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
+                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
+        )).thenReturn(List.of(monthlyPassTicket("ENT-000001", "CARD-000001")));
         when(dynamicQrSessionStore.buildPayload(any())).thenAnswer(invocation -> "AFCQR:v1:" + invocation.getArgument(0));
 
-        var response = service.generate(GenerateDynamicQrRequest.builder()
-                .cardId("CARD-000001")
-                .build());
+        var response = service.generate(GenerateDynamicQrRequest.builder().cardId("CARD-000001").build());
 
         ArgumentCaptor<DynamicQrSession> sessionCaptor = ArgumentCaptor.forClass(DynamicQrSession.class);
         verify(dynamicQrSessionStore).create(eq(response.getQrId()), sessionCaptor.capture(), eq(30L));
@@ -112,12 +103,10 @@ class DynamicQrServiceTest {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.empty());
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId(" CARD-000001 ").build()
-        ));
+                GenerateDynamicQrRequest.builder().cardId(" CARD-000001 ").build()));
 
         assertEquals(ErrorCode.CARD_NOT_FOUND, exception.getErrorCode());
         verify(ticketRepository, never()).findAllByCardIdAndUsageStatusInAndValidToAfter(any(), any(), any());
-        verify(entitlementRepository, never()).findAllByCardIdAndStatusAndValidToAfter(any(), any(), any());
     }
 
     @Test
@@ -127,8 +116,7 @@ class DynamicQrServiceTest {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()
-        ));
+                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
 
         assertEquals(ErrorCode.CARD_INACTIVE, exception.getErrorCode());
     }
@@ -140,8 +128,7 @@ class DynamicQrServiceTest {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()
-        ));
+                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
 
         assertEquals(ErrorCode.MEDIA_BLACKLISTED, exception.getErrorCode());
     }
@@ -153,8 +140,7 @@ class DynamicQrServiceTest {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()
-        ));
+                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
 
         assertEquals(ErrorCode.CARD_CANCELLED, exception.getErrorCode());
     }
@@ -163,32 +149,29 @@ class DynamicQrServiceTest {
     void generate_NoActiveProduct_ThrowsActiveProductNotFound() {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
         when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                eq("CARD-000001"), any(), any(LocalDateTime.class)
-        )).thenReturn(List.of());
-        when(entitlementRepository.findAllByCardIdAndStatusAndValidToAfter(
-                eq("CARD-000001"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
+                eq("CARD-000001"), any(), any(LocalDateTime.class))).thenReturn(List.of());
+        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
+                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
         )).thenReturn(List.of());
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()
-        ));
+                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
 
         assertEquals(ErrorCode.ACTIVE_PRODUCT_NOT_FOUND, exception.getErrorCode());
     }
 
     @Test
-    void generate_TicketAndEntitlementActive_ThrowsConflict() {
+    void generate_TicketAndMonthlyPassActive_ThrowsConflict() {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
         when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
                 eq("CARD-000001"), any(), any(LocalDateTime.class)
         )).thenReturn(List.of(activeTicket("TICKET-000001", "CARD-000001")));
-        when(entitlementRepository.findAllByCardIdAndStatusAndValidToAfter(
-                eq("CARD-000001"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of(activeEntitlement("ENT-000001", "CARD-000001")));
+        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
+                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
+        )).thenReturn(List.of(monthlyPassTicket("ENT-000001", "CARD-000001")));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()
-        ));
+                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
 
         assertEquals(ErrorCode.ACTIVE_PRODUCT_CONFLICT, exception.getErrorCode());
     }
@@ -198,74 +181,50 @@ class DynamicQrServiceTest {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
         when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
                 eq("CARD-000001"), any(), any(LocalDateTime.class)
-        )).thenReturn(List.of(
-                activeTicket("TICKET-000001", "CARD-000001"),
-                activeTicket("TICKET-000002", "CARD-000001")
-        ));
-        when(entitlementRepository.findAllByCardIdAndStatusAndValidToAfter(
-                eq("CARD-000001"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
+        )).thenReturn(List.of(activeTicket("TICKET-000001", "CARD-000001"), activeTicket("TICKET-000002", "CARD-000001")));
+        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
+                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
         )).thenReturn(List.of());
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()
-        ));
+                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
 
         assertEquals(ErrorCode.ACTIVE_PRODUCT_CONFLICT, exception.getErrorCode());
     }
 
     @Test
-    void generate_MultipleEntitlementsActive_ThrowsConflict() {
+    void generate_MultipleMonthlyPassesActive_ThrowsConflict() {
         when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
         when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                eq("CARD-000001"), any(), any(LocalDateTime.class)
-        )).thenReturn(List.of());
-        when(entitlementRepository.findAllByCardIdAndStatusAndValidToAfter(
-                eq("CARD-000001"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of(
-                activeEntitlement("ENT-000001", "CARD-000001"),
-                activeEntitlement("ENT-000002", "CARD-000001")
-        ));
+                eq("CARD-000001"), any(), any(LocalDateTime.class))).thenReturn(List.of());
+        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
+                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
+        )).thenReturn(List.of(monthlyPassTicket("ENT-000001", "CARD-000001"), monthlyPassTicket("ENT-000002", "CARD-000001")));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()
-        ));
+                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
 
         assertEquals(ErrorCode.ACTIVE_PRODUCT_CONFLICT, exception.getErrorCode());
     }
 
     private Card activeCard(String cardId) {
-        return Card.builder()
-                .id(cardId)
-                .cardType(PredefinedLevel5BusinessSync.VIRTUAL_QR)
-                .status(PredefinedLevel5BusinessSync.ACTIVE)
-                .sourceVersion(1L)
-                .syncedAt(LocalDateTime.now())
-                .build();
+        return Card.builder().id(cardId).cardType(PredefinedLevel5BusinessSync.IDENTIFIED)
+                .status(PredefinedLevel5BusinessSync.ACTIVE).sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
     }
 
     private Ticket activeTicket(String ticketId, String cardId) {
-        return Ticket.builder()
-                .id(ticketId)
-                .card(Card.builder().id(cardId).build())
-                .ticketType(PredefinedLevel5BusinessSync.METRO_SINGLE_RIDE)
+        return Ticket.builder().id(ticketId).card(Card.builder().id(cardId).build())
+                .type(PredefinedLevel5BusinessSync.METRO_SINGLE_RIDE)
                 .usageStatus(PredefinedLevel5BusinessSync.UNUSED)
-                .validFrom(LocalDateTime.now().minusMinutes(5))
-                .validTo(LocalDateTime.now().plusDays(1))
-                .sourceVersion(1L)
-                .syncedAt(LocalDateTime.now())
-                .build();
+                .validFrom(LocalDateTime.now().minusMinutes(5)).validTo(LocalDateTime.now().plusDays(1))
+                .sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
     }
 
-    private Entitlement activeEntitlement(String entitlementId, String cardId) {
-        return Entitlement.builder()
-                .id(entitlementId)
-                .card(Card.builder().id(cardId).build())
-                .fareProductCode(PredefinedLevel5BusinessSync.MONTHLY_PASS)
-                .status(PredefinedLevel5BusinessSync.ACTIVE)
-                .validFrom(LocalDateTime.now().minusDays(1))
-                .validTo(LocalDateTime.now().plusMonths(1))
-                .sourceVersion(1L)
-                .syncedAt(LocalDateTime.now())
-                .build();
+    private Ticket monthlyPassTicket(String ticketId, String cardId) {
+        return Ticket.builder().id(ticketId).card(Card.builder().id(cardId).build())
+                .type(PredefinedLevel5BusinessSync.MONTHLY_PASS)
+                .usageStatus(PredefinedLevel5BusinessSync.ACTIVE)
+                .validFrom(LocalDateTime.now().minusDays(1)).validTo(LocalDateTime.now().plusMonths(1))
+                .sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
     }
 }
