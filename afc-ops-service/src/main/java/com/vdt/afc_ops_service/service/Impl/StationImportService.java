@@ -18,6 +18,7 @@ import com.vdt.afc_ops_service.messaging.dto.StationSyncMessage;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
+import com.vdt.afc_ops_service.service.IStationControlPackageService;
 import com.vdt.afc_ops_service.service.generator.StationCodeGenerator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +55,7 @@ public class StationImportService {
     StationCodeGenerator stationCodeGenerator;
     SecurityUtils securityUtils;
     StationRouteSyncPublisher stationRouteSyncPublisher;
+    IStationControlPackageService stationControlPackageService;
 
     @Transactional(readOnly = true)
     public ImportStationPreviewResponse preview(MultipartFile file) {
@@ -86,6 +88,7 @@ public class StationImportService {
 
             Station savedStation = stationRepository.save(station);
             stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+            stationControlPackageService.createOrUpdateStationContext(savedStation);
             importedItems.add(ImportStationItemResponse.builder()
                     .row(item.getRow())
                     .id(savedStation.getId())
