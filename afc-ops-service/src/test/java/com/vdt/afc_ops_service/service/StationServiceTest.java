@@ -18,6 +18,7 @@ import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.entity.AfcUserDetails;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
+import com.vdt.afc_ops_service.service.IStationControlPackageService;
 import com.vdt.afc_ops_service.service.Impl.StationService;
 import com.vdt.afc_ops_service.service.generator.StationCodeGenerator;
 import jakarta.validation.ConstraintViolation;
@@ -64,6 +65,9 @@ class StationServiceTest {
     @Mock
     StationRouteSyncPublisher stationRouteSyncPublisher;
 
+    @Mock
+    IStationControlPackageService stationControlPackageService;
+
     Validator validator;
     StationService stationService;
     Operator operator;
@@ -79,7 +83,8 @@ class StationServiceTest {
                 new StationMapper(),
                 new StationCodeGenerator(stationRepository),
                 new SecurityUtils(operatorRepository),
-                stationRouteSyncPublisher
+                stationRouteSyncPublisher,
+                stationControlPackageService
         );
         operator = Operator.builder().id(1L).operatorCode("HCMC-METRO").build();
         route = Route.builder().id(10L).operator(operator).routeCode("METRO-001").build();

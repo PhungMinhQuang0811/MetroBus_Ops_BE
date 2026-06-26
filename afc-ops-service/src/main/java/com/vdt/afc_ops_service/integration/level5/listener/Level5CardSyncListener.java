@@ -26,6 +26,7 @@ public class Level5CardSyncListener {
     static final String BLACKLIST_ADDED = "blacklist.added";
     static final String BLACKLIST_REMOVED = "blacklist.removed";
     static final String SYNC_CARD_ALL = "sync.card.all";
+    static final String SYNC_BLACKLIST_ALL = "sync.blacklist.all";
 
     ILevel5CardSyncService level5CardSyncService;
     ObjectMapper objectMapper;
@@ -33,23 +34,29 @@ public class Level5CardSyncListener {
     @RabbitListener(queues = "#{level5CardSyncProperties.queue()}")
     public void receiveCardSync(Message message) throws IOException {
         String routingKey = message.getMessageProperties().getReceivedRoutingKey();
-        Level5BusinessSyncItemResult result = switch (routingKey) {
-            case CARD_STATUS_CHANGED -> level5CardSyncService.processCardStatus(
-                    readPayload(message, C5CardStatusMessage.class)
-            );
-            case BLACKLIST_ADDED, BLACKLIST_REMOVED -> level5CardSyncService.processBlacklist(
-                    routingKey,
-                    readPayload(message, C5BlacklistMessage.class)
-            );
-            case SYNC_CARD_ALL -> level5CardSyncService.processCardSnapshot(
-                    readPayload(message, C5CardSyncMessage.class)
-            );
-            default -> {
-                log.warn("Ignored unsupported Level 5 card routing key: {}", routingKey);
-                yield null;
+        switch (routingKey) {
+            case CARD_STATUS_CHANGED -> {
+                C5CardStatusMessage msg = readPayload(message, C5CardStatusMessage.class);
+                Level5BusinessSyncItemResult result = level5CardSyncService.processCardStatus(msg);
+                logResult("card", routingKey, result);
             }
-        };
-        logResult("card", routingKey, result);
+            case BLACKLIST_ADDED, BLACKLIST_REMOVED -> {
+                C5BlacklistMessage msg = readPayload(message, C5BlacklistMessage.class);
+                Level5BusinessSyncItemResult result = level5CardSyncService.processBlacklist(routingKey, msg);
+                logResult("card", routingKey, result);
+            }
+            case SYNC_CARD_ALL -> {
+                C5CardSyncMessage msg = readPayload(message, C5CardSyncMessage.class);
+                Level5BusinessSyncItemResult result = level5CardSyncService.processCardSnapshot(msg);
+                logResult("card", routingKey, result);
+            }
+            case SYNC_BLACKLIST_ALL -> {
+                C5BlacklistMessage msg = readPayload(message, C5BlacklistMessage.class);
+                Level5BusinessSyncItemResult result = level5CardSyncService.processBlacklistSnapshot(msg);
+                logResult("card", routingKey, result);
+            }
+            default -> log.warn("Ignored unsupported Level 5 card routing key: {}", routingKey);
+        }
     }
 
     private <T> T readPayload(Message message, Class<T> payloadType) throws IOException {

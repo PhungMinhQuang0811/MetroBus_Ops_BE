@@ -6,24 +6,32 @@ import com.vdt.afc_ops_service.integration.level5.dto.message.card.C5CardSyncMes
 import com.vdt.afc_ops_service.integration.level5.dto.message.card.C5CardStatusMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.response.Level5BusinessSyncItemResult;
 import com.vdt.afc_ops_service.entity.Card;
+import com.vdt.afc_ops_service.entity.Operator;
 import com.vdt.afc_ops_service.repository.CardRepository;
+import com.vdt.afc_ops_service.repository.OperatorRepository;
 import com.vdt.afc_ops_service.integration.level5.service.ILevel5CardSyncService;
+import com.vdt.afc_ops_service.service.IMediaAccessRulePackageService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class Level5CardSyncService implements ILevel5CardSyncService {
 
     CardRepository cardRepository;
+    OperatorRepository operatorRepository;
+    IMediaAccessRulePackageService mediaAccessRulePackageService;
 
     @Override
     @Transactional
@@ -33,7 +41,7 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
         }
 
         String cardId = message.getCardId().toString();
-        return upsertCard(
+        Level5BusinessSyncItemResult result = upsertCard(
                 cardId,
                 normalize(message.getCardUid()),
                 null,
@@ -44,6 +52,8 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
                 message.getSupportsMetro(),
                 message.getSupportsBus()
         );
+        publishRulesIfCardStatusChanged(result);
+        return result;
     }
 
     @Override
@@ -77,7 +87,7 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
         boolean removed = "blacklist.removed".equals(routingKey)
                 || "REMOVED".equals(normalizeUppercase(message.getAction()));
         String cardId = message.getCardId().toString();
-        return upsertCard(
+        Level5BusinessSyncItemResult result = upsertCard(
                 cardId,
                 null,
                 null,
@@ -88,6 +98,45 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
                 null,
                 null
         );
+        publishRulesIfCardStatusChanged(result);
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public Level5BusinessSyncItemResult processBlacklistSnapshot(C5BlacklistMessage message) {
+        if (message == null || message.getCardId() == null) {
+            return rejected(null, null, "INVALID_BLACKLIST_MESSAGE", "cardId is required");
+        }
+
+        String cardId = message.getCardId().toString();
+        return upsertCard(
+                cardId,
+                null,
+                null,
+                PredefinedLevel5BusinessSync.IDENTIFIED,
+                PredefinedLevel5BusinessSync.BLACKLISTED,
+                normalize(message.getReason()),
+                toSourceVersion(message.getOccurredAt()),
+                null,
+                null
+        );
+    }
+
+    private void publishRulesIfCardStatusChanged(Level5BusinessSyncItemResult result) {
+        if (result == null) return;
+        if (PredefinedLevel5BusinessSync.IGNORED_SAME_VERSION.equals(result.getResult())
+                || PredefinedLevel5BusinessSync.IGNORED_STALE_VERSION.equals(result.getResult())) {
+            return;
+        }
+        try {
+            List<Operator> operators = operatorRepository.findAll();
+            for (Operator operator : operators) {
+                mediaAccessRulePackageService.refreshAndPublishForOperator(operator);
+            }
+        } catch (Exception e) {
+            log.error("Failed to refresh media access rules after card status change", e);
+        }
     }
 
     private Level5BusinessSyncItemResult upsertCard(String cardId, String cardUid, String issuedAtStationRef, String cardType,

@@ -1,5 +1,6 @@
 package com.vdt.afc_ops_service.qr;
 
+import com.vdt.afc_ops_service.common.util.CryptoHashUtil;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -21,6 +22,46 @@ public class DynamicQrSessionStore {
 
     public String buildPayload(String qrId) {
         return QR_PAYLOAD_PREFIX + qrId;
+    }
+
+    public String buildHmacSignedPayload(String ticketId, long exp, String hmacSecret) {
+        String dataToSign = QR_PAYLOAD_PREFIX + ticketId + ":exp=" + exp;
+        String hmac = CryptoHashUtil.hmacSha256Base64Url(hmacSecret, dataToSign);
+        return dataToSign + ":hmac=" + hmac;
+    }
+
+    public ParsedQrData parseHmacSignedPayload(String qrPayload, String hmacSecret, long maxClockDriftSeconds) {
+        if (qrPayload == null || !qrPayload.startsWith(QR_PAYLOAD_PREFIX)) {
+            return null;
+        }
+
+        // Format: AFCQR:v1:{ticketId}:exp={ts}:hmac={sig}
+        String[] parts = qrPayload.split(":");
+        if (parts.length < 5) {
+            return null;
+        }
+
+        String ticketId = parts[2];
+        long exp;
+        try {
+            exp = Long.parseLong(parts[3].replace("exp=", ""));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        String receivedHmac = parts[4].replace("hmac=", "");
+
+        // Verify HMAC
+        String dataToSign = QR_PAYLOAD_PREFIX + ticketId + ":exp=" + exp;
+        String expectedHmac = CryptoHashUtil.hmacSha256Base64Url(hmacSecret, dataToSign);
+        if (!expectedHmac.equals(receivedHmac)) {
+            return null;
+        }
+
+        // Check expiry with clock drift tolerance
+        long now = System.currentTimeMillis() / 1000;
+        boolean expired = now > exp + maxClockDriftSeconds;
+
+        return new ParsedQrData(ticketId, exp, expired);
     }
 
     public String parseQrId(String qrPayload) {

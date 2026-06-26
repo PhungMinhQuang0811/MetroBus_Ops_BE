@@ -19,6 +19,7 @@ import com.vdt.afc_ops_service.repository.DeviceRepository;
 import com.vdt.afc_ops_service.repository.RouteRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.security.util.SecurityUtils;
+import com.vdt.afc_ops_service.service.IStationControlPackageService;
 import com.vdt.afc_ops_service.service.IStationService;
 import com.vdt.afc_ops_service.service.generator.StationCodeGenerator;
 import lombok.AccessLevel;
@@ -46,6 +47,7 @@ public class StationService implements IStationService {
     StationCodeGenerator stationCodeGenerator;
     SecurityUtils securityUtils;
     StationRouteSyncPublisher stationRouteSyncPublisher;
+    IStationControlPackageService stationControlPackageService;
 
     @Override
     @Transactional(readOnly = true)
@@ -103,6 +105,7 @@ public class StationService implements IStationService {
 
         Station savedStation = stationRepository.save(station);
         stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+        stationControlPackageService.createOrUpdateStationContext(savedStation);
         return stationMapper.toStationResponse(savedStation);
     }
 
@@ -121,6 +124,7 @@ public class StationService implements IStationService {
         station.setDistance(resolveDistance(request.getDistance()));
         Station savedStation = stationRepository.save(station);
         stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+        stationControlPackageService.createOrUpdateStationContext(savedStation);
         return stationMapper.toStationResponse(savedStation);
     }
 
@@ -134,6 +138,7 @@ public class StationService implements IStationService {
         station.setStatus(PredefinedMasterDataStatus.ACTIVE);
         Station savedStation = stationRepository.save(station);
         stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+        stationControlPackageService.createOrUpdateStationContext(savedStation);
         return stationMapper.toStationResponse(savedStation);
     }
 
@@ -147,6 +152,7 @@ public class StationService implements IStationService {
         station.setStatus(PredefinedMasterDataStatus.DISABLED);
         Station savedStation = stationRepository.save(station);
         stationRouteSyncPublisher.publishStationSync(toStationSyncMessage(savedStation));
+        stationControlPackageService.createOrUpdateStationContext(savedStation);
         return stationMapper.toStationResponse(savedStation);
     }
 

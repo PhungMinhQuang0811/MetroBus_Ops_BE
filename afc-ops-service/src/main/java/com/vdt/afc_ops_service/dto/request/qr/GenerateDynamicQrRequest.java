@@ -16,7 +16,7 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class GenerateDynamicQrRequest {
 
-    @RequiredField(fieldName = "cardId")
+    @RequiredField(fieldName = "ticketId")
     @Size(max = 100, message = "INVALID_SEARCH_KEYWORD")
-    String cardId;
+    String ticketId;
 }

@@ -51,7 +51,7 @@ class DynamicQrControllerTest {
                         .header("X-External-User-Id", "APP-USER-000001")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"cardId":"CARD-000001"}
+                                {"ticketId":"TICKET-000001"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.qrId").value("QR-SESSION-000001"))
@@ -61,7 +61,7 @@ class DynamicQrControllerTest {
         ArgumentCaptor<GenerateDynamicQrRequest> requestCaptor =
                 ArgumentCaptor.forClass(GenerateDynamicQrRequest.class);
         verify(dynamicQrService).generate(requestCaptor.capture());
-        assertEquals("CARD-000001", requestCaptor.getValue().getCardId());
+        assertEquals("TICKET-000001", requestCaptor.getValue().getTicketId());
     }
 
     @Test

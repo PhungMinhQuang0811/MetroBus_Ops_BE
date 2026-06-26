@@ -6,6 +6,7 @@ import com.vdt.afc_ops_service.common.util.SearchFilterUtil;
 import com.vdt.afc_ops_service.constant.PredefinedControlPackageSourceType;
 import com.vdt.afc_ops_service.constant.PredefinedControlPackageStatus;
 import com.vdt.afc_ops_service.constant.PredefinedControlPackageType;
+import com.vdt.afc_ops_service.constant.PredefinedDeviceType;
 import com.vdt.afc_ops_service.document.ControlPackagePayload;
 import com.vdt.afc_ops_service.dto.request.controlpackage.AckControlPackageApplyRequest;
 import com.vdt.afc_ops_service.dto.request.controlpackage.CreateControlPackageRequest;
@@ -40,11 +41,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import com.vdt.afc_ops_service.constant.PredefinedDeviceType;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +60,14 @@ public class ControlPackageService implements IControlPackageService {
     StationRepository stationRepository;
     ControlPackageMapper mapper;
     SecurityUtils securityUtils;
+
+    @org.springframework.beans.factory.annotation.Value("${app.security.qr-hmac-secret}")
+    @lombok.experimental.NonFinal
+    String qrHmacSecret;
+
+    @org.springframework.beans.factory.annotation.Value("${app.dynamic-qr.ttl-seconds}")
+    @lombok.experimental.NonFinal
+    int qrTtlSeconds;
 
     @Override
     @Transactional
@@ -71,6 +82,9 @@ public class ControlPackageService implements IControlPackageService {
             throw new AppException(ErrorCode.INVALID_CONTROL_PACKAGE_PAYLOAD);
         }
 
+        // Enrich DEVICE_CONFIG payload with QR verification key
+        Map<String, Object> enrichedPayload = enrichPayload(request.getPackageType(), request.getPayload());
+        request.setPayload(enrichedPayload);
         validatePayload(request.getPackageType(), request.getPayload());
 
         // Lock operator settings / max version calculation
@@ -185,9 +199,8 @@ public class ControlPackageService implements IControlPackageService {
                 throw new AppException(ErrorCode.STATION_ALREADY_DISABLED);
             }
 
-            if (syncRepository.findByStationIdAndControlPackageId(stationId, packageId).isPresent()) {
-                continue;
-            }
+            // Xóa syncs cũ cùng package type để không trùng lặp
+            syncRepository.deleteByStationIdAndPackageType(stationId, controlPackage.getPackageType());
 
             StationControlSync sync = mapper.toStationControlSync(station, controlPackage);
             newSyncs.add(syncRepository.save(sync));
@@ -291,6 +304,20 @@ public class ControlPackageService implements IControlPackageService {
                 .orElseThrow(() -> new AppException(ErrorCode.CONTROL_PACKAGE_SYNC_NOT_FOUND));
 
         return mapper.toSyncDetailResponse(sync);
+    }
+
+    private Map<String, Object> enrichPayload(String packageType, Map<String, Object> payload) {
+        if (PredefinedControlPackageType.DEVICE_CONFIG.equals(packageType)) {
+            Map<String, Object> enriched = new LinkedHashMap<>(payload);
+            enriched.putIfAbsent("qrVerificationAlgorithm", "HMAC_SHA256");
+            enriched.putIfAbsent("qrVerificationKey",
+                    Base64.getUrlEncoder().withoutPadding().encodeToString(qrHmacSecret.getBytes(StandardCharsets.UTF_8)));
+            enriched.putIfAbsent("qrMaxTtlSeconds", qrTtlSeconds);
+            enriched.putIfAbsent("maxClockDriftSeconds", qrTtlSeconds);
+            enriched.putIfAbsent("heartbeatIntervalSeconds", 30);
+            return enriched;
+        }
+        return payload;
     }
 
     private void validatePayload(String packageType, Map<String, Object> payload) {

@@ -29,6 +29,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -75,6 +76,8 @@ class ControlPackageServiceTest {
                 new ControlPackageMapper(),
                 securityUtils
         );
+        ReflectionTestUtils.setField(service, "qrHmacSecret", "test-secret-key-12345");
+        ReflectionTestUtils.setField(service, "qrTtlSeconds", 30);
         lenient().when(controlPackageRepository.save(any(ControlPackage.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
@@ -319,7 +322,6 @@ class ControlPackageServiceTest {
         when(stationRepository.findByIdAndRouteOperatorId(50L, operator.getId()))
                 .thenReturn(Optional.of(station));
 
-        when(syncRepository.findByStationIdAndControlPackageId(50L, 101L)).thenReturn(Optional.empty());
         when(syncRepository.save(any(StationControlSync.class))).thenAnswer(inv -> {
             StationControlSync scs = inv.getArgument(0);
             scs.setId(888L);
@@ -711,36 +713,6 @@ class ControlPackageServiceTest {
 
         AppException ex = assertThrows(AppException.class, () -> service.publish(101L, request));
         assertEquals(ErrorCode.STATION_NOT_FOUND, ex.getErrorCode());
-    }
-
-    @Test
-    void publish_StationSyncAlreadyExists_SkipSaving() {
-        Operator operator = activeOperator();
-        when(securityUtils.getRequiredCurrentOperator()).thenReturn(operator);
-
-        ControlPackage controlPackage = ControlPackage.builder()
-                .id(101L)
-                .operator(operator)
-                .status(PredefinedControlPackageStatus.PUBLISHED)
-                .build();
-        when(controlPackageRepository.findByIdAndOperatorId(101L, operator.getId()))
-                .thenReturn(Optional.of(controlPackage));
-
-        Station station = activeStation(50L, "ST-01", "Bến Thành");
-        when(stationRepository.findByIdAndRouteOperatorId(50L, operator.getId()))
-                .thenReturn(Optional.of(station));
-        when(syncRepository.findByStationIdAndControlPackageId(50L, 101L))
-                .thenReturn(Optional.of(StationControlSync.builder().build()));
-
-        PublishControlPackageRequest request = PublishControlPackageRequest.builder()
-                .stationIds(List.of(50L))
-                .build();
-
-        var response = service.publish(101L, request);
-
-        assertNotNull(response);
-        assertEquals(0, response.getStationSyncs().size());
-        verify(syncRepository, never()).save(any());
     }
 
     @Test

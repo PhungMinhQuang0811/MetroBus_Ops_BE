@@ -52,7 +52,7 @@ app:
     level5-card-sync:
       exchange: afc.exchange
       queue: afc.level5-card-sync
-      routing-keys: "card.status.changed,blacklist.*,sync.card.all"
+      routing-keys: "card.status.changed,blacklist.*,sync.card.all,sync.blacklist.all"
     level5-ticket-sync:
       exchange: afc.exchange
       queue: afc.level5-ticket-sync
@@ -72,5 +72,6 @@ app:
     access-token-secret-key: ${JWT_ACCESS_SECRET_KEY}
     access-token-expiration: 3600000
     cors-allowed-origins: "http://localhost:3000"
+    qr-hmac-secret: ${QR_HMAC_SECRET:my-secret-key-for-qr-hmac-signing}
   dynamic-qr:
     ttl-seconds: ${DYNAMIC_QR_TTL_SECONDS:30}

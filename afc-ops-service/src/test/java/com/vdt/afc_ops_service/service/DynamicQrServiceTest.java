@@ -9,7 +9,6 @@ import com.vdt.afc_ops_service.integration.level5.constant.PredefinedLevel5Busin
 import com.vdt.afc_ops_service.mapper.DynamicQrMapper;
 import com.vdt.afc_ops_service.qr.DynamicQrSession;
 import com.vdt.afc_ops_service.qr.DynamicQrSessionStore;
-import com.vdt.afc_ops_service.repository.CardRepository;
 import com.vdt.afc_ops_service.repository.TicketRepository;
 import com.vdt.afc_ops_service.service.Impl.DynamicQrService;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,23 +20,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DynamicQrServiceTest {
-
-    @Mock
-    CardRepository cardRepository;
 
     @Mock
     TicketRepository ticketRepository;
@@ -49,162 +45,123 @@ class DynamicQrServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DynamicQrService(cardRepository, ticketRepository,
+        service = new DynamicQrService(ticketRepository,
                 dynamicQrSessionStore, new DynamicQrMapper());
         ReflectionTestUtils.setField(service, "ttlSeconds", 30);
+        ReflectionTestUtils.setField(service, "qrHmacSecret", "test-secret");
     }
 
     @Test
-    void generate_ActiveCardWithTicket_ReturnsSessionPayloadAndCachesQr() {
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                eq("CARD-000001"), any(), any(LocalDateTime.class)
-        )).thenReturn(List.of(activeTicket("TICKET-000001", "CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
-                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of());
-        when(dynamicQrSessionStore.buildPayload(any())).thenAnswer(invocation -> "AFCQR:v1:" + invocation.getArgument(0));
+    void generate_ActiveTicket_ReturnsSessionPayloadAndCachesQr() {
+        Ticket ticket = activeTicket("TICKET-000001", null);
+        ticket.setType("SINGLE_TRIP"); // match service check
+        when(ticketRepository.findById("TICKET-000001")).thenReturn(Optional.of(ticket));
+        when(dynamicQrSessionStore.buildHmacSignedPayload(anyString(), anyLong(), anyString()))
+                .thenAnswer(invocation -> "AFCQR:v1:" + invocation.getArgument(0) + ":exp=123:hmac=abc");
 
-        var response = service.generate(GenerateDynamicQrRequest.builder().cardId("CARD-000001").build());
+        var response = service.generate(GenerateDynamicQrRequest.builder().ticketId("TICKET-000001").build());
 
         assertEquals(30, response.getRefreshAfterSeconds());
         assertNotNull(response.getQrId());
-        assertEquals("AFCQR:v1:" + response.getQrId(), response.getQrPayload());
         ArgumentCaptor<DynamicQrSession> sessionCaptor = ArgumentCaptor.forClass(DynamicQrSession.class);
         verify(dynamicQrSessionStore).create(eq(response.getQrId()), sessionCaptor.capture(), eq(30L));
-        assertEquals("CARD-000001", sessionCaptor.getValue().cardId());
+        assertEquals(null, sessionCaptor.getValue().cardId());
         assertEquals("TICKET-000001", sessionCaptor.getValue().ticketId());
         assertEquals(null, sessionCaptor.getValue().entitlementId());
         assertEquals(false, sessionCaptor.getValue().used());
     }
 
     @Test
-    void generate_ActiveCardWithMonthlyPass_ReturnsSessionPayloadAndCachesQr() {
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                eq("CARD-000001"), any(), any(LocalDateTime.class)
-        )).thenReturn(List.of());
-        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
-                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of(monthlyPassTicket("ENT-000001", "CARD-000001")));
-        when(dynamicQrSessionStore.buildPayload(any())).thenAnswer(invocation -> "AFCQR:v1:" + invocation.getArgument(0));
+    void generate_ActiveTicketWithCard_ValidatesCardAndReturnsSession() {
+        Card card = activeCard("CARD-000001");
+        Ticket ticket = activeTicket("TICKET-000001", "CARD-000001");
+        ticket.setCard(card);
+        when(ticketRepository.findById("TICKET-000001")).thenReturn(Optional.of(ticket));
+        when(dynamicQrSessionStore.buildHmacSignedPayload(anyString(), anyLong(), anyString()))
+                .thenReturn("AFCQR:v1:TICKET-000001:exp=123:hmac=abc");
 
-        var response = service.generate(GenerateDynamicQrRequest.builder().cardId("CARD-000001").build());
+        var response = service.generate(GenerateDynamicQrRequest.builder().ticketId("TICKET-000001").build());
 
         ArgumentCaptor<DynamicQrSession> sessionCaptor = ArgumentCaptor.forClass(DynamicQrSession.class);
         verify(dynamicQrSessionStore).create(eq(response.getQrId()), sessionCaptor.capture(), eq(30L));
-        assertEquals("AFCQR:v1:" + response.getQrId(), response.getQrPayload());
-        assertEquals(null, sessionCaptor.getValue().ticketId());
-        assertEquals("ENT-000001", sessionCaptor.getValue().entitlementId());
+        assertEquals("CARD-000001", sessionCaptor.getValue().cardId());
     }
 
     @Test
-    void generate_CardNotFound_ThrowsCardNotFound() {
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.empty());
+    void generate_TicketNotFound_ThrowsTicketNotFound() {
+        when(ticketRepository.findById("TICKET-000001")).thenReturn(Optional.empty());
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId(" CARD-000001 ").build()));
+                GenerateDynamicQrRequest.builder().ticketId(" TICKET-000001 ").build()));
 
-        assertEquals(ErrorCode.CARD_NOT_FOUND, exception.getErrorCode());
-        verify(ticketRepository, never()).findAllByCardIdAndUsageStatusInAndValidToAfter(any(), any(), any());
+        assertEquals(ErrorCode.TICKET_NOT_FOUND, exception.getErrorCode());
     }
 
     @Test
-    void generate_CardInactive_ThrowsCardInactive() {
-        Card card = activeCard("CARD-000001");
-        card.setStatus(PredefinedLevel5BusinessSync.INACTIVE);
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
+    void generate_TicketExpired_ThrowsTicketExpired() {
+        Ticket ticket = activeTicket("TICKET-000001", null);
+        ticket.setUsageStatus(PredefinedLevel5BusinessSync.EXPIRED);
+        when(ticketRepository.findById("TICKET-000001")).thenReturn(Optional.of(ticket));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
+                GenerateDynamicQrRequest.builder().ticketId("TICKET-000001").build()));
 
-        assertEquals(ErrorCode.CARD_INACTIVE, exception.getErrorCode());
+        assertEquals(ErrorCode.TICKET_EXPIRED, exception.getErrorCode());
     }
 
     @Test
-    void generate_CardBlacklisted_ThrowsMediaBlacklisted() {
-        Card card = activeCard("CARD-000001");
-        card.setStatus(PredefinedLevel5BusinessSync.BLACKLISTED);
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
+    void generate_TicketAlreadyUsed_ThrowsTicketAlreadyUsed() {
+        Ticket ticket = activeTicket("TICKET-000001", null);
+        ticket.setUsageStatus(PredefinedLevel5BusinessSync.USED);
+        when(ticketRepository.findById("TICKET-000001")).thenReturn(Optional.of(ticket));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
+                GenerateDynamicQrRequest.builder().ticketId("TICKET-000001").build()));
 
-        assertEquals(ErrorCode.MEDIA_BLACKLISTED, exception.getErrorCode());
+        assertEquals(ErrorCode.TICKET_ALREADY_USED, exception.getErrorCode());
     }
 
     @Test
-    void generate_CardCancelled_ThrowsCardCancelled() {
+    void generate_TicketWithCancelledCard_ThrowsCardCancelled() {
         Card card = activeCard("CARD-000001");
         card.setStatus(PredefinedLevel5BusinessSync.CANCELLED);
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(card));
+        Ticket ticket = activeTicket("TICKET-000001", "CARD-000001");
+        ticket.setCard(card);
+        when(ticketRepository.findById("TICKET-000001")).thenReturn(Optional.of(ticket));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
+                GenerateDynamicQrRequest.builder().ticketId("TICKET-000001").build()));
 
         assertEquals(ErrorCode.CARD_CANCELLED, exception.getErrorCode());
     }
 
     @Test
-    void generate_NoActiveProduct_ThrowsActiveProductNotFound() {
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                eq("CARD-000001"), any(), any(LocalDateTime.class))).thenReturn(List.of());
-        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
-                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of());
+    void generate_TicketWithBlacklistedCard_ThrowsMediaBlacklisted() {
+        Card card = activeCard("CARD-000001");
+        card.setStatus(PredefinedLevel5BusinessSync.BLACKLISTED);
+        Ticket ticket = activeTicket("TICKET-000001", "CARD-000001");
+        ticket.setCard(card);
+        when(ticketRepository.findById("TICKET-000001")).thenReturn(Optional.of(ticket));
 
         AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
+                GenerateDynamicQrRequest.builder().ticketId("TICKET-000001").build()));
 
-        assertEquals(ErrorCode.ACTIVE_PRODUCT_NOT_FOUND, exception.getErrorCode());
+        assertEquals(ErrorCode.MEDIA_BLACKLISTED, exception.getErrorCode());
     }
 
     @Test
-    void generate_TicketAndMonthlyPassActive_ThrowsConflict() {
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                eq("CARD-000001"), any(), any(LocalDateTime.class)
-        )).thenReturn(List.of(activeTicket("TICKET-000001", "CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
-                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of(monthlyPassTicket("ENT-000001", "CARD-000001")));
+    void generate_MonthlyPassTicket_ReturnsSessionWithEntitlementId() {
+        Ticket ticket = monthlyPassTicket("ENT-000001", null);
+        when(ticketRepository.findById("ENT-000001")).thenReturn(Optional.of(ticket));
+        when(dynamicQrSessionStore.buildHmacSignedPayload(anyString(), anyLong(), anyString()))
+                .thenReturn("AFCQR:v1:ENT-000001:exp=123:hmac=abc");
 
-        AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
+        var response = service.generate(GenerateDynamicQrRequest.builder().ticketId("ENT-000001").build());
 
-        assertEquals(ErrorCode.ACTIVE_PRODUCT_CONFLICT, exception.getErrorCode());
-    }
-
-    @Test
-    void generate_MultipleTicketsActive_ThrowsConflict() {
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                eq("CARD-000001"), any(), any(LocalDateTime.class)
-        )).thenReturn(List.of(activeTicket("TICKET-000001", "CARD-000001"), activeTicket("TICKET-000002", "CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
-                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of());
-
-        AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
-
-        assertEquals(ErrorCode.ACTIVE_PRODUCT_CONFLICT, exception.getErrorCode());
-    }
-
-    @Test
-    void generate_MultipleMonthlyPassesActive_ThrowsConflict() {
-        when(cardRepository.findById("CARD-000001")).thenReturn(Optional.of(activeCard("CARD-000001")));
-        when(ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                eq("CARD-000001"), any(), any(LocalDateTime.class))).thenReturn(List.of());
-        when(ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
-                eq("CARD-000001"), eq("MONTHLY_PASS"), eq(PredefinedLevel5BusinessSync.ACTIVE), any(LocalDateTime.class)
-        )).thenReturn(List.of(monthlyPassTicket("ENT-000001", "CARD-000001"), monthlyPassTicket("ENT-000002", "CARD-000001")));
-
-        AppException exception = assertThrows(AppException.class, () -> service.generate(
-                GenerateDynamicQrRequest.builder().cardId("CARD-000001").build()));
-
-        assertEquals(ErrorCode.ACTIVE_PRODUCT_CONFLICT, exception.getErrorCode());
+        ArgumentCaptor<DynamicQrSession> sessionCaptor = ArgumentCaptor.forClass(DynamicQrSession.class);
+        verify(dynamicQrSessionStore).create(eq(response.getQrId()), sessionCaptor.capture(), eq(30L));
+        assertEquals(null, sessionCaptor.getValue().ticketId());
+        assertEquals("ENT-000001", sessionCaptor.getValue().entitlementId());
     }
 
     private Card activeCard(String cardId) {
@@ -213,15 +170,17 @@ class DynamicQrServiceTest {
     }
 
     private Ticket activeTicket(String ticketId, String cardId) {
-        return Ticket.builder().id(ticketId).card(Card.builder().id(cardId).build())
-                .type(PredefinedLevel5BusinessSync.METRO_SINGLE_RIDE)
+        return Ticket.builder().id(ticketId)
+                .card(cardId != null ? Card.builder().id(cardId).build() : null)
+                .type("METRO_SINGLE_RIDE")
                 .usageStatus(PredefinedLevel5BusinessSync.UNUSED)
                 .validFrom(LocalDateTime.now().minusMinutes(5)).validTo(LocalDateTime.now().plusDays(1))
                 .sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
     }
 
     private Ticket monthlyPassTicket(String ticketId, String cardId) {
-        return Ticket.builder().id(ticketId).card(Card.builder().id(cardId).build())
+        return Ticket.builder().id(ticketId)
+                .card(cardId != null ? Card.builder().id(cardId).build() : null)
                 .type(PredefinedLevel5BusinessSync.MONTHLY_PASS)
                 .usageStatus(PredefinedLevel5BusinessSync.ACTIVE)
                 .validFrom(LocalDateTime.now().minusDays(1)).validTo(LocalDateTime.now().plusMonths(1))

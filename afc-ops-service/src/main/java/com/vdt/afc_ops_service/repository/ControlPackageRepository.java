@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 
 public interface ControlPackageRepository extends JpaRepository<ControlPackage, Long> {
@@ -36,4 +37,10 @@ public interface ControlPackageRepository extends JpaRepository<ControlPackage, 
                                         @Param("sourceType") String sourceType,
                                         @Param("status") String status,
                                         Pageable pageable);
+
+    @Query("SELECT cp FROM ControlPackage cp WHERE cp.packageType = :type AND cp.status = :status ORDER BY cp.version DESC")
+    List<ControlPackage> findLatestByType(@Param("type") String packageType, @Param("status") String status);
+
+    @Query("SELECT cp FROM ControlPackage cp WHERE cp.packageType IN :types AND cp.status = :status")
+    List<ControlPackage> findPublishedByTypes(@Param("types") List<String> types, @Param("status") String status);
 }

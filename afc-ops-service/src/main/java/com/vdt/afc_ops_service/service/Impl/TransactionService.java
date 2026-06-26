@@ -245,7 +245,6 @@ public class TransactionService implements ITransactionService {
     }
 
     private TransactionEvaluation evaluateEntitlement(String qrId, DynamicQrSession session, Card card, LocalDateTime now) {
-        // Entitlement merged into Ticket — lookup as monthly pass via ticketId
         Ticket ticket = ticketRepository.findByIdAndCardId(session.entitlementId(), card.getId()).orElse(null);
         if (ticket == null) {
             return transactionMapper.denyCard(qrId, session, card, PredefinedTransactionReason.ENTITLEMENT_INACTIVE);

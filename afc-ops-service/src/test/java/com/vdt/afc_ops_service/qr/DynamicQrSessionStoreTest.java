@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -102,5 +103,70 @@ class DynamicQrSessionStoreTest {
         verify(valueOperations).set(eq("qr:session:QR-000001"), valueCaptor.capture(), eq(30L), eq(TimeUnit.SECONDS));
         assertTrue(valueCaptor.getValue().contains("\"entitlementId\":\"ENT-000001\""));
         assertTrue(valueCaptor.getValue().contains("\"used\":true"));
+    }
+
+    @Test
+    void buildHmacSignedPayload_returnsCorrectFormat() {
+        String payload = store.buildHmacSignedPayload("TICKET-001", 1765432100L, "my-secret");
+
+        assertTrue(payload.startsWith("AFCQR:v1:TICKET-001:exp=1765432100:hmac="));
+        // HMAC should be non-empty base64url
+        String[] parts = payload.split(":");
+        assertTrue(parts.length >= 5);
+        assertTrue(parts[4].startsWith("hmac="));
+        assertTrue(parts[4].length() > "hmac=".length());
+    }
+
+    @Test
+    void parseHmacSignedPayload_validPayload_returnsParsedQrData() {
+        String payload = store.buildHmacSignedPayload("TICKET-001", 1765432100L, "my-secret");
+
+        ParsedQrData result = store.parseHmacSignedPayload(payload, "my-secret", 60);
+
+        assertNotNull(result);
+        assertEquals("TICKET-001", result.ticketId());
+        assertEquals(1765432100L, result.exp());
+        assertEquals(payload, "AFCQR:v1:" + "TICKET-001" + ":exp=" + 1765432100L + ":hmac="
+                + payload.split(":hmac=")[1]); // just checking it's the same
+    }
+
+    @Test
+    void parseHmacSignedPayload_invalidHmac_returnsNull() {
+        String payload = store.buildHmacSignedPayload("TICKET-001", 1765432100L, "my-secret");
+
+        ParsedQrData result = store.parseHmacSignedPayload(payload, "wrong-secret", 60);
+
+        assertNull(result);
+    }
+
+    @Test
+    void parseHmacSignedPayload_expiredPayload_returnsExpiredTrue() {
+        long pastExp = System.currentTimeMillis() / 1000 - 100; // 100s in the past
+        String payload = store.buildHmacSignedPayload("TICKET-001", pastExp, "my-secret");
+
+        ParsedQrData result = store.parseHmacSignedPayload(payload, "my-secret", 60);
+
+        assertNotNull(result);
+        assertTrue(result.expired());
+    }
+
+    @Test
+    void parseHmacSignedPayload_validNonExpiredPayload_returnsExpiredFalse() {
+        long futureExp = System.currentTimeMillis() / 1000 + 3600; // 1h in the future
+        String payload = store.buildHmacSignedPayload("TICKET-001", futureExp, "my-secret");
+
+        ParsedQrData result = store.parseHmacSignedPayload(payload, "my-secret", 60);
+
+        assertNotNull(result);
+        assertEquals(false, result.expired());
+    }
+
+    @Test
+    void parseHmacSignedPayload_nullOrInvalidFormat_returnsNull() {
+        assertNull(store.parseHmacSignedPayload(null, "secret", 60));
+        assertNull(store.parseHmacSignedPayload("", "secret", 60));
+        assertNull(store.parseHmacSignedPayload("bad-format", "secret", 60));
+        assertNull(store.parseHmacSignedPayload("AFCQR:v1:short", "secret", 60));
+        assertNull(store.parseHmacSignedPayload("AFCQR:v1:TICKET-001:exp=notanumber:hmac=abc", "secret", 60));
     }
 }

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +25,14 @@ public interface StationControlSyncRepository extends JpaRepository<StationContr
             String syncStatus,
             Long currentVersion
     );
+
+    @EntityGraph(attributePaths = {"station", "station.route", "controlPackage"})
+    @Query("SELECT scs FROM StationControlSync scs WHERE scs.station.stationCode = :stationCode AND scs.syncStatus IN :statuses ORDER BY scs.controlPackage.version DESC")
+    List<StationControlSync> findByStationAndStatus(@Param("stationCode") String stationCode, @Param("statuses") List<String> statuses);
+
+    @Query("DELETE FROM StationControlSync scs WHERE scs.station.id = :stationId AND scs.controlPackage.packageType = :packageType")
+    @Modifying
+    void deleteByStationIdAndPackageType(@Param("stationId") Long stationId, @Param("packageType") String packageType);
 
     @EntityGraph(attributePaths = {"station", "station.route", "controlPackage"})
     Optional<StationControlSync> findWithRelationsById(Long id);

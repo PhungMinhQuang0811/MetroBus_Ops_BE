@@ -60,4 +60,10 @@ public interface StationRepository extends JpaRepository<Station, Long> {
                                  @Param("keywordPattern") String keywordPattern,
                                  @Param("status") String status,
                                  Pageable pageable);
+
+    @Query("SELECT s FROM Station s WHERE s.status = :status")
+    List<Station> findAllByStatus(@Param("status") String status);
+
+    @Query("SELECT s FROM Station s JOIN s.route r WHERE s.status = :status AND r.operator.id = :operatorId")
+    List<Station> findAllByStatusAndRouteOperatorId(@Param("status") String status, @Param("operatorId") Long operatorId);
 }

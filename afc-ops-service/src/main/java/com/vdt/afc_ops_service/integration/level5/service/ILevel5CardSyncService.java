@@ -12,4 +12,6 @@ public interface ILevel5CardSyncService {
     Level5BusinessSyncItemResult processCardSnapshot(C5CardSyncMessage message);
 
     Level5BusinessSyncItemResult processBlacklist(String routingKey, C5BlacklistMessage message);
+
+    Level5BusinessSyncItemResult processBlacklistSnapshot(C5BlacklistMessage message);
 }

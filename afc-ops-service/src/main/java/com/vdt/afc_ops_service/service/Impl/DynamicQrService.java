@@ -10,7 +10,6 @@ import com.vdt.afc_ops_service.entity.Ticket;
 import com.vdt.afc_ops_service.integration.level5.constant.PredefinedLevel5BusinessSync;
 import com.vdt.afc_ops_service.mapper.DynamicQrMapper;
 import com.vdt.afc_ops_service.qr.DynamicQrSessionStore;
-import com.vdt.afc_ops_service.repository.CardRepository;
 import com.vdt.afc_ops_service.repository.TicketRepository;
 import com.vdt.afc_ops_service.service.IDynamicQrService;
 import lombok.AccessLevel;
@@ -23,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -31,7 +29,6 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DynamicQrService implements IDynamicQrService {
 
-    CardRepository cardRepository;
     TicketRepository ticketRepository;
     DynamicQrSessionStore dynamicQrSessionStore;
     DynamicQrMapper dynamicQrMapper;
@@ -40,30 +37,57 @@ public class DynamicQrService implements IDynamicQrService {
     @Value("${app.dynamic-qr.ttl-seconds}")
     int ttlSeconds;
 
+    @NonFinal
+    @Value("${app.security.qr-hmac-secret}")
+    String qrHmacSecret;
+
     @Override
     @Transactional(readOnly = true)
     public DynamicQrResponse generate(GenerateDynamicQrRequest request) {
-        String cardId = SearchFilterUtil.normalize(request.getCardId());
-        Card card = cardRepository.findById(cardId)
-                .orElseThrow(() -> new AppException(ErrorCode.CARD_NOT_FOUND));
-        validateCard(card);
+        String ticketId = SearchFilterUtil.normalize(request.getTicketId());
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new AppException(ErrorCode.TICKET_NOT_FOUND));
+
+        validateTicket(ticket);
+
+        // If ticket is linked to a physical card, validate card status too
+        if (ticket.getCard() != null) {
+            validateCard(ticket.getCard());
+        }
 
         LocalDateTime issuedAt = LocalDateTime.now();
         LocalDateTime expiresAt = issuedAt.plusSeconds(ttlSeconds);
-        ActiveProduct activeProduct = resolveActiveProduct(cardId, issuedAt);
 
         String qrId = UUID.randomUUID().toString();
         long exp = toEpochSecond(expiresAt);
-        String qrPayload = dynamicQrSessionStore.buildPayload(qrId);
+        String qrPayload = dynamicQrSessionStore.buildHmacSignedPayload(ticket.getId(), exp, qrHmacSecret);
 
+        String cardId = ticket.getCard() != null ? ticket.getCard().getId() : null;
         dynamicQrSessionStore.create(qrId, dynamicQrMapper.toSession(
                 cardId,
-                activeProduct.ticketId(),
-                activeProduct.entitlementId(),
+                "SINGLE_TRIP".equals(ticket.getType()) ? ticket.getId() : null,
+                "MONTHLY_PASS".equals(ticket.getType()) ? ticket.getId() : null,
                 exp
         ), ttlSeconds);
 
         return dynamicQrMapper.toResponse(qrId, qrPayload, expiresAt, ttlSeconds);
+    }
+
+    private void validateTicket(Ticket ticket) {
+        if (PredefinedLevel5BusinessSync.EXPIRED.equals(ticket.getUsageStatus())) {
+            throw new AppException(ErrorCode.TICKET_EXPIRED);
+        }
+        if (PredefinedLevel5BusinessSync.USED.equals(ticket.getUsageStatus())) {
+            throw new AppException(ErrorCode.TICKET_ALREADY_USED);
+        }
+        if (PredefinedLevel5BusinessSync.CANCELLED.equals(ticket.getUsageStatus())) {
+            throw new AppException(ErrorCode.TICKET_INVALID);
+        }
+        if (!PredefinedLevel5BusinessSync.ACTIVE.equals(ticket.getUsageStatus())
+                && !PredefinedLevel5BusinessSync.UNUSED.equals(ticket.getUsageStatus())
+                && !PredefinedLevel5BusinessSync.IN_USE.equals(ticket.getUsageStatus())) {
+            throw new AppException(ErrorCode.TICKET_INVALID);
+        }
     }
 
     private void validateCard(Card card) {
@@ -78,26 +102,7 @@ public class DynamicQrService implements IDynamicQrService {
         }
     }
 
-    private ActiveProduct resolveActiveProduct(String cardId, LocalDateTime now) {
-        List<Ticket> singleTickets = ticketRepository.findAllByCardIdAndUsageStatusInAndValidToAfter(
-                cardId,
-                List.of(PredefinedLevel5BusinessSync.UNUSED, PredefinedLevel5BusinessSync.IN_USE),
-                now
-        );
-        List<Ticket> monthlyPasses = ticketRepository.findAllByCardIdAndTypeAndUsageStatusAndValidToAfter(
-                cardId, "MONTHLY_PASS", PredefinedLevel5BusinessSync.ACTIVE, now
-        );
-
-        int count = singleTickets.size() + monthlyPasses.size();
-        if (count == 0) throw new AppException(ErrorCode.ACTIVE_PRODUCT_NOT_FOUND);
-        if (count > 1) throw new AppException(ErrorCode.ACTIVE_PRODUCT_CONFLICT);
-        if (!singleTickets.isEmpty()) return new ActiveProduct(singleTickets.get(0).getId(), null);
-        return new ActiveProduct(null, monthlyPasses.get(0).getId());
-    }
-
     private long toEpochSecond(LocalDateTime dateTime) {
         return dateTime.atZone(ZoneId.systemDefault()).toEpochSecond();
     }
-
-    private record ActiveProduct(String ticketId, String entitlementId) {}
 }
