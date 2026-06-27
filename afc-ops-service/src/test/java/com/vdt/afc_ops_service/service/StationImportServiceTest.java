@@ -65,6 +65,9 @@ class StationImportServiceTest {
     @Mock
     StationRouteSyncPublisher stationRouteSyncPublisher;
 
+    @Mock
+    IStationControlPackageService stationControlPackageService;
+
     @InjectMocks
     StationImportService stationImportService;
 
@@ -203,6 +206,7 @@ class StationImportServiceTest {
 
         ArgumentCaptor<Station> stationCaptor = ArgumentCaptor.forClass(Station.class);
         verify(stationRepository, org.mockito.Mockito.times(2)).save(stationCaptor.capture());
+        verify(stationControlPackageService, org.mockito.Mockito.times(2)).createOrUpdateStationContext(any(Station.class));
         for (Station station : stationCaptor.getAllValues()) {
             assertEquals(route, station.getRoute());
             assertEquals("account-1", station.getCreatedByAccountId());

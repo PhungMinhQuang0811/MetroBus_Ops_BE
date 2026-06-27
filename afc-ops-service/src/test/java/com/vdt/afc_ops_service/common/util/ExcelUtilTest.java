@@ -16,6 +16,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExcelUtilTest {
 
@@ -146,6 +147,52 @@ class ExcelUtilTest {
         ExcelUtil.ExcelRow row = new ExcelUtil.ExcelRow(2, List.of("Metro Line 1"));
 
         assertNull(row.getValue(1));
+    }
+
+    @Test
+    void testConstructor_isPrivate() throws Exception {
+        java.lang.reflect.Constructor<ExcelUtil> constructor = ExcelUtil.class.getDeclaredConstructor();
+        assertTrue(java.lang.reflect.Modifier.isPrivate(constructor.getModifiers()));
+        constructor.setAccessible(true);
+        constructor.newInstance();
+    }
+
+    @Test
+    void parseRows_EmptyFile_ThrowsImportFileInvalid() {
+        MockMultipartFile file = new MockMultipartFile("file", "empty.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", new byte[0]);
+
+        AppException exception = assertThrows(AppException.class, () -> ExcelUtil.parseRows(
+                file,
+                List.of("routeName", "transportType"),
+                row -> row,
+                ErrorCode.IMPORT_FILE_INVALID
+        ));
+
+        assertEquals(ErrorCode.IMPORT_FILE_INVALID, exception.getErrorCode());
+    }
+
+    @Test
+    void parseRows_NoRowsInSheet_ThrowsImportFileInvalid() throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            workbook.createSheet("routes");
+            workbook.write(outputStream);
+            MockMultipartFile file = new MockMultipartFile(
+                    "file",
+                    "routes.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    outputStream.toByteArray()
+            );
+
+            AppException exception = assertThrows(AppException.class, () -> ExcelUtil.parseRows(
+                    file,
+                    List.of("routeName", "transportType"),
+                    row -> row,
+                    ErrorCode.IMPORT_FILE_INVALID
+            ));
+
+            assertEquals(ErrorCode.IMPORT_FILE_INVALID, exception.getErrorCode());
+        }
     }
 
     private MockMultipartFile xlsx(String[] header, String[]... rows) throws IOException {

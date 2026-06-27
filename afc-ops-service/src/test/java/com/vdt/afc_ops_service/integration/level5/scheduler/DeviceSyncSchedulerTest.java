@@ -157,4 +157,99 @@ class DeviceSyncSchedulerTest {
         verify(controlPackagePublisher).publishToStation(eq("METRO-001-ST-001"), any());
         verify(controlPackagePublisher).publishToStation(eq("METRO-001-ST-002"), any());
     }
+
+    @Test
+    void syncAllDevices_nullFieldsInStationContext_fallbackUsesDefaultValues() {
+        Station nullFieldStation = Station.builder()
+                .id(300L)
+                .stationCode("METRO-001-ST-003")
+                .stationName(null)
+                .route(null) // this will also check operatorCode fallback
+                .distance(null)
+                .status("ACTIVE")
+                .build();
+
+        when(stationRepository.findAllByStatus("ACTIVE")).thenReturn(List.of(nullFieldStation));
+        when(syncRepository.findByStationAndStatus("METRO-001-ST-003", List.of("PENDING", "APPLIED")))
+                .thenReturn(List.of());
+
+        scheduler.syncAllDevices();
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(controlPackagePublisher).publishToStation(eq("METRO-001-ST-003"), payloadCaptor.capture());
+
+        Map<String, Object> payload = payloadCaptor.getValue();
+        Map<String, Object> ctx = (Map<String, Object>) payload.get("stationContext");
+        assertNotNull(ctx);
+        assertEquals("", ctx.get("stationName"));
+        assertEquals("", ctx.get("routeCode"));
+        assertEquals(java.math.BigDecimal.ZERO, ctx.get("distance"));
+        assertEquals("", ctx.get("operatorCode"));
+    }
+
+    @Test
+    void syncAllDevices_emptyPayloadDoc_doesNotAddPayload() {
+        ControlPackage cp = ControlPackage.builder().id(1L).packageType("DEVICE_CONFIG").version(5L).build();
+        StationControlSync sync = StationControlSync.builder().station(station).controlPackage(cp)
+                .syncStatus("PENDING").retryCount(0).build();
+
+        when(stationRepository.findAllByStatus("ACTIVE")).thenReturn(List.of(station));
+        when(syncRepository.findByStationAndStatus(station.getStationCode(), List.of("PENDING", "APPLIED")))
+                .thenReturn(List.of(sync));
+        when(payloadRepository.findByControlPackageId(1L)).thenReturn(Optional.empty());
+
+        scheduler.syncAllDevices();
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(controlPackagePublisher).publishToStation(eq("METRO-001-ST-001"), payloadCaptor.capture());
+
+        Map<String, Object> payload = payloadCaptor.getValue();
+        // Since loadPayloadFromSync returned null because document was empty, deviceConfig should not be in the payload
+        assertTrue(!payload.containsKey("deviceConfig"));
+        assertNotNull(payload.get("stationContext"));
+    }
+
+    @Test
+    void syncAllDevices_multipleSyncPackages_ignoresDuplicatesAndUsesContextFromDb() {
+        ControlPackage cpDc1 = ControlPackage.builder().id(10L).packageType("DEVICE_CONFIG").version(10L).build();
+        ControlPackage cpDc2 = ControlPackage.builder().id(11L).packageType("DEVICE_CONFIG").version(11L).build();
+        ControlPackage cpSc1 = ControlPackage.builder().id(20L).packageType("STATION_CONTEXT").version(20L).build();
+        ControlPackage cpSc2 = ControlPackage.builder().id(21L).packageType("STATION_CONTEXT").version(21L).build();
+        ControlPackage cpMr1 = ControlPackage.builder().id(30L).packageType("MEDIA_ACCESS_RULES").version(30L).build();
+        ControlPackage cpMr2 = ControlPackage.builder().id(31L).packageType("MEDIA_ACCESS_RULES").version(31L).build();
+
+        StationControlSync syncDc1 = StationControlSync.builder().station(station).controlPackage(cpDc1).syncStatus("PENDING").build();
+        StationControlSync syncDc2 = StationControlSync.builder().station(station).controlPackage(cpDc2).syncStatus("PENDING").build();
+        StationControlSync syncSc1 = StationControlSync.builder().station(station).controlPackage(cpSc1).syncStatus("PENDING").build();
+        StationControlSync syncSc2 = StationControlSync.builder().station(station).controlPackage(cpSc2).syncStatus("PENDING").build();
+        StationControlSync syncMr1 = StationControlSync.builder().station(station).controlPackage(cpMr1).syncStatus("PENDING").build();
+        StationControlSync syncMr2 = StationControlSync.builder().station(station).controlPackage(cpMr2).syncStatus("PENDING").build();
+
+        when(stationRepository.findAllByStatus("ACTIVE")).thenReturn(List.of(station));
+        when(syncRepository.findByStationAndStatus(station.getStationCode(), List.of("PENDING", "APPLIED")))
+                .thenReturn(List.of(syncDc1, syncDc2, syncSc1, syncSc2, syncMr1, syncMr2));
+
+        ControlPackagePayload docDc = ControlPackagePayload.builder().payload(Map.of("param1", "value1")).build();
+        when(payloadRepository.findByControlPackageId(10L)).thenReturn(Optional.of(docDc));
+
+        ControlPackagePayload docSc = ControlPackagePayload.builder().payload(Map.of("param2", "value2")).build();
+        when(payloadRepository.findByControlPackageId(20L)).thenReturn(Optional.of(docSc));
+
+        ControlPackagePayload docMr = ControlPackagePayload.builder().payload(Map.of("param3", "value3")).build();
+        when(payloadRepository.findByControlPackageId(30L)).thenReturn(Optional.of(docMr));
+
+        scheduler.syncAllDevices();
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(controlPackagePublisher).publishToStation(eq("METRO-001-ST-001"), payloadCaptor.capture());
+
+        Map<String, Object> payload = payloadCaptor.getValue();
+        verify(payloadRepository, never()).findByControlPackageId(11L);
+        verify(payloadRepository, never()).findByControlPackageId(21L);
+        verify(payloadRepository, never()).findByControlPackageId(31L);
+
+        assertEquals(Map.of("param1", "value1", "version", 10L), payload.get("deviceConfig"));
+        assertEquals(Map.of("param2", "value2", "version", 20L), payload.get("stationContext"));
+        assertEquals(Map.of("param3", "value3", "version", 30L), payload.get("mediaAccessRules"));
+    }
 }

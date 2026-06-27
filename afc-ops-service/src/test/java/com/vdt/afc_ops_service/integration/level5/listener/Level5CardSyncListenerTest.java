@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -41,7 +42,9 @@ class Level5CardSyncListenerTest {
         props.setReceivedRoutingKey("blacklist.added");
         C5BlacklistMessage msg = new C5BlacklistMessage(
                 UUID.randomUUID(), UUID.randomUUID(), "ADDED", "LOST_CARD", UUID.randomUUID(), Instant.now());
+        Level5BusinessSyncItemResult result = Level5BusinessSyncItemResult.builder().externalId("ext-1").result("CREATED").build();
         when(objectMapper.readValue(any(byte[].class), eq(C5BlacklistMessage.class))).thenReturn(msg);
+        when(level5CardSyncService.processBlacklist(eq("blacklist.added"), any(C5BlacklistMessage.class))).thenReturn(result);
 
         listener.receiveCardSync(new Message("{}".getBytes(), props));
 
@@ -54,7 +57,9 @@ class Level5CardSyncListenerTest {
         props.setReceivedRoutingKey("blacklist.removed");
         C5BlacklistMessage msg = new C5BlacklistMessage(
                 UUID.randomUUID(), UUID.randomUUID(), "REMOVED", null, UUID.randomUUID(), Instant.now());
+        Level5BusinessSyncItemResult result = Level5BusinessSyncItemResult.builder().externalId("ext-1").result("UPDATED").build();
         when(objectMapper.readValue(any(byte[].class), eq(C5BlacklistMessage.class))).thenReturn(msg);
+        when(level5CardSyncService.processBlacklist(eq("blacklist.removed"), any(C5BlacklistMessage.class))).thenReturn(result);
 
         listener.receiveCardSync(new Message("{}".getBytes(), props));
 
@@ -67,7 +72,9 @@ class Level5CardSyncListenerTest {
         props.setReceivedRoutingKey("sync.blacklist.all");
         C5BlacklistMessage msg = new C5BlacklistMessage(
                 UUID.randomUUID(), UUID.randomUUID(), null, "LOST_CARD", UUID.randomUUID(), Instant.now());
+        Level5BusinessSyncItemResult result = Level5BusinessSyncItemResult.builder().externalId("ext-1").result("CREATED").build();
         when(objectMapper.readValue(any(byte[].class), eq(C5BlacklistMessage.class))).thenReturn(msg);
+        when(level5CardSyncService.processBlacklistSnapshot(any(C5BlacklistMessage.class))).thenReturn(result);
 
         listener.receiveCardSync(new Message("{}".getBytes(), props));
 
@@ -80,7 +87,9 @@ class Level5CardSyncListenerTest {
         props.setReceivedRoutingKey("card.status.changed");
         C5CardStatusMessage msg = new C5CardStatusMessage();
         msg.setCardId(UUID.randomUUID());
+        Level5BusinessSyncItemResult result = Level5BusinessSyncItemResult.builder().externalId("ext-1").result("UPDATED").build();
         when(objectMapper.readValue(any(byte[].class), eq(C5CardStatusMessage.class))).thenReturn(msg);
+        when(level5CardSyncService.processCardStatus(any(C5CardStatusMessage.class))).thenReturn(result);
 
         listener.receiveCardSync(new Message("{}".getBytes(), props));
 
@@ -93,10 +102,25 @@ class Level5CardSyncListenerTest {
         props.setReceivedRoutingKey("sync.card.all");
         C5CardSyncMessage msg = new C5CardSyncMessage();
         msg.setId(UUID.randomUUID());
+        Level5BusinessSyncItemResult result = Level5BusinessSyncItemResult.builder().externalId("ext-1").result("CREATED").build();
         when(objectMapper.readValue(any(byte[].class), eq(C5CardSyncMessage.class))).thenReturn(msg);
+        when(level5CardSyncService.processCardSnapshot(any(C5CardSyncMessage.class))).thenReturn(result);
 
         listener.receiveCardSync(new Message("{}".getBytes(), props));
 
         verify(level5CardSyncService).processCardSnapshot(any(C5CardSyncMessage.class));
+    }
+
+    @Test
+    void receiveCardSync_unsupportedRoutingKey_ignoresAndLogsWarning() throws IOException {
+        MessageProperties props = new MessageProperties();
+        props.setReceivedRoutingKey("unsupported.key");
+
+        listener.receiveCardSync(new Message("{}".getBytes(), props));
+
+        verify(level5CardSyncService, never()).processCardStatus(any());
+        verify(level5CardSyncService, never()).processBlacklist(any(), any());
+        verify(level5CardSyncService, never()).processCardSnapshot(any());
+        verify(level5CardSyncService, never()).processBlacklistSnapshot(any());
     }
 }

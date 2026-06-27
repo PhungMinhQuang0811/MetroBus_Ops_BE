@@ -169,4 +169,61 @@ class DynamicQrSessionStoreTest {
         assertNull(store.parseHmacSignedPayload("AFCQR:v1:short", "secret", 60));
         assertNull(store.parseHmacSignedPayload("AFCQR:v1:TICKET-001:exp=notanumber:hmac=abc", "secret", 60));
     }
+
+    @Test
+    void testJsonParsingEdgeCases() {
+        // jsonString keyIndex < 0
+        DynamicQrSession session1 = store.deserialize("{\"otherKey\":\"CARD-001\"}");
+        assertNull(session1.cardId());
+
+        // jsonString value starts with null
+        DynamicQrSession session2 = store.deserialize("{\"cardId\":null}");
+        assertNull(session2.cardId());
+
+        // jsonString charAt != '\"' (missing start quote)
+        DynamicQrSession session3 = store.deserialize("{\"cardId\":123}");
+        assertNull(session3.cardId());
+
+        // jsonString valueEnd < 0 (missing end quote)
+        DynamicQrSession session4 = store.deserialize("{\"cardId\":\"CARD-001}");
+        assertNull(session4.cardId());
+
+        // jsonLong keyIndex < 0
+        DynamicQrSession session5 = store.deserialize("{\"otherKey\":100}");
+        assertNull(session5.expiresAt());
+
+        // jsonLong raw equals null
+        DynamicQrSession session6 = store.deserialize("{\"exp\":null}");
+        assertNull(session6.expiresAt());
+
+        // jsonLong NumberFormatException
+        DynamicQrSession session7 = store.deserialize("{\"exp\":notanumber}");
+        assertNull(session7.expiresAt());
+
+        // jsonBoolean keyIndex < 0
+        DynamicQrSession session8 = store.deserialize("{\"otherKey\":true}");
+        assertEquals(false, session8.used());
+    }
+
+    @Test
+    void serialize_EscapesSpecialCharacters() {
+        DynamicQrSession session = new DynamicQrSession(
+                "CARD-\"\\",
+                null,
+                null,
+                null,
+                false
+        );
+        String serialized = store.serialize(session);
+        // CARD-\"\\ should be escaped to CARD-\\\"\\\\
+        assertTrue(serialized.contains("\"cardId\":\"CARD-\\\"\\\\\""));
+    }
+
+    @Test
+    void parseQrId_InvalidInputVariants() {
+        assertNull(store.parseQrId(null));
+        assertNull(store.parseQrId("AFCQR:v2:QR-001"));
+        assertNull(store.parseQrId("AFCQR:v1:"));
+        assertNull(store.parseQrId("AFCQR:v1:   "));
+    }
 }

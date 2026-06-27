@@ -444,6 +444,92 @@ class StationServiceTest {
     }
 
     @Test
+    void publishAllStations_PublishesAll() {
+        Station station1 = station(100L, route, PredefinedMasterDataStatus.ACTIVE);
+        Station station2 = station(101L, route, PredefinedMasterDataStatus.DISABLED);
+        when(stationRepository.findAll()).thenReturn(List.of(station1, station2));
+
+        stationService.publishAllStations();
+
+        verify(stationRouteSyncPublisher, org.mockito.Mockito.times(2)).publishStationSync(any());
+    }
+
+    @Test
+    void getStation_NonExistentStation_ThrowsStationNotFound() {
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+        when(stationRepository.findByIdAndRouteOperatorId(100L, 1L)).thenReturn(Optional.empty());
+        when(stationRepository.existsById(100L)).thenReturn(false);
+
+        AppException exception = assertThrows(AppException.class, () -> stationService.getStation(100L));
+
+        assertEquals(ErrorCode.STATION_NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    void disableStation_InvalidStationId_ThrowsInvalidStationId() {
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+
+        AppException exception = assertThrows(AppException.class, () -> stationService.disableStation(null));
+
+        assertEquals(ErrorCode.INVALID_STATION_ID, exception.getErrorCode());
+    }
+
+    @Test
+    void getStation_InvalidStationId_ThrowsInvalidStationId() {
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+
+        AppException exception = assertThrows(AppException.class, () -> stationService.getStation(-1L));
+
+        assertEquals(ErrorCode.INVALID_STATION_ID, exception.getErrorCode());
+    }
+
+    @Test
+    void createStation_RouteBelongsToOtherOperator_ThrowsOperatorAccessDenied() {
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+        when(routeRepository.findByIdAndOperator(10L, operator)).thenReturn(Optional.empty());
+        when(routeRepository.existsById(10L)).thenReturn(true);
+
+        AppException exception = assertThrows(AppException.class,
+                () -> stationService.createStation(CreateStationRequest.builder()
+                        .routeId(10L)
+                        .stationName("Ben Thanh")
+                        .stationOrder(1)
+                        .build()));
+
+        assertEquals(ErrorCode.OPERATOR_ACCESS_DENIED, exception.getErrorCode());
+    }
+
+    @Test
+    void listStations_NegativeRouteId_ThrowsInvalidRouteId() {
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> stationService.listStations(-5L, null, null, 0, 20));
+
+        assertEquals(ErrorCode.INVALID_ROUTE_ID, exception.getErrorCode());
+    }
+
+    @Test
+    void listStations_InvalidPageSizeTooLarge_ThrowsInvalidPageRequest() {
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> stationService.listStations(null, null, null, 0, 101));
+
+        assertEquals(ErrorCode.INVALID_PAGE_REQUEST, exception.getErrorCode());
+    }
+
+    @Test
+    void listStations_InvalidPageSizeTooSmall_ThrowsInvalidPageRequest() {
+        when(operatorRepository.findByOperatorCode("HCMC-METRO")).thenReturn(Optional.of(operator));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> stationService.listStations(null, null, null, 0, 0));
+
+        assertEquals(ErrorCode.INVALID_PAGE_REQUEST, exception.getErrorCode());
+    }
+
+    @Test
     void createStationRequestRejectsInvalidOrder() {
         Set<ConstraintViolation<CreateStationRequest>> violations = validator.validate(
                 CreateStationRequest.builder()
