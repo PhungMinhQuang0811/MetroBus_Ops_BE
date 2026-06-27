@@ -1,7 +1,9 @@
 package com.vdt.afc_ops_service.service;
 
+import com.vdt.afc_ops_service.dto.request.transaction.SubmitBatchRequest;
 import com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
+import com.vdt.afc_ops_service.dto.response.transaction.SubmitBatchResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.SubmitTransactionResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemResponse;
@@ -10,6 +12,8 @@ import java.time.LocalDateTime;
 
 public interface ITransactionService {
     SubmitTransactionResponse submit(String deviceCode, String deviceSecret, SubmitTransactionRequest request);
+
+    SubmitBatchResponse submitBatch(String deviceCode, String deviceSecret, SubmitBatchRequest request);
 
     PageResponse<TransactionListItemResponse> searchTransactions(LocalDateTime from, LocalDateTime to,
                                                                  Long routeId, Long stationId, Long deviceId,

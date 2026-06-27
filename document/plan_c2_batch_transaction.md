@@ -2,30 +2,30 @@
 
 Tài liệu này mô tả luồng C2 gửi batch các tap events đã queue trong ngày lên C4 vào ban đêm.
 
-**Kiến trúc: KHÔNG dùng qr_sessions table. cardId/ticketId được nhúng trực tiếp trong QR payload, ký bằng HMAC.**
+**Kiến trúc: KHÔNG dùng qr_sessions table. ticketId được nhúng trực tiếp trong QR payload, ký bằng HMAC.**
 
 ---
 
-## 1. QR Payload Format (chứa luôn cardId, ticketId)
+## 1. QR Payload Format (chứa luôn ticketId)
 
-C4 nhúng cardId và ticketId trực tiếp vào QR payload, ký bằng HMAC:
+C4 nhúng ticketId trực tiếp vào QR payload, ký bằng HMAC:
 
 ```
-AFCQR:v1:{cardId}:{ticketId}:exp={epochSeconds}:hmac={base64url}
+AFCQR:v1:{ticketId}:exp={epochSeconds}:hmac={base64url}
 ```
 
 Ví dụ:
 ```
-AFCQR:v1:CARD-000001:TICKET-000001:exp=1765432100:hmac=abcXYZ123
+AFCQR:v1:TICKET-000001:exp=1765432100:hmac=abcXYZ123
 ```
 
-Khi C2 scan, nó vẫn chỉ verify HMAC như cũ. cardId/ticketId là UUID — C2 không cần hiểu chúng.
+Khi C2 scan, nó vẫn chỉ verify HMAC như cũ. ticketId là UUID — C2 không cần hiểu chúng.
 
 ## 2. Luồng Xử Lý
 
 ### C4 sinh QR
 ```java
-String dataToSign = "AFCQR:v1:" + cardId + ":" + ticketId + ":exp=" + exp;
+String dataToSign = "AFCQR:v1:" + ticketId + ":exp=" + exp;
 String hmac = CryptoHashUtil.hmacSha256Base64Url(hmacSecret, dataToSign);
 String qrPayload = dataToSign + ":hmac=" + hmac;
 ```
@@ -41,7 +41,7 @@ C2 queue local: { qrPayload, deviceCode, stationCode, tapType, occurredAt }
 ### C4 nhận batch (ban đêm)
 ```
 POST /transaction/submit-batch
-C4 parse qrPayload → lấy trực tiếp { cardId, ticketId }
+C4 parse qrPayload → lấy trực tiếp { ticketId }
 → không cần lookup Redis hay PostgreSQL
 → tạo Transaction
 → mark ticket USED
@@ -89,8 +89,8 @@ public SubmitBatchResponse processBatch(SubmitBatchRequest request) {
             if (parsed.expired()) { errors.add("QR expired"); continue; }
             if (parsed.replayed()) { errors.add("QR replayed"); continue; }
 
-            // cardId, ticketId có sẵn trong payload
-            createTransaction(parsed.cardId(), parsed.ticketId(), item);
+            // ticketId có sẵn trong payload
+            createTransaction(parsed.ticketId(), item);
             success++;
         } catch (Exception e) { errors.add(e.getMessage()); }
     }
@@ -105,9 +105,9 @@ public SubmitBatchResponse processBatch(SubmitBatchRequest request) {
 ### DynamicQrSessionStore.java — thêm 2 methods mới
 
 ```java
-// 1. Build payload với cardId + ticketId
-public String buildPayload(String cardId, String ticketId, long expiresAt, String hmacSecret) {
-    String dataToSign = QR_PAYLOAD_PREFIX + cardId + ":" + ticketId + ":exp=" + expiresAt;
+// 1. Build payload với ticketId
+public String buildPayload(String ticketId, long expiresAt, String hmacSecret) {
+    String dataToSign = QR_PAYLOAD_PREFIX + ticketId + ":exp=" + expiresAt;
     String hmac = CryptoHashUtil.hmacSha256Base64Url(hmacSecret, dataToSign);
     return dataToSign + ":hmac=" + hmac;
 }
@@ -117,32 +117,31 @@ public ParsedQrData parseAndVerify(String qrPayload, String hmacSecret, long max
     if (qrPayload == null || !qrPayload.startsWith(QR_PAYLOAD_PREFIX)) return null;
 
     String[] parts = qrPayload.split(":");
-    // parts = ["AFCQR", "v1", "{cardId}", "{ticketId}", "exp={ts}", "hmac={sig}"]
-    if (parts.length < 6) return null;
+    // parts = ["AFCQR", "v1", "{ticketId}", "exp={ts}", "hmac={sig}"]
+    if (parts.length < 5) return null;
 
-    String cardId = parts[2];
-    String ticketId = parts[3];
-    long exp = Long.parseLong(parts[4].replace("exp=", ""));
-    String receivedHmac = parts[5].replace("hmac=", "");
+    String ticketId = parts[2];
+    long exp = Long.parseLong(parts[3].replace("exp=", ""));
+    String receivedHmac = parts[4].replace("hmac=", "");
 
     // Verify HMAC
-    String dataToSign = QR_PAYLOAD_PREFIX + cardId + ":" + ticketId + ":exp=" + exp;
+    String dataToSign = QR_PAYLOAD_PREFIX + ticketId + ":exp=" + exp;
     String expectedHmac = CryptoHashUtil.hmacSha256Base64Url(hmacSecret, dataToSign);
     if (!expectedHmac.equals(receivedHmac)) return null;
 
     // Check expiry
     boolean expired = Instant.now().getEpochSecond() > exp + maxClockDriftSeconds;
 
-    return new ParsedQrData(cardId, ticketId, exp, expired);
+    return new ParsedQrData(null, ticketId, exp, expired);
 }
 ```
 
 ### DynamicQrService.java — dùng payload mới
 ```java
 long exp = toEpochSecond(expiresAt);
-String qrPayload = dynamicQrSessionStore.buildPayload(cardId, ticketId, exp, hmacSecret);
+String qrPayload = dynamicQrSessionStore.buildPayload(ticketId, exp, hmacSecret);
 // Vẫn lưu Redis cho realtime tap event
-dynamicQrSessionStore.cacheInRedis(qrId, cardId, ticketId, exp, ttlSeconds);
+dynamicQrSessionStore.cacheInRedis(qrId, null, ticketId, exp, ttlSeconds);
 return dynamicQrMapper.toResponse(qrId, qrPayload, expiresAt, ttlSeconds);
 ```
 
@@ -155,8 +154,8 @@ return dynamicQrMapper.toResponse(qrId, qrPayload, expiresAt, ttlSeconds);
 - `dto/response/transaction/SubmitBatchResponse.java`
 
 **Updated files (4):**
-- `qr/DynamicQrSessionStore.java` — `buildPayload()` nhận cardId/ticketId, thêm `parseAndVerify()`
-- `service/Impl/DynamicQrService.java` — truyền cardId, ticketId vào buildPayload()
+- `qr/DynamicQrSessionStore.java` — `buildPayload()` nhận ticketId, thêm `parseAndVerify()`
+- `service/Impl/DynamicQrService.java` — truyền ticketId vào buildPayload()
 - `service/Impl/TransactionService.java` — `processBatch()` parse trực tiếp từ payload
 - `controller/TransactionController.java` — `POST /submit-batch`
 
@@ -177,7 +176,7 @@ return dynamicQrMapper.toResponse(qrId, qrPayload, expiresAt, ttlSeconds);
 | Gọi API | `POST /transaction/submit-batch` với `X-Device-Code` + `X-Device-Secret` |
 | Xóa queue | Sau khi nhận `{ success: N, failed: 0 }` |
 
-**C2 KHÔNG cần thay đổi QR verify logic.** cardId/ticketId là UUID — C2 không cần parse chúng. HMAC verify vẫn trên toàn bộ payload như cũ.
+**C2 KHÔNG cần thay đổi QR verify logic.** ticketId là UUID — C2 không cần parse chúng. HMAC verify vẫn trên toàn bộ payload như cũ.
 
 ---
 
@@ -185,9 +184,9 @@ return dynamicQrMapper.toResponse(qrId, qrPayload, expiresAt, ttlSeconds);
 
 | Phase | Tasks | Deps |
 |-------|-------|------|
-| B1 | Update `DynamicQrSessionStore.buildPayload()` — nhận cardId, ticketId | None |
+| B1 | Update `DynamicQrSessionStore.buildPayload()` — nhận ticketId | None |
 | B2 | Thêm `parseAndVerify()` vào `DynamicQrSessionStore` | None |
-| B3 | Update `DynamicQrService` — truyền cardId, ticketId | B1 |
+| B3 | Update `DynamicQrService` — truyền ticketId | B1 |
 | B4 | Tạo DTOs: `SubmitBatchRequest`, `SubmitBatchResponse` | None |
 | B5 | Thêm `processBatch()` vào `TransactionService` — parse trực tiếp từ payload | B2, B4 |
 | B6 | Thêm endpoint `POST /submit-batch` + SecurityConstants | B5 |

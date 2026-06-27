@@ -7,11 +7,14 @@ import com.vdt.afc_ops_service.constant.PredefinedDeviceDirection;
 import com.vdt.afc_ops_service.constant.PredefinedDeviceStatus;
 import com.vdt.afc_ops_service.constant.PredefinedTransactionDecision;
 import com.vdt.afc_ops_service.constant.PredefinedTransactionReason;
+import com.vdt.afc_ops_service.dto.request.transaction.SubmitBatchRequest;
 import com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
+import com.vdt.afc_ops_service.dto.response.transaction.SubmitBatchResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.SubmitTransactionResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemResponse;
+import com.vdt.afc_ops_service.qr.ParsedQrData;
 import com.vdt.afc_ops_service.entity.Card;
 import com.vdt.afc_ops_service.entity.Device;
 import com.vdt.afc_ops_service.entity.Operator;
@@ -31,14 +34,18 @@ import com.vdt.afc_ops_service.service.ITransactionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -61,6 +68,14 @@ public class TransactionService implements ITransactionService {
     TransactionMapper transactionMapper;
     SecurityUtils securityUtils;
 
+    @NonFinal
+    @Value("${app.security.qr-hmac-secret}")
+    String qrHmacSecret;
+
+    @NonFinal
+    @Value("${app.dynamic-qr.ttl-seconds}")
+    int qrMaxClockDriftSeconds;
+
     @Override
     @Transactional
     public SubmitTransactionResponse submit(String deviceCode, String deviceSecret, SubmitTransactionRequest request) {
@@ -81,6 +96,99 @@ public class TransactionService implements ITransactionService {
         }
 
         return transactionMapper.toResponse(transaction, evaluation, now);
+    }
+
+    @Override
+    @Transactional
+    public SubmitBatchResponse submitBatch(String deviceCode, String deviceSecret, SubmitBatchRequest request) {
+        LocalDateTime now = LocalDateTime.now();
+        String normalizedDeviceCode = SearchFilterUtil.normalize(deviceCode);
+        Device device = deviceRepository.findByDeviceCode(normalizedDeviceCode)
+                .orElseThrow(() -> new AppException(ErrorCode.DEVICE_NOT_FOUND));
+        if (!Objects.equals(SearchFilterUtil.normalize(deviceSecret), device.getDeviceSecret())) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+        if (!PredefinedDeviceStatus.ACTIVE.equals(device.getStatus())) {
+            throw new AppException(ErrorCode.DEVICE_NOT_FOUND);
+        }
+
+        int total = request.getTransactions().size();
+        int success = 0;
+        int failed = 0;
+        List<String> errors = new ArrayList<>();
+
+        for (SubmitBatchRequest.BatchTransactionItem item : request.getTransactions()) {
+            try {
+                String qrPayload = SearchFilterUtil.normalize(item.getQrPayload());
+                ParsedQrData parsed = dynamicQrSessionStore.parseHmacSignedPayload(
+                        qrPayload, qrHmacSecret, qrMaxClockDriftSeconds);
+                if (parsed == null || parsed.expired()) {
+                    errors.add("Invalid or expired QR");
+                    failed++;
+                    continue;
+                }
+
+                Ticket ticket = ticketRepository.findById(parsed.ticketId()).orElse(null);
+                if (ticket == null) {
+                    errors.add("Ticket not found: " + parsed.ticketId());
+                    failed++;
+                    continue;
+                }
+
+                String direction = normalizeUppercase(device.getDirection());
+                String tapType = resolveTapType(direction);
+                String itemTapType = SearchFilterUtil.normalizeUppercase(item.getTapType());
+                if (itemTapType != null) {
+                    tapType = itemTapType;
+                }
+
+                String transactionId = UUID.randomUUID().toString();
+                Transaction transaction = Transaction.builder()
+                        .id(transactionId)
+                        .eventId(transactionId)
+                        .operator(device.getStation().getRoute().getOperator())
+                        .route(device.getStation().getRoute())
+                        .station(device.getStation())
+                        .device(device)
+                        .mediaType("VIRTUAL_QR")
+                        .card(ticket.getCard())
+                        .ticket(ticket)
+                        .qrId(parsed.ticketId())
+                        .qrPayloadHash(com.vdt.afc_ops_service.common.util.CryptoHashUtil.sha256Base64Url(qrPayload))
+                        .tapType(tapType)
+                        .occurredAt(item.getOccurredAt() != null ? item.getOccurredAt() : now)
+                        .receivedAt(now)
+                        .decision(PredefinedTransactionDecision.OPEN_GATE)
+                        .reason(PredefinedTransactionReason.VALID)
+                        .syncStatus("PENDING")
+                        .build();
+                transactionRepository.save(transaction);
+
+                if (TAP_TYPE_TAP_OUT.equals(tapType)
+                        && (PredefinedLevel5BusinessSync.UNUSED.equals(ticket.getUsageStatus())
+                        || PredefinedLevel5BusinessSync.IN_USE.equals(ticket.getUsageStatus()))) {
+                    ticket.setUsageStatus(PredefinedLevel5BusinessSync.USED);
+                    ticket.setUsedAt(now);
+                    ticketRepository.save(ticket);
+                } else if (TAP_TYPE_TAP_IN.equals(tapType)
+                        && PredefinedLevel5BusinessSync.UNUSED.equals(ticket.getUsageStatus())) {
+                    ticket.setUsageStatus(PredefinedLevel5BusinessSync.IN_USE);
+                    ticketRepository.save(ticket);
+                }
+
+                success++;
+            } catch (Exception e) {
+                errors.add(e.getMessage());
+                failed++;
+            }
+        }
+
+        return SubmitBatchResponse.builder()
+                .total(total)
+                .success(success)
+                .failed(failed)
+                .errors(errors)
+                .build();
     }
 
     @Override

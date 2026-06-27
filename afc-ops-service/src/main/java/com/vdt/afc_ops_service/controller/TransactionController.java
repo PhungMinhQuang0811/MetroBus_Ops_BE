@@ -1,8 +1,10 @@
 package com.vdt.afc_ops_service.controller;
 
+import com.vdt.afc_ops_service.dto.request.transaction.SubmitBatchRequest;
 import com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest;
 import com.vdt.afc_ops_service.dto.response.ApiResponse;
 import com.vdt.afc_ops_service.dto.response.PageResponse;
+import com.vdt.afc_ops_service.dto.response.transaction.SubmitBatchResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.SubmitTransactionResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemResponse;
@@ -32,6 +34,17 @@ public class TransactionController {
     ) {
         return ApiResponse.<SubmitTransactionResponse>builder()
                 .result(transactionService.submit(deviceCode, deviceSecret, request))
+                .build();
+    }
+
+    @PostMapping("/submit-batch")
+    public ApiResponse<SubmitBatchResponse> submitBatch(
+            @RequestHeader("X-Device-Code") String deviceCode,
+            @RequestHeader("X-Device-Secret") String deviceSecret,
+            @Valid @RequestBody SubmitBatchRequest request
+    ) {
+        return ApiResponse.<SubmitBatchResponse>builder()
+                .result(transactionService.submitBatch(deviceCode, deviceSecret, request))
                 .build();
     }
 
