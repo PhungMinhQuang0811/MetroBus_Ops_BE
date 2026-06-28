@@ -2,6 +2,7 @@ package com.vdt.afc_ops_service.service.Impl;
 
 import com.vdt.afc_ops_service.common.exception.AppException;
 import com.vdt.afc_ops_service.common.exception.ErrorCode;
+import com.vdt.afc_ops_service.common.util.CryptoHashUtil;
 import com.vdt.afc_ops_service.common.util.SearchFilterUtil;
 import com.vdt.afc_ops_service.constant.PredefinedDeviceDirection;
 import com.vdt.afc_ops_service.constant.PredefinedDeviceStatus;
@@ -14,7 +15,6 @@ import com.vdt.afc_ops_service.dto.response.transaction.SubmitBatchResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.SubmitTransactionResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionDetailResponse;
 import com.vdt.afc_ops_service.dto.response.transaction.TransactionListItemResponse;
-import com.vdt.afc_ops_service.qr.ParsedQrData;
 import com.vdt.afc_ops_service.entity.Card;
 import com.vdt.afc_ops_service.entity.Device;
 import com.vdt.afc_ops_service.entity.Operator;
@@ -72,10 +72,6 @@ public class TransactionService implements ITransactionService {
     @Value("${app.security.qr-hmac-secret}")
     String qrHmacSecret;
 
-    @NonFinal
-    @Value("${app.dynamic-qr.ttl-seconds}")
-    int qrMaxClockDriftSeconds;
-
     @Override
     @Transactional
     public SubmitTransactionResponse submit(String deviceCode, String deviceSecret, SubmitTransactionRequest request) {
@@ -120,17 +116,40 @@ public class TransactionService implements ITransactionService {
         for (SubmitBatchRequest.BatchTransactionItem item : request.getTransactions()) {
             try {
                 String qrPayload = SearchFilterUtil.normalize(item.getQrPayload());
-                ParsedQrData parsed = dynamicQrSessionStore.parseHmacSignedPayload(
-                        qrPayload, qrHmacSecret, qrMaxClockDriftSeconds);
-                if (parsed == null || parsed.expired()) {
-                    errors.add("Invalid or expired QR");
+
+                // Parse QR + verify HMAC, KHONG check expiry (C2 da verify luc scan)
+                String ticketId = parseTicketIdFromQrPayload(qrPayload, qrHmacSecret);
+                if (ticketId == null) {
+                    errors.add("Invalid QR signature");
                     failed++;
                     continue;
                 }
 
-                Ticket ticket = ticketRepository.findById(parsed.ticketId()).orElse(null);
+                Ticket ticket = ticketRepository.findById(ticketId).orElse(null);
                 if (ticket == null) {
-                    errors.add("Ticket not found: " + parsed.ticketId());
+                    errors.add("Ticket not found: " + ticketId);
+                    failed++;
+                    continue;
+                }
+
+                // Validate ticket khong bi cancelled
+                if (PredefinedLevel5BusinessSync.CANCELLED.equals(ticket.getUsageStatus())) {
+                    errors.add("Ticket is cancelled: " + ticketId);
+                    failed++;
+                    continue;
+                }
+                // Validate card neu ticket co gan card
+                if (ticket.getCard() != null) {
+                    String cardError = validateCard(ticket.getCard());
+                    if (cardError != null) {
+                        errors.add(cardError + ": " + ticketId);
+                        failed++;
+                        continue;
+                    }
+                }
+                // Chong ghi de ticket da USED
+                if (PredefinedLevel5BusinessSync.USED.equals(ticket.getUsageStatus())) {
+                    errors.add("Ticket already used: " + ticketId);
                     failed++;
                     continue;
                 }
@@ -153,7 +172,7 @@ public class TransactionService implements ITransactionService {
                         .mediaType("VIRTUAL_QR")
                         .card(ticket.getCard())
                         .ticket(ticket)
-                        .qrId(parsed.ticketId())
+                        .qrId(ticketId)
                         .qrPayloadHash(com.vdt.afc_ops_service.common.util.CryptoHashUtil.sha256Base64Url(qrPayload))
                         .tapType(tapType)
                         .occurredAt(item.getOccurredAt() != null ? item.getOccurredAt() : now)
@@ -446,6 +465,34 @@ public class TransactionService implements ITransactionService {
         if (transactionId == null || transactionId.length() > 36) {
             throw new AppException(ErrorCode.INVALID_TRANSACTION_ID);
         }
+    }
+
+    /**
+     * Parse QR payload and verify HMAC signature (without expiry check).
+     * Format: AFCQR:v1:{ticketId}:exp={epochSeconds}:hmac={base64url}
+     * Returns ticketId on success, null if signature is invalid.
+     */
+    private String parseTicketIdFromQrPayload(String qrPayload, String hmacSecret) {
+        if (qrPayload == null || !qrPayload.startsWith(DynamicQrSessionStore.QR_PAYLOAD_PREFIX)) {
+            return null;
+        }
+        String[] parts = qrPayload.split(":");
+        if (parts.length < 5) return null;
+
+        String ticketId = parts[2];
+        String expPart = parts[3];
+        String hmacPart = parts[4];
+
+        if (!expPart.startsWith("exp=") || !hmacPart.startsWith("hmac=")) {
+            return null;
+        }
+
+        // Verify HMAC
+        String dataToSign = DynamicQrSessionStore.QR_PAYLOAD_PREFIX + ticketId + ":" + expPart;
+        String expectedHmac = com.vdt.afc_ops_service.common.util.CryptoHashUtil.hmacSha256Base64Url(hmacSecret, dataToSign);
+        String receivedHmac = hmacPart.replace("hmac=", "");
+
+        return expectedHmac.equals(receivedHmac) ? ticketId : null;
     }
 
 }

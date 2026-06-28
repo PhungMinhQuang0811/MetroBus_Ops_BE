@@ -56,8 +56,8 @@ public final class SecurityConstants {
 
     public static final String[] ENDPOINT_THIRD_PARTY = {
             "/generate-dynamic-qr",
-            "/submit-batch",
-            "/submit-tap-event",
+            "/transaction/submit-batch",
+            "/transaction/submit-tap-event",
             "/afc-ops/submit-heartbeat",
             "/afc-ops/submit-device-incident",
             "/control-package/pull-pending",

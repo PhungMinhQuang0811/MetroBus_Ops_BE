@@ -6,6 +6,8 @@ import com.vdt.afc_ops_service.constant.PredefinedDeviceDirection;
 import com.vdt.afc_ops_service.constant.PredefinedDeviceStatus;
 import com.vdt.afc_ops_service.constant.PredefinedTransactionDecision;
 import com.vdt.afc_ops_service.constant.PredefinedTransactionReason;
+import com.vdt.afc_ops_service.common.util.CryptoHashUtil;
+import com.vdt.afc_ops_service.dto.request.transaction.SubmitBatchRequest;
 import com.vdt.afc_ops_service.dto.request.transaction.SubmitTransactionRequest;
 import com.vdt.afc_ops_service.entity.Transaction;
 import com.vdt.afc_ops_service.entity.Card;
@@ -76,6 +78,7 @@ class TransactionServiceTest {
         service = new TransactionService(deviceRepository, cardRepository, ticketRepository,
                 transactionRepository, dynamicQrSessionStore, new TransactionMapper(),
                 securityUtils);
+        org.springframework.test.util.ReflectionTestUtils.setField(service, "qrHmacSecret", "test-secret");
         lenient().when(transactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
@@ -633,7 +636,8 @@ class TransactionServiceTest {
     }
 
     private Ticket ticket(String ticketId, String cardId, String usageStatus) {
-        return Ticket.builder().id(ticketId).card(Card.builder().id(cardId).build())
+        return Ticket.builder().id(ticketId)
+                .card(Card.builder().id(cardId).status(PredefinedLevel5BusinessSync.ACTIVE).build())
                 .type(PredefinedLevel5BusinessSync.METRO_SINGLE_RIDE)
                 .usageStatus(usageStatus)
                 .validFrom(LocalDateTime.now().minusMinutes(5)).validTo(LocalDateTime.now().plusDays(1))
@@ -641,10 +645,197 @@ class TransactionServiceTest {
     }
 
     private Ticket monthlyPassTicket(String ticketId, String cardId, String usageStatus) {
-        return Ticket.builder().id(ticketId).card(Card.builder().id(cardId).build())
+        return Ticket.builder().id(ticketId)
+                .card(Card.builder().id(cardId).status(PredefinedLevel5BusinessSync.ACTIVE).build())
                 .type(PredefinedLevel5BusinessSync.MONTHLY_PASS)
                 .usageStatus(usageStatus)
                 .validFrom(LocalDateTime.now().minusDays(1)).validTo(LocalDateTime.now().plusMonths(1))
                 .sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
+    }
+
+    // ======================== submitBatch tests ========================
+
+    private String signQrPayload(String ticketId, long exp, String secret) {
+        String dataToSign = DynamicQrSessionStore.QR_PAYLOAD_PREFIX + ticketId + ":exp=" + exp;
+        String hmac = CryptoHashUtil.hmacSha256Base64Url(secret, dataToSign);
+        return dataToSign + ":hmac=" + hmac;
+    }
+
+    private SubmitBatchRequest batchReq(List<SubmitBatchRequest.BatchTransactionItem> items) {
+        return SubmitBatchRequest.builder().transactions(items).build();
+    }
+
+    private SubmitBatchRequest.BatchTransactionItem batchItem(String ticketId, String tapType, long exp, String secret) {
+        return SubmitBatchRequest.BatchTransactionItem.builder()
+                .qrPayload(signQrPayload(ticketId, exp, secret))
+                .tapType(tapType)
+                .occurredAt(LocalDateTime.now())
+                .build();
+    }
+
+    private long futureExp(long secondsFromNow) {
+        return LocalDateTime.now().plusSeconds(secondsFromNow)
+                .atZone(java.time.ZoneId.systemDefault()).toEpochSecond();
+    }
+
+    @Test
+    void submitBatch_ValidTapIn_ProcessesAllAndMarksInUse() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        long exp = futureExp(3600);
+        Ticket t1 = ticket("TICKET-001", "CARD-001", PredefinedLevel5BusinessSync.UNUSED);
+        when(ticketRepository.findById("TICKET-001")).thenReturn(Optional.of(t1));
+
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                batchItem("TICKET-001", "TAP_IN", exp, "test-secret"))));
+
+        assertEquals(1, result.getTotal());
+        assertEquals(1, result.getSuccess());
+        assertEquals(0, result.getFailed());
+        assertEquals(PredefinedLevel5BusinessSync.IN_USE, t1.getUsageStatus());
+    }
+
+    @Test
+    void submitBatch_ValidTapOut_MarksTicketUsed() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.EXIT));
+        long exp = futureExp(3600);
+        Ticket t1 = ticket("TICKET-001", "CARD-001", PredefinedLevel5BusinessSync.IN_USE);
+        when(ticketRepository.findById("TICKET-001")).thenReturn(Optional.of(t1));
+
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                batchItem("TICKET-001", "TAP_OUT", exp, "test-secret"))));
+
+        assertEquals(1, result.getTotal());
+        assertEquals(1, result.getSuccess());
+        assertEquals(PredefinedLevel5BusinessSync.USED, t1.getUsageStatus());
+        assertNotNull(t1.getUsedAt());
+    }
+
+    @Test
+    void submitBatch_InvalidQrSignature_ReturnsFailure() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                SubmitBatchRequest.BatchTransactionItem.builder()
+                        .qrPayload("INVALID_QR").tapType("TAP_IN").occurredAt(LocalDateTime.now()).build())));
+
+        assertEquals(1, result.getTotal());
+        assertEquals(0, result.getSuccess());
+        assertEquals(1, result.getFailed());
+        assertEquals("Invalid QR signature", result.getErrors().get(0));
+    }
+
+    @Test
+    void submitBatch_TicketNotFound_ReturnsFailure() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        long exp = futureExp(3600);
+        when(ticketRepository.findById("TICKET-999")).thenReturn(Optional.empty());
+
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                batchItem("TICKET-999", "TAP_IN", exp, "test-secret"))));
+
+        assertEquals(1, result.getTotal());
+        assertEquals(0, result.getSuccess());
+        assertEquals("Ticket not found: TICKET-999", result.getErrors().get(0));
+    }
+
+    @Test
+    void submitBatch_TicketCancelled_ReturnsFailure() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        long exp = futureExp(3600);
+        Ticket t1 = ticket("TICKET-001", "CARD-001", PredefinedLevel5BusinessSync.CANCELLED);
+        when(ticketRepository.findById("TICKET-001")).thenReturn(Optional.of(t1));
+
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                batchItem("TICKET-001", "TAP_IN", exp, "test-secret"))));
+
+        assertEquals(0, result.getSuccess());
+        assertEquals("Ticket is cancelled: TICKET-001", result.getErrors().get(0));
+    }
+
+    @Test
+    void submitBatch_TicketAlreadyUsed_ReturnsFailure() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        long exp = futureExp(3600);
+        Ticket t1 = ticket("TICKET-001", "CARD-001", PredefinedLevel5BusinessSync.USED);
+        when(ticketRepository.findById("TICKET-001")).thenReturn(Optional.of(t1));
+
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                batchItem("TICKET-001", "TAP_IN", exp, "test-secret"))));
+
+        assertEquals(0, result.getSuccess());
+        assertEquals("Ticket already used: TICKET-001", result.getErrors().get(0));
+    }
+
+    @Test
+    void submitBatch_CardBlacklisted_ReturnsFailure() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        long exp = futureExp(3600);
+        Card blackCard = Card.builder().id("CARD-001").cardType("VIRTUAL_QR")
+                .status(PredefinedLevel5BusinessSync.BLACKLISTED).sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
+        Ticket t1 = ticket("TICKET-001", "CARD-001", PredefinedLevel5BusinessSync.UNUSED);
+        t1.setCard(blackCard);
+        when(ticketRepository.findById("TICKET-001")).thenReturn(Optional.of(t1));
+
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                batchItem("TICKET-001", "TAP_IN", exp, "test-secret"))));
+
+        assertEquals(0, result.getSuccess());
+        assertEquals("MEDIA_BLACKLISTED: TICKET-001", result.getErrors().get(0));
+    }
+
+    @Test
+    void submitBatch_CardCancelled_ReturnsFailure() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        long exp = futureExp(3600);
+        Card cc = Card.builder().id("CARD-001").cardType("VIRTUAL_QR")
+                .status(PredefinedLevel5BusinessSync.CANCELLED).sourceVersion(1L).syncedAt(LocalDateTime.now()).build();
+        Ticket t1 = ticket("TICKET-001", "CARD-001", PredefinedLevel5BusinessSync.UNUSED);
+        t1.setCard(cc);
+        when(ticketRepository.findById("TICKET-001")).thenReturn(Optional.of(t1));
+
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                batchItem("TICKET-001", "TAP_IN", exp, "test-secret"))));
+
+        assertEquals(0, result.getSuccess());
+        assertEquals("CARD_CANCELLED: TICKET-001", result.getErrors().get(0));
+    }
+
+    @Test
+    void submitBatch_MixedBatch_AggregatesSuccessAndFailure() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        long exp = futureExp(3600);
+        Ticket t1 = ticket("TICKET-001", "CARD-001", PredefinedLevel5BusinessSync.UNUSED);
+        Ticket t2 = ticket("TICKET-002", "CARD-002", PredefinedLevel5BusinessSync.USED);
+        when(ticketRepository.findById("TICKET-001")).thenReturn(Optional.of(t1));
+        when(ticketRepository.findById("TICKET-002")).thenReturn(Optional.of(t2));
+
+        var result = service.submitBatch("GATE-001", "secret", batchReq(List.of(
+                batchItem("TICKET-001", "TAP_IN", exp, "test-secret"),
+                batchItem("TICKET-002", "TAP_IN", exp, "test-secret"))));
+
+        assertEquals(2, result.getTotal());
+        assertEquals(1, result.getSuccess());
+        assertEquals(1, result.getFailed());
+    }
+
+    @Test
+    void submitBatch_InvalidDeviceSecret_ThrowsAuthError() {
+        mockDevice(activeDevice(PredefinedDeviceDirection.ENTRY));
+        long exp = futureExp(3600);
+
+        AppException ex = assertThrows(AppException.class, () ->
+                service.submitBatch("GATE-001", "wrong-secret", batchReq(List.of(
+                        batchItem("TICKET-001", "TAP_IN", exp, "test-secret")))));
+
+        assertEquals(ErrorCode.UNAUTHENTICATED, ex.getErrorCode());
+    }
+
+    @Test
+    void submitBatch_DeviceNotFound_ThrowsError() {
+        when(deviceRepository.findByDeviceCode("GATE-999")).thenReturn(Optional.empty());
+
+        AppException ex = assertThrows(AppException.class, () ->
+                service.submitBatch("GATE-999", "secret", batchReq(List.of())));
+
+        assertEquals(ErrorCode.DEVICE_NOT_FOUND, ex.getErrorCode());
     }
 }
