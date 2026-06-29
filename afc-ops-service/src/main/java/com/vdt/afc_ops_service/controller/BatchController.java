@@ -29,6 +29,13 @@ public class BatchController {
                 .build();
     }
 
+    @PostMapping("/submit-batch-to-level5/{batchId}")
+    public ApiResponse<BatchResponse> submitBatchToLevel5(@PathVariable String batchId) {
+        return ApiResponse.<BatchResponse>builder()
+                .result(batchService.submitBatchToLevel5(batchId))
+                .build();
+    }
+
     @GetMapping("/list-batches")
     public ApiResponse<PageResponse<BatchResponse>> listBatches(
             @RequestParam(required = false) String status,

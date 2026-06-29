@@ -174,8 +174,15 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
             ORDER BY r.route_code, s.station_order
             """, nativeQuery = true)
     List<Object[]> getDashboardRouteStationSummaries(@Param("operatorId") Long operatorId,
-                                                     @Param("fromTime") LocalDateTime fromTime,
-                                                     @Param("toTime") LocalDateTime toTime,
-                                                     @Param("routeId") Long routeId,
-                                                     @Param("stationId") Long stationId);
+                                                      @Param("fromTime") LocalDateTime fromTime,
+                                                      @Param("toTime") LocalDateTime toTime,
+                                                      @Param("routeId") Long routeId,
+                                                      @Param("stationId") Long stationId);
+
+    @Query("SELECT t FROM Transaction t WHERE t.batchId = :batchId")
+    List<Transaction> findAllByBatchId(@Param("batchId") String batchId);
+
+    @Modifying
+    @Query("UPDATE Transaction t SET t.syncStatus = :syncStatus WHERE t.batchId = :batchId")
+    int updateSyncStatusByBatchId(@Param("batchId") String batchId, @Param("syncStatus") String syncStatus);
 }

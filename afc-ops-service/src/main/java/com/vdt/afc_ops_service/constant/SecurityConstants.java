@@ -36,6 +36,7 @@ public final class SecurityConstants {
             entry("/search-transactions", PredefinedAfcPermission.TRANSACTION_READ),
             entry("/get-transaction-detail", PredefinedAfcPermission.TRANSACTION_READ),
             entry("/batch/create-batch", PredefinedAfcPermission.BATCH_WRITE),
+            entry("/batch/submit-batch-to-level5/**", PredefinedAfcPermission.BATCH_WRITE),
             entry("/batch/list-batches", PredefinedAfcPermission.BATCH_READ),
             entry("/dashboard/**", PredefinedAfcPermission.DASHBOARD_READ),
             entry("/afc-ops/get-device-status", PredefinedAfcPermission.DEVICE_MONITOR_READ),
@@ -62,6 +63,7 @@ public final class SecurityConstants {
             "/afc-ops/submit-device-incident",
             "/control-package/pull-pending",
             "/control-package/ack-apply/**",
+            "/control-package/trigger-device-sync",
             "/internal/route/publish-all",
             "/internal/station/publish-all"
     };

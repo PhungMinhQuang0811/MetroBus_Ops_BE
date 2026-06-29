@@ -13,6 +13,7 @@ import com.vdt.afc_ops_service.dto.response.controlpackage.ControlPackageRespons
 import com.vdt.afc_ops_service.dto.response.controlpackage.ControlPackageSyncDetailResponse;
 import com.vdt.afc_ops_service.dto.response.controlpackage.ControlPackageSyncResponse;
 import com.vdt.afc_ops_service.dto.response.controlpackage.PendingControlPackageResponse;
+import com.vdt.afc_ops_service.integration.level2.DeviceSyncService;
 import com.vdt.afc_ops_service.service.IControlPackageService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -36,6 +37,14 @@ import java.util.List;
 public class AfcOpsControlPackageController {
 
     IControlPackageService controlPackageService;
+    DeviceSyncService deviceSyncService;
+
+    @PostMapping("/trigger-device-sync")
+    public ApiResponse<Object> triggerDeviceSync(@RequestParam String stationCode) {
+        return ApiResponse.builder()
+                .result(deviceSyncService.triggerByStationCode(stationCode))
+                .build();
+    }
 
     @PostMapping("/create")
     public ApiResponse<ControlPackageResponse> create(

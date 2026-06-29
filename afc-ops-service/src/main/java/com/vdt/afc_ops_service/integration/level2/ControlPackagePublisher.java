@@ -1,4 +1,4 @@
-package com.vdt.afc_ops_service.messaging;
+package com.vdt.afc_ops_service.integration.level2;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

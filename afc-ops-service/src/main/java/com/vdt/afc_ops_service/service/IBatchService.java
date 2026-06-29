@@ -12,4 +12,6 @@ public interface IBatchService {
 
     PageResponse<BatchResponse> listBatches(String status, LocalDateTime from, LocalDateTime to,
                                             int page, int size);
+
+    BatchResponse submitBatchToLevel5(String batchId);
 }

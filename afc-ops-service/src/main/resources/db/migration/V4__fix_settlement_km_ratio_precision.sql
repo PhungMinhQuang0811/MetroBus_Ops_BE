@@ -1,0 +1,1 @@
+ALTER TABLE operator_settlements ALTER COLUMN km_ratio TYPE DECIMAL(10, 4);

@@ -47,7 +47,7 @@ public class OperatorSettlement {
     @Column(name = "total_trips", nullable = false)
     private Integer totalTrips;
 
-    @Column(name = "km_ratio", precision = 5, scale = 4, nullable = false)
+    @Column(name = "km_ratio", precision = 10, scale = 4, nullable = false)
     private BigDecimal kmRatio;
 
     @CreationTimestamp

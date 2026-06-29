@@ -1,8 +1,7 @@
-package com.vdt.afc_ops_service.integration.level5.scheduler;
+package com.vdt.afc_ops_service.integration.level2;
 
 import com.vdt.afc_ops_service.entity.Station;
 import com.vdt.afc_ops_service.entity.StationControlSync;
-import com.vdt.afc_ops_service.messaging.ControlPackagePublisher;
 import com.vdt.afc_ops_service.repository.StationControlSyncRepository;
 import com.vdt.afc_ops_service.repository.StationRepository;
 import com.vdt.afc_ops_service.repository.mongo.ControlPackagePayloadRepository;

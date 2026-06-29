@@ -10,6 +10,7 @@ import com.vdt.afc_ops_service.dto.response.PageResponse;
 import com.vdt.afc_ops_service.dto.response.batch.BatchResponse;
 import com.vdt.afc_ops_service.entity.Batch;
 import com.vdt.afc_ops_service.entity.Operator;
+import com.vdt.afc_ops_service.integration.level5.service.ILevel5TransactionService;
 import com.vdt.afc_ops_service.mapper.BatchMapper;
 import com.vdt.afc_ops_service.repository.BatchRepository;
 import com.vdt.afc_ops_service.repository.TransactionRepository;
@@ -42,6 +43,7 @@ public class BatchService implements IBatchService {
     BatchCodeGenerator batchCodeGenerator;
     BatchMapper batchMapper;
     SecurityUtils securityUtils;
+    ILevel5TransactionService level5TransactionService;
 
     @Override
     @Transactional
@@ -111,5 +113,34 @@ public class BatchService implements IBatchService {
                 .totalElements(batches.getTotalElements())
                 .totalPages(batches.getTotalPages())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public BatchResponse submitBatchToLevel5(String batchId) {
+        Batch batch = batchRepository.findById(batchId)
+                .orElseThrow(() -> new AppException(ErrorCode.BATCH_NOT_FOUND));
+
+        if (!PredefinedBatchStatus.CREATED.equals(batch.getStatus())
+                && !PredefinedBatchStatus.FAILED.equals(batch.getStatus())) {
+            throw new AppException(ErrorCode.BATCH_NOT_FOUND);
+        }
+
+        batch.setStatus(PredefinedBatchStatus.SUBMITTED);
+        batch.setSubmittedAt(LocalDateTime.now());
+        batchRepository.save(batch);
+
+        try {
+            level5TransactionService.publishBatch(batch);
+            batch.setStatus(PredefinedBatchStatus.ACCEPTED);
+            transactionRepository.updateSyncStatusByBatchId(batchId, "SYNCED");
+        } catch (Exception e) {
+            batch.setStatus(PredefinedBatchStatus.FAILED);
+            batchRepository.save(batch);
+            throw new AppException(ErrorCode.UNCATEGORIZED_EXCEPTION);
+        }
+
+        batchRepository.save(batch);
+        return batchMapper.toResponse(batch);
     }
 }
