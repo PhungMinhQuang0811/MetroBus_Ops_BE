@@ -18,7 +18,8 @@ public class PredefinedAfcPermission {
     public static final String DASHBOARD_READ = "DASHBOARD_READ";
     public static final String AUDIT_READ = "AUDIT_READ";
     public static final String RECONCILIATION_READ = "RECONCILIATION_READ";
-
+    public static final String SHIFT_READ = "SHIFT_READ";
+    public static final String SHIFT_WRITE = "SHIFT_WRITE";
     @Getter
     @RequiredArgsConstructor
     public enum Definition {
@@ -34,8 +35,9 @@ public class PredefinedAfcPermission {
         CONTROL_PACKAGE_WRITE(PredefinedAfcPermission.CONTROL_PACKAGE_WRITE, "Tạo, cập nhật và phát hành gói cấu hình vận hành AFC"),
         DASHBOARD_READ(PredefinedAfcPermission.DASHBOARD_READ, "Xem dashboard vận hành AFC"),
         AUDIT_READ(PredefinedAfcPermission.AUDIT_READ, "Xem audit log vận hành AFC"),
-        RECONCILIATION_READ(PredefinedAfcPermission.RECONCILIATION_READ, "Xem lịch sử đối soát doanh thu từ Cấp 5");
-
+        RECONCILIATION_READ(PredefinedAfcPermission.RECONCILIATION_READ, "Xem lịch sử đối soát doanh thu từ Cấp 5"),
+        SHIFT_READ(PredefinedAfcPermission.SHIFT_READ, "Xem lịch sử ca trực"),
+        SHIFT_WRITE(PredefinedAfcPermission.SHIFT_WRITE, "Nhận ca và kết ca");
         private final String name;
         private final String description;
     }

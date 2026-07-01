@@ -1,6 +1,6 @@
-# Kế hoạch triển khai Phân hệ Ca kíp, Chế độ ngoại tuyến (Offline Mode) & Cự ly ga
+# Kế hoạch triển khai Phân hệ Ca kíp & Cự ly ga
 
-Tài liệu này chi tiết hóa thiết kế cơ sở dữ liệu, đặc tả API và luồng xử lý nghiệp vụ bổ sung cho hai tính năng bắt buộc của đề tài VTS Viettel (Ca kíp nhân viên, Hàng đợi ngoại tuyến Cấp 3) và cập nhật trường cự ly ga phục vụ tính giá vé.
+Tài liệu này chi tiết hóa thiết kế cơ sở dữ liệu, đặc tả API và luồng xử lý nghiệp vụ bổ sung cho tính năng Ca kíp nhân viên và cập nhật trường cự ly ga phục vụ tính giá vé.
 
 ---
 
@@ -190,91 +190,58 @@ Lưu trữ thông tin ca trực của nhân viên vận hành ga.
 
 ---
 
-## 4. Quản lý Bộ nhớ đệm Ngoại tuyến (Offline Mode) tại Cấp 3
+## 4. Kế hoạch triển khai Ca kíp
 
-### 4.1. Kiến trúc lưu đệm & đồng bộ ngầm
-Để đảm bảo tính sẵn sàng cao khi mạng kết nối giữa Cấp 3 lên Cấp 4/5 bị gián đoạn, Cấp 3 sẽ lưu trữ tạm thời giao dịch soát vé vào hàng đợi cục bộ (Local Queue) bằng cấu trúc bảng trong Database của Cấp 3:
+### Các bước triển khai
 
-```text
-[Cấp 2 Device] ---> (TAP_IN/TAP_OUT) ---> [Cấp 3 Ga Server]
-                                              |
-                                     (Ghi PENDING & Phản hồi)
-                                              |
-                                      [(offline_transactions)]
-                                              |
-                                     (Background Scheduler)
-                                              |
-                                     (REST API Batch Sync)
-                                              v
-                                     [Cấp 4 Central Cloud]
-```
+| Bước | Nội dung | File liên quan |
+|------|----------|---------------|
+| 1 | Tạo bảng `station_shifts` (DB migration) | `resources/db/migration/` |
+| 2 | Tạo Entity `StationShift` | `entity/StationShift.java` |
+| 3 | Tạo Repository `StationShiftRepository` | `repository/StationShiftRepository.java` |
+| 4 | Tạo DTO request/response cho check-in, check-out | `dto/request/shift/`, `dto/response/shift/` |
+| 5 | Tạo Service `ShiftService` | `service/impl/ShiftService.java` |
+| 6 | Tạo Controller `ShiftController` với 2 endpoints | `controller/ShiftController.java` |
+| 7 | Đăng ký permission `SHIFT_WRITE` | Seed/RBAC config |
+| 8 | Cập nhật `SecurityConstants` nếu cần (STATION_OPERATOR permission) | `config/SecurityConstants.java` |
+| 9 | Unit test Service + Controller | Test files |
 
-1. **Ghi nhận ngoại tuyến**: Khi nhận sự kiện soát vé từ Cấp 2, Cấp 3 thực hiện kiểm tra chữ ký của QR Code ngoại tuyến (bằng Public Key). Sau đó lưu thông tin sự kiện vào bảng tạm với trạng thái `PENDING` và lập tức mở cổng cho khách.
-2. **Đồng bộ ngầm (Background Worker)**: Một tác vụ chạy ngầm định kỳ (mỗi 5-10 giây) sẽ quét các giao dịch `PENDING` và đẩy theo lô (Batch) lên API của Cấp 4. Đẩy thành công sẽ cập nhật trạng thái giao dịch cục bộ thành `SYNCED`.
+### Chi tiết
 
-### 4.2. Thiết kế Cơ sở dữ liệu (PostgreSQL/H2 Local - Cấp 3)
+#### Entity `StationShift`
+```java
+@Entity
+@Table(name = "station_shifts")
+public class StationShift {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-#### Bảng `offline_transactions`
-Hàng đợi lưu trữ giao dịch tạm thời tại máy chủ Ga.
+    @Column(name = "account_id", nullable = false, length = 36)
+    private String accountId;
 
-| Tên trường | Kiểu dữ liệu | Ràng buộc | Mô tả |
-| :--- | :--- | :--- | :--- |
-| `id` | VARCHAR(36) | PK | Mã giao dịch UUID |
-| `event_id` | VARCHAR(100) | NOT NULL | Idempotency Key gửi từ thiết bị Cấp 2 |
-| `device_code` | VARCHAR(100) | NOT NULL | Mã thiết bị soát vé |
-| `station_code` | VARCHAR(50) | NOT NULL | Mã nhà ga phát sinh giao dịch |
-| `qr_payload` | TEXT | NOT NULL | Payload chuỗi QR động đã quét |
-| `tap_type` | VARCHAR(30) | NOT NULL | Loại quét (`TAP_IN`, `TAP_OUT`) |
-| `occurred_at` | TIMESTAMP | NOT NULL | Thời gian quét thực tế tại thiết bị |
-| `sync_status` | VARCHAR(30) | NOT NULL | Trạng thái đồng bộ (`PENDING`, `SYNCED`, `FAILED`) |
-| `retry_count` | INT | NOT NULL DEFAULT 0 | Số lần thử đồng bộ lại |
-| `error_message` | TEXT | NULL | Thông tin lỗi kỹ thuật khi đẩy dữ liệu thất bại |
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "station_id", nullable = false)
+    private Station station;
 
-### 4.3. Đặc tả API đồng bộ dữ liệu
+    @Column(name = "status", nullable = false, length = 30)
+    private String status; // CHECKED_IN, CHECKED_OUT
 
-#### API-AFC-032: Đồng bộ lô giao dịch ngoại tuyến (Batch Sync Transactions)
-* **URL:** `POST /transactions/sync-batch`
-* **Quyền hạn:** Client Cấp 3 (Third-party client xác thực qua mã ga)
-* **Request Body:**
-```json
-{
-  "stationCode": "BEN-THANH",
-  "transactions": [
-    {
-      "id": "tx-9901-abcd",
-      "eventId": "event-101",
-      "deviceCode": "GATE-BT-01",
-      "qrPayload": "signed-qr-string-here...",
-      "tapType": "TAP_IN",
-      "occurredAt": "2026-06-24T08:30:15"
-    }
-  ]
-}
-```
-* **Response Body:**
-```json
-{
-  "code": 1000,
-  "message": "Success",
-  "result": {
-    "syncedCount": 1,
-    "status": "COMPLETED"
-  }
+    @Column(name = "total_transactions", nullable = false)
+    private Integer totalTransactions = 0;
+
+    @Column(name = "checked_in_at", nullable = false)
+    private LocalDateTime checkedInAt;
+
+    @Column(name = "checked_out_at")
+    private LocalDateTime checkedOutAt;
 }
 ```
 
----
+#### Service logic
+- **Check-in**: Kiểm tra station active, account không có shift CHECKED_IN khác cùng station → tạo shift mới
+- **Check-out**: Tìm shift CHECKED_IN theo account_id, đếm `afc_transactions` trong khoảng `checked_in_at → now()` → cập nhật total_transactions, set CHECKED_OUT + checked_out_at
 
-## 5. Kế hoạch triển khai & Kiểm thử (2 Tuần)
-
-### Tuần 1: Cập nhật Cự ly Ga & Đối soát Quyết toán Cấp 5 (Làm trước)
-1. **Ngày 1-2**: Thực hiện chạy migration SQL cập nhật bảng `stations` (thêm cột `distance` DECIMAL(5, 2)). Chỉnh sửa Java Entity `Station`, DTO, REST API tương ứng và cập nhật logic Import Excel Master Data để hỗ trợ lưu cự ly ga.
-2. **Ngày 3-4**: Tạo bảng `operator_settlements`. Định nghĩa cấu trúc Java Record `SettlementConfirmedEvent` và `CompanyShareMessage`. Khai báo cấu hình RabbitMQ (Queue, Exchange, Routing Key) trong `application.yaml` và `MessageBrokerConfig`. Viết `Level5SettlementSyncListener` để lắng nghe sự kiện đối soát từ Cấp 5, lọc theo `operatorCode` và lưu thông tin vào DB.
-3. **Ngày 5**: Viết API tra cứu lịch sử quyết toán doanh thu `/reconciliation/settlements` và bổ sung Unit Test bao phủ logic đối soát đạt > 80% coverage.
-4. Sửa thiết kế ticket, card (UC22) để đồng bộ với c5
-
-### Tuần 2: Hàng đợi Ngoại tuyến & Phân hệ Ca trực (Làm sau)
-1. **Ngày 6-7**: Tạo bảng `offline_transactions`. Xây dựng Scheduler ngầm tại Cấp 3 để gửi lô giao dịch và API đồng bộ lô `/transactions/sync-batch` tại Cấp 4.
-2. **Ngày 8-9**: Tạo bảng `station_shifts`. Viết logic API nhận ca, kết ca (`/shifts/check-in`, `/shifts/check-out`) và cấu hình trạng thái hoạt động của các thiết bị soát vé tại ga.
-3. **Ngày 10-11**: Tích hợp kiểm tra ca trực hoạt động và offline sync vào API xử lý soát vé `UC10`. Kiểm thử tích hợp E2E giả lập quét QR.
-4. **Ngày 12-14**: Sửa lỗi tích hợp, tối ưu hiệu năng và hoàn thiện tài liệu báo cáo hội đồng.
+### Ghi chú
+- Không cần tích hợp Ca kíp vào luồng soát vé UC10 trong MVP vì C2 chỉ là webcam giả lập
+- API check-in/check-out đủ để demo quy trình vận hành Ca kíp

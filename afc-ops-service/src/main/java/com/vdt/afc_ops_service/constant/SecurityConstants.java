@@ -52,7 +52,10 @@ public final class SecurityConstants {
             entry("/control-package/get-sync-detail", PredefinedAfcPermission.CONTROL_PACKAGE_READ),
             entry("/audit/search-audit-logs", PredefinedAfcPermission.AUDIT_READ),
             entry("/audit/get-audit-log/**", PredefinedAfcPermission.AUDIT_READ),
-            entry("/reconciliation/settlements", PredefinedAfcPermission.RECONCILIATION_READ)
+            entry("/reconciliation/settlements", PredefinedAfcPermission.RECONCILIATION_READ),
+            entry("/shifts/check-in", PredefinedAfcPermission.SHIFT_WRITE),
+            entry("/shifts/check-out", PredefinedAfcPermission.SHIFT_WRITE),
+            entry("/shifts/list", PredefinedAfcPermission.SHIFT_READ)
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {

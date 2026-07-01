@@ -94,7 +94,9 @@ public enum ErrorCode {
     CONTROL_PACKAGE_SYNC_NOT_FOUND(3031, "Control package sync not found", HttpStatus.NOT_FOUND),
     CONTROL_PACKAGE_PAYLOAD_NOT_FOUND(3032, "Control package payload not found", HttpStatus.NOT_FOUND),
     DASHBOARD_QUERY_TOO_WIDE(3033, "Dashboard query range is too wide", HttpStatus.BAD_REQUEST),
-
+    SHIFT_ALREADY_CHECKED_IN(3040, "You already have an active shift", HttpStatus.BAD_REQUEST),
+    NO_ACTIVE_SHIFT(3041, "No active shift found", HttpStatus.BAD_REQUEST),
+    SHIFT_NOT_FOUND(3042, "Shift not found", HttpStatus.NOT_FOUND),
     /**
      * Range 4xxx: Security, Authentication & System errors
      */
