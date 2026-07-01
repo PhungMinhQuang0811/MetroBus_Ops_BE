@@ -1,0 +1,16 @@
+springdoc:
+  swagger-ui:
+    enabled: true
+    operations-sorter: alpha
+    tags-sorter: alpha
+  show-actuator: true
+
+app:
+  security:
+    cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+    public-endpoints: >
+      "/sync-operator-manager-role-permissions",
+      "/sync-default-role-permissions",
+      "/swagger-ui/**",
+      "/v3/api-docs/**",
+      "/actuator/health"

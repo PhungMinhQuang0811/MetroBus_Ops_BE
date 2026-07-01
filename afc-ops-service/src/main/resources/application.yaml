@@ -7,7 +7,7 @@ spring:
   application:
     name: afc-ops-service
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   datasource:
     url: jdbc:postgresql://${AFC_DB_HOST}:${AFC_DB_PORT}/${AFC_DB_NAME}
     username: ${AFC_DB_USER}
