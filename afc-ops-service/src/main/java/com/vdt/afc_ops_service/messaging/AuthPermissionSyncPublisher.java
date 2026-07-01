@@ -69,6 +69,7 @@ public class AuthPermissionSyncPublisher {
                         Map.of(
                                 "roleName", PredefinedAuthRole.STATION_OPERATOR,
                                 "permissions", List.of(
+                                        PredefinedAfcPermission.MASTER_DATA_READ,
                                         PredefinedAfcPermission.TRANSACTION_READ,
                                         PredefinedAfcPermission.DEVICE_MONITOR_READ,
                                         PredefinedAfcPermission.INCIDENT_READ,

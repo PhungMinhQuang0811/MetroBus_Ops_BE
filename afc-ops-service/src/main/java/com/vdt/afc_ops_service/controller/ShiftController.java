@@ -48,4 +48,14 @@ public class ShiftController {
                 .result(shiftService.listShifts(page, size))
                 .build();
     }
+
+    @GetMapping("/list-all")
+    public ApiResponse<PageResponse<ShiftResponse>> listAllShifts(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.<PageResponse<ShiftResponse>>builder()
+                .result(shiftService.listAllShifts(status, page, size))
+                .build();
+    }
 }

@@ -111,6 +111,29 @@ public class ShiftService implements IShiftService {
                 .build();
     }
 
+    @Override
+    public PageResponse<ShiftResponse> listAllShifts(String status, int page, int size) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new AppException(ErrorCode.INVALID_PAGE_REQUEST);
+        }
+
+        Long operatorId = securityUtils.getRequiredCurrentOperator().getId();
+        Page<StationShift> shiftPage = shiftRepository.findAllByOperatorId(
+                operatorId, status, PageRequest.of(page, size));
+
+        List<ShiftResponse> items = shiftPage.getContent().stream()
+                .map(shiftMapper::toResponse)
+                .toList();
+
+        return PageResponse.<ShiftResponse>builder()
+                .items(items)
+                .page(shiftPage.getNumber())
+                .size(shiftPage.getSize())
+                .totalElements(shiftPage.getTotalElements())
+                .totalPages(shiftPage.getTotalPages())
+                .build();
+    }
+
     private int countTransactionsInShift(StationShift shift) {
         Long stationId = shift.getStation().getId();
         LocalDateTime from = shift.getCheckedInAt();

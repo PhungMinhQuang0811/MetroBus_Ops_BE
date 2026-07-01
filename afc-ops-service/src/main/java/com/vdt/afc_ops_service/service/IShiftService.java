@@ -13,4 +13,6 @@ public interface IShiftService {
     CheckOutResponse checkOut();
 
     PageResponse<ShiftResponse> listShifts(int page, int size);
+
+    PageResponse<ShiftResponse> listAllShifts(String status, int page, int size);
 }

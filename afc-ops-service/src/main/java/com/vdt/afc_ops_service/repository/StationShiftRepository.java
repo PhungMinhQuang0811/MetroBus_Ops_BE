@@ -19,4 +19,15 @@ public interface StationShiftRepository extends JpaRepository<StationShift, Long
             "WHERE ss.accountId = :accountId " +
             "ORDER BY ss.checkedInAt DESC")
     Page<StationShift> findRecentByAccountId(@Param("accountId") String accountId, Pageable pageable);
+
+    @Query("SELECT ss FROM StationShift ss " +
+            "JOIN FETCH ss.station s " +
+            "JOIN FETCH s.route r " +
+            "JOIN r.operator o " +
+            "WHERE o.id = :operatorId " +
+            "AND (:status IS NULL OR ss.status = :status) " +
+            "ORDER BY ss.checkedInAt DESC")
+    Page<StationShift> findAllByOperatorId(@Param("operatorId") Long operatorId,
+                                           @Param("status") String status,
+                                           Pageable pageable);
 }

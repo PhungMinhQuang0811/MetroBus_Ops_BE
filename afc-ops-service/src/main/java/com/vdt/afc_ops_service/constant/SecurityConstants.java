@@ -55,7 +55,8 @@ public final class SecurityConstants {
             entry("/reconciliation/settlements", PredefinedAfcPermission.RECONCILIATION_READ),
             entry("/shifts/check-in", PredefinedAfcPermission.SHIFT_WRITE),
             entry("/shifts/check-out", PredefinedAfcPermission.SHIFT_WRITE),
-            entry("/shifts/list", PredefinedAfcPermission.SHIFT_READ)
+            entry("/shifts/list", PredefinedAfcPermission.SHIFT_READ),
+            entry("/shifts/list-all", PredefinedAfcPermission.SHIFT_READ)
     );
 
     public static final String[] ENDPOINT_THIRD_PARTY = {
