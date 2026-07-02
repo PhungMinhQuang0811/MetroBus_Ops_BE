@@ -45,7 +45,7 @@ app:
     enabled: false
     admin:
       password: ${ADMIN_PASSWORD}
-  domain-name: localhost
+  domain-name: ${APP_DOMAIN_NAME:localhost}
   timezone: ${APP_TIMEZONE}
   message-broker:
     auth-permission-sync:
