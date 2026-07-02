@@ -89,10 +89,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (AppException e) {
+                log.error("JWT authentication failed with AppException", e);
                 SecurityContextHolder.clearContext();
                 handlerExceptionResolver.resolveException(request, response, null, e);
                 return;
             } catch (Exception e) {
+                log.error("JWT authentication failed with generic Exception", e);
                 SecurityContextHolder.clearContext();
                 handlerExceptionResolver.resolveException(
                         request,
