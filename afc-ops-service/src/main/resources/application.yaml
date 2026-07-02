@@ -15,8 +15,8 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true # true for debug
+      ddl-auto: none
+    show-sql: false # true for debug
   data:
     redis:
       host: ${REDIS_HOST}
@@ -43,8 +43,8 @@ app:
   domain-name: localhost
   timezone: ${APP_TIMEZONE}
   init:
-    enabled: true
-    sync-auth-permissions-enabled: true
+    enabled: false
+    sync-auth-permissions-enabled: false
   message-broker:
     auth-permission-sync:
       exchange: auth.ops
