@@ -49,6 +49,12 @@ public class BatchService implements IBatchService {
     @Transactional
     public BatchResponse createBatch(CreateBatchRequest request) {
         Operator operator = securityUtils.getRequiredCurrentOperator();
+        return createBatchForOperator(operator, request);
+    }
+
+    @Override
+    @Transactional
+    public BatchResponse createBatchForOperator(Operator operator, CreateBatchRequest request) {
         LocalDateTime fromTime = request.getFromTime();
         LocalDateTime toTime = request.getToTime();
         if (fromTime.isAfter(toTime)) {

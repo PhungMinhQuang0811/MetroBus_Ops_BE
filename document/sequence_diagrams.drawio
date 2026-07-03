@@ -1,0 +1,642 @@
+<mxfile host="65bd71144e">
+    <diagram id="d1a" name="1a — Config Sync (Cron 00:00)">
+        <mxGraphModel dx="774" dy="535" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1060" pageHeight="700" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="d1a_ttl" value="Luồng 1a: Cấp phát cấu hình thiết bị — Tự động (DeviceSyncScheduler, Cron 00:00)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="8" width="1020" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_p1" value="DeviceSyncScheduler&#10;(Cron 00:00)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_p2" value="PostgreSQL&#10;(afc_ops_db)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_p3" value="MongoDB&#10;(payloads)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_p4" value="RabbitMQ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_p5" value="Gate Simulator&#10;(Cấp 2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=10;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_ll1" value="" style="endArrow=none;dashed=1;strokeColor=#d6b656;strokeWidth=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="95" y="98" as="sourcePoint"/>
+                        <mxPoint x="95" y="665" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_ll2" value="" style="endArrow=none;dashed=1;strokeColor=#d79b00;strokeWidth=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="98" as="sourcePoint"/>
+                        <mxPoint x="295" y="665" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_ll3" value="" style="endArrow=none;dashed=1;strokeColor=#82b366;strokeWidth=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="495" y="98" as="sourcePoint"/>
+                        <mxPoint x="495" y="665" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_ll4" value="" style="endArrow=none;dashed=1;strokeColor=#9673a6;strokeWidth=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="695" y="98" as="sourcePoint"/>
+                        <mxPoint x="695" y="665" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_ll5" value="" style="endArrow=none;dashed=1;strokeColor=#999999;strokeWidth=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="895" y="98" as="sourcePoint"/>
+                        <mxPoint x="895" y="665" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_note" value="⏰ Kích hoạt tự động lúc 00:00 hằng đêm" style="shape=note;html=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;size=12;" parent="1" vertex="1">
+                    <mxGeometry x="105" y="112" width="245" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_m1" value="1. findAllByStatus(ACTIVE)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="95" y="162" as="sourcePoint"/>
+                        <mxPoint x="295" y="162" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_m2" value="2. List&lt;Station&gt; (ga hoạt động)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="192" as="sourcePoint"/>
+                        <mxPoint x="95" y="192" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_lf_box" value="" style="rounded=0;fillColor=none;strokeColor=#0050ef;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="58" y="212" width="905" height="310" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_lf_lbl" value="loop [Với mỗi Station ACTIVE]" style="text;html=1;strokeColor=none;fillColor=#dae8fc;fontStyle=1;fontSize=9;fontColor=#0050ef;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="212" width="210" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1a_m3" value="3. findByStationAndStatus([PENDING, APPLIED])" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="95" y="253" as="sourcePoint"/>
+                        <mxPoint x="295" y="253" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_m4" value="4. List&lt;StationControlSync&gt; (DEVICE_CONFIG, STATION_CONTEXT, MEDIA_ACCESS_RULES)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="283" as="sourcePoint"/>
+                        <mxPoint x="95" y="283" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_m5" value="5. findByControlPackageId(id)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="95" y="318" as="sourcePoint"/>
+                        <mxPoint x="495" y="318" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_m6" value="6. ControlPackagePayload (JSON)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="495" y="348" as="sourcePoint"/>
+                        <mxPoint x="95" y="348" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_m7" value="7. buildCombinedPayload()&#10;(deviceConfig + stationContext + mediaAccessRules)" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="95" y="378" as="sourcePoint"/>
+                        <mxPoint x="95" y="420" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="142" y="378"/>
+                            <mxPoint x="142" y="420"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_m8" value="8. AMQP Publish: publishToStation(stationCode, combinedPayload)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="95" y="465" as="sourcePoint"/>
+                        <mxPoint x="695" y="465" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1a_m9" value="9. Gate Simulator nhận gói cấu hình tổng hợp qua Queue" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="695" y="570" as="sourcePoint"/>
+                        <mxPoint x="895" y="570" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="d1b" name="1b — Config Sync (Manual)">
+        <mxGraphModel dx="2211" dy="1529" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1250" pageHeight="870" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="d1b_ttl" value="Luồng 1b: Cấp phát cấu hình thiết bị — Thủ công (Center Manager)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="8" width="1210" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_p1" value="Center Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="15" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_p2" value="afc-ops-service&#10;(Cấp 4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="215" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_p3" value="PostgreSQL&#10;(afc_ops_db)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="415" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_p4" value="MongoDB&#10;(payloads)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="615" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_p5" value="RabbitMQ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="815" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_p6" value="Gate Simulator&#10;(Cấp 2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=10;fontColor=#333333;" parent="1" vertex="1">
+                    <mxGeometry x="1015" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_ll1" value="" style="endArrow=none;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="98" as="sourcePoint"/>
+                        <mxPoint x="90" y="840" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_ll2" value="" style="endArrow=none;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="98" as="sourcePoint"/>
+                        <mxPoint x="290" y="840" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_ll3" value="" style="endArrow=none;dashed=1;strokeColor=#d79b00;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="490" y="98" as="sourcePoint"/>
+                        <mxPoint x="490" y="840" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_ll4" value="" style="endArrow=none;dashed=1;strokeColor=#82b366;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="690" y="98" as="sourcePoint"/>
+                        <mxPoint x="690" y="840" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_ll5" value="" style="endArrow=none;dashed=1;strokeColor=#9673a6;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="890" y="98" as="sourcePoint"/>
+                        <mxPoint x="890" y="840" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_ll6" value="" style="endArrow=none;dashed=1;strokeColor=#999999;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="1090" y="98" as="sourcePoint"/>
+                        <mxPoint x="1090" y="840" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_sec1" value="Bước 1 — Tạo Control Package" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="115" width="220" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_m1" value="1. POST /control-package/create (packageType, payload JSON)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="143" as="sourcePoint"/>
+                        <mxPoint x="290" y="143" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m2" value="2. save(ControlPackage, status=CREATED)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="175" as="sourcePoint"/>
+                        <mxPoint x="490" y="175" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m3" value="3. save(ControlPackagePayload JSON, packageId)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="210" as="sourcePoint"/>
+                        <mxPoint x="690" y="210" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m4" value="4. HTTP 201 Created (packageId, version)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="245" as="sourcePoint"/>
+                        <mxPoint x="90" y="245" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_sec2" value="Bước 2 — Publish xuống Ga cụ thể" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="268" width="240" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_m5" value="5. POST /control-package/publish/{packageId} (body: stationCode)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="295" as="sourcePoint"/>
+                        <mxPoint x="290" y="295" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m6" value="6. save(StationControlSync, status=PENDING)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="330" as="sourcePoint"/>
+                        <mxPoint x="490" y="330" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m7" value="7. HTTP 200 OK (syncId, status=PENDING)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="365" as="sourcePoint"/>
+                        <mxPoint x="90" y="365" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_sec3" value="Bước 3 — Trigger gửi ngay gói cấu hình xuống Cấp 2" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="388" width="340" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d1b_m8" value="8. POST /control-package/trigger-device-sync?stationCode=STA001" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="415" as="sourcePoint"/>
+                        <mxPoint x="290" y="415" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m9" value="9. findAllByStatus(ACTIVE) → lọc stationCode" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="450" as="sourcePoint"/>
+                        <mxPoint x="490" y="450" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m10" value="10. findByStationAndStatus([PENDING, APPLIED])" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="483" as="sourcePoint"/>
+                        <mxPoint x="490" y="483" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m11" value="11. List&lt;StationControlSync&gt; (DEVICE_CONFIG, STATION_CONTEXT, MEDIA_ACCESS_RULES)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="490" y="516" as="sourcePoint"/>
+                        <mxPoint x="290" y="516" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m12" value="12. findByControlPackageId(id)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="548" as="sourcePoint"/>
+                        <mxPoint x="690" y="548" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m13" value="13. ControlPackagePayload (JSON + version)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="690" y="580" as="sourcePoint"/>
+                        <mxPoint x="290" y="580" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m14" value="14. buildCombinedPayload()&#10;(deviceConfig + stationContext + mediaAccessRules)" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="610" as="sourcePoint"/>
+                        <mxPoint x="290" y="650" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="337" y="610"/>
+                            <mxPoint x="337" y="650"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m15" value="15. AMQP Publish: publishToStation(stationCode, combinedPayload)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="690" as="sourcePoint"/>
+                        <mxPoint x="890" y="690" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m16" value="16. HTTP 200 OK (combined payload đã gửi)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="725" as="sourcePoint"/>
+                        <mxPoint x="90" y="725" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d1b_m17" value="17. Gate Simulator nhận gói cấu hình tổng hợp" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="890" y="793" as="sourcePoint"/>
+                        <mxPoint x="1090" y="793" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="d2a" name="2a — Batch Submit (Cron 01:00)">
+        <mxGraphModel dx="1720" dy="1189" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1260" pageHeight="890" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="d2a_ttl" value="Luồng 2a: Gom lô giao dịch &amp; Gửi Cấp 5 — Tự động (BatchSubmitScheduler, Cron 01:00)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="8" width="1220" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_p1" value="Gate Simulator&#10;(Cấp 2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="15" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_p2" value="BatchSubmitScheduler&#10;(Cron 01:00)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_p3" value="afc-ops-service&#10;(Cấp 4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="425" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_p4" value="PostgreSQL&#10;(afc_ops_db)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="630" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_p5" value="RabbitMQ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="835" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_p6" value="FMC Service&#10;(Cấp 5)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="1040" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_ll1" value="" style="endArrow=none;dashed=1;strokeColor=#999999;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="98" as="sourcePoint"/>
+                        <mxPoint x="90" y="860" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_ll2" value="" style="endArrow=none;dashed=1;strokeColor=#d6b656;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="98" as="sourcePoint"/>
+                        <mxPoint x="295" y="860" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_ll3" value="" style="endArrow=none;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="500" y="98" as="sourcePoint"/>
+                        <mxPoint x="500" y="860" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_ll4" value="" style="endArrow=none;dashed=1;strokeColor=#d79b00;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="705" y="98" as="sourcePoint"/>
+                        <mxPoint x="705" y="860" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_ll5" value="" style="endArrow=none;dashed=1;strokeColor=#9673a6;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="910" y="98" as="sourcePoint"/>
+                        <mxPoint x="910" y="860" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_ll6" value="" style="endArrow=none;dashed=1;strokeColor=#b85450;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="1115" y="98" as="sourcePoint"/>
+                        <mxPoint x="1115" y="860" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_sa" value="Bước A — Gate Simulator đẩy lô giao dịch lên Cấp 4" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="115" width="380" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_a1" value="A1. POST /transaction/submit-batch&#10;      (Header: X-Device-Code, X-Device-Secret; body: transactions[])" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="148" as="sourcePoint"/>
+                        <mxPoint x="500" y="148" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_a2" value="A2. saveAll(Transaction[], status=PENDING)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="500" y="183" as="sourcePoint"/>
+                        <mxPoint x="705" y="183" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_a3" value="A3. HTTP 200 OK (syncedCount)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="500" y="218" as="sourcePoint"/>
+                        <mxPoint x="90" y="218" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_sb" value="Bước B — BatchSubmitScheduler tự động gom &amp; gửi batch (Cron 01:00)" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="242" width="450" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_note" value="⏰ Kích hoạt tự động lúc 01:00 AM hằng ngày" style="shape=note;html=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;size=12;" parent="1" vertex="1">
+                    <mxGeometry x="312" y="263" width="265" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_b1" value="B1. operatorRepository.findAll()" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="305" as="sourcePoint"/>
+                        <mxPoint x="705" y="305" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_lf_box" value="" style="rounded=0;fillColor=none;strokeColor=#0050ef;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="58" y="325" width="1170" height="355" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_lf_lbl" value="loop [Với mỗi Operator]" style="text;html=1;strokeColor=none;fillColor=#dae8fc;fontStyle=1;fontSize=9;fontColor=#0050ef;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="325" width="175" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_b2" value="B2. countEligibleForBatch(operatorId, PENDING, yesterday)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="365" as="sourcePoint"/>
+                        <mxPoint x="705" y="365" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_alt_box" value="" style="rounded=0;fillColor=none;strokeColor=#00aa00;strokeWidth=2;" parent="1" vertex="1">
+                    <mxGeometry x="73" y="385" width="1140" height="270" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_alt_lbl" value="alt [pendingCount &gt; 0]" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;fontStyle=1;fontSize=9;fontColor=#00aa00;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="75" y="385" width="155" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_b3" value="B3. batchService.createBatch(fromTime, toTime)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="420" as="sourcePoint"/>
+                        <mxPoint x="500" y="420" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_b4" value="B4. Gom transactions PENDING → save(Batch, status=CREATED)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="500" y="453" as="sourcePoint"/>
+                        <mxPoint x="705" y="453" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_b5" value="B5. Batch(batchId, status=CREATED)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="705" y="485" as="sourcePoint"/>
+                        <mxPoint x="295" y="485" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_b6" value="B6. batchService.submitBatchToLevel5(batchId)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="295" y="518" as="sourcePoint"/>
+                        <mxPoint x="500" y="518" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_b7" value="B7. AMQP Publish: Batch payload → Queue (c4-to-c5)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="500" y="555" as="sourcePoint"/>
+                        <mxPoint x="910" y="555" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_b8" value="B8. update(Batch, status=SUBMITTED)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="500" y="590" as="sourcePoint"/>
+                        <mxPoint x="705" y="590" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_sc" value="Bước C — Cấp 5 xử lý và trả kết quả quyết toán (async)" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="695" width="400" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2a_c1" value="C1. AMQP Consume: Nhận Batch → Tính phân chia doanh thu" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#b85450;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="910" y="720" as="sourcePoint"/>
+                        <mxPoint x="1115" y="720" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_c2" value="C2. AMQP Publish: SettlementConfirmedEvent (settlementId, period, shares[])" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#b85450;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="1115" y="758" as="sourcePoint"/>
+                        <mxPoint x="910" y="758" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2a_c3" value="C3. Level5SettlementSyncListener → processSettlement() cho từng CompanyShare → save(OperatorSettlement)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="910" y="810" as="sourcePoint"/>
+                        <mxPoint x="500" y="810" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="d2b" name="2b — Batch Submit (Manual)">
+        <mxGraphModel dx="774" dy="535" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1060" pageHeight="800" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="d2b_ttl" value="Luồng 2b: Gom lô giao dịch &amp; Gửi Cấp 5 — Thủ công (Center Manager)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=13;fontStyle=1;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="8" width="1020" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_p1" value="Center Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="15" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_p2" value="afc-ops-service&#10;(Cấp 4)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="215" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_p3" value="PostgreSQL&#10;(afc_ops_db)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="415" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_p4" value="RabbitMQ" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="615" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_p5" value="FMC Service&#10;(Cấp 5)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="815" y="48" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_ll1" value="" style="endArrow=none;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="98" as="sourcePoint"/>
+                        <mxPoint x="90" y="770" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_ll2" value="" style="endArrow=none;dashed=1;strokeColor=#6c8ebf;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="98" as="sourcePoint"/>
+                        <mxPoint x="290" y="770" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_ll3" value="" style="endArrow=none;dashed=1;strokeColor=#d79b00;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="490" y="98" as="sourcePoint"/>
+                        <mxPoint x="490" y="770" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_ll4" value="" style="endArrow=none;dashed=1;strokeColor=#9673a6;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="690" y="98" as="sourcePoint"/>
+                        <mxPoint x="690" y="770" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_ll5" value="" style="endArrow=none;dashed=1;strokeColor=#b85450;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="890" y="98" as="sourcePoint"/>
+                        <mxPoint x="890" y="770" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_s1" value="Bước 1 — Center Manager tạo Batch thủ công" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="115" width="320" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_m1" value="1. POST /batch/create-batch (fromTime, toTime)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="143" as="sourcePoint"/>
+                        <mxPoint x="290" y="143" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m2" value="2. Gom transactions PENDING → save(Batch, status=CREATED)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="178" as="sourcePoint"/>
+                        <mxPoint x="490" y="178" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m3" value="3. Batch(batchId, transactionCount, status=CREATED)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="490" y="213" as="sourcePoint"/>
+                        <mxPoint x="290" y="213" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m4" value="4. HTTP 200 OK (batchId, transactionCount, status=CREATED)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="248" as="sourcePoint"/>
+                        <mxPoint x="90" y="248" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_s2" value="Bước 2 — Submit Batch lên Cấp 5 qua RabbitMQ" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="272" width="330" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_m5" value="5. POST /batch/submit-batch-to-level5/{batchId}" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="298" as="sourcePoint"/>
+                        <mxPoint x="290" y="298" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m6" value="6. Load Batch + danh sách Transactions" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="333" as="sourcePoint"/>
+                        <mxPoint x="490" y="333" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m7" value="7. AMQP Publish: Batch payload → Queue (c4-to-c5)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="370" as="sourcePoint"/>
+                        <mxPoint x="690" y="370" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m8" value="8. update(Batch, status=SUBMITTED)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="405" as="sourcePoint"/>
+                        <mxPoint x="490" y="405" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m9" value="9. HTTP 200 OK (batchId, status=SUBMITTED)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="440" as="sourcePoint"/>
+                        <mxPoint x="90" y="440" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_s3" value="Bước 3 — Cấp 5 xử lý và trả kết quả quyết toán (async)" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="463" width="400" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_m10" value="10. AMQP Consume: Nhận Batch → Tính phân chia doanh thu" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#b85450;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="690" y="490" as="sourcePoint"/>
+                        <mxPoint x="890" y="490" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m11" value="11. AMQP Publish: SettlementConfirmedEvent (settlementId, period, shares[])" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#b85450;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="890" y="528" as="sourcePoint"/>
+                        <mxPoint x="690" y="528" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m12" value="12. Level5SettlementSyncListener nhận SettlementConfirmedEvent" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="690" y="563" as="sourcePoint"/>
+                        <mxPoint x="290" y="563" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m13" value="13. processSettlement() → save(OperatorSettlement) cho từng CompanyShare" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="600" as="sourcePoint"/>
+                        <mxPoint x="490" y="600" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_s4" value="Bước 4 — Tra cứu kết quả quyết toán" style="text;html=1;strokeColor=none;fillColor=#f0f0f0;fontSize=9;fontStyle=3;fontColor=#555555;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="623" width="290" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="d2b_m14" value="14. GET /reconciliation/settlements" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="90" y="650" as="sourcePoint"/>
+                        <mxPoint x="290" y="650" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m15" value="15. listSettlements(page, size)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#444444;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="685" as="sourcePoint"/>
+                        <mxPoint x="490" y="685" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="d2b_m16" value="16. HTTP 200 OK (danh sách OperatorSettlement — doanh thu phân chia theo operator)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;strokeColor=#444444;dashed=1;fontSize=9;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="290" y="728" as="sourcePoint"/>
+                        <mxPoint x="90" y="728" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

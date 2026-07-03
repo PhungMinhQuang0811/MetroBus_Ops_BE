@@ -75,7 +75,7 @@ public class BatchSubmitScheduler {
         try {
             // Bước 1: Tạo batch
             CreateBatchRequest request = new CreateBatchRequest(fromTime, toTime);
-            var batch = batchService.createBatch(request);
+            var batch = batchService.createBatchForOperator(operator, request);
             String batchId = batch.getId();
 
             log.info("Auto batch created: operator={}, batchId={}, transactions={}",
