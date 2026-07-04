@@ -1,5 +1,7 @@
 package com.vdt.afc_ops_service.integration.level5.listener;
 
+import com.vdt.afc_ops_service.service.IIntegrationExchangeLogService;
+
 import com.vdt.afc_ops_service.integration.level5.dto.message.operator.C5OperatorEventMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.message.operator.C5OperatorSyncMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.response.Level5BusinessSyncItemResult;
@@ -27,37 +29,47 @@ public class Level5OperatorSyncListener {
 
     ILevel5OperatorSyncService level5OperatorSyncService;
     ObjectMapper objectMapper;
+    IIntegrationExchangeLogService integrationExchangeLogService;
 
     @RabbitListener(queues = "#{level5OperatorSyncProperties.queue()}")
-    public void receiveOperatorSync(Message message) throws IOException {
+    public void receiveOperatorSync(Message message) {
+        String payloadString = new String(message.getBody());
         String routingKey = message.getMessageProperties().getReceivedRoutingKey();
-        Level5BusinessSyncItemResult result = switch (routingKey) {
-            case SYNC_OPERATOR_ALL -> level5OperatorSyncService.processOperatorSnapshot(
-                    readPayload(message, C5OperatorSyncMessage.class)
-            );
-            case OPERATOR_CREATED, OPERATOR_UPDATED -> {
-                C5OperatorEventMessage event = readPayload(message, C5OperatorEventMessage.class);
-                yield level5OperatorSyncService.processOperatorSnapshot(
-                        C5OperatorSyncMessage.builder()
-                                .id(event.getOperatorId())
-                                .code(event.getCode())
-                                .name(event.getName())
-                                .status(event.getStatus())
-                                .build()
-                );
+        try {
+            Level5BusinessSyncItemResult result = null;
+            Object parsedMsg = null;
+            switch (routingKey) {
+                case SYNC_OPERATOR_ALL -> {
+                    parsedMsg = objectMapper.readValue(payloadString, C5OperatorSyncMessage.class);
+                    result = level5OperatorSyncService.processOperatorSnapshot((C5OperatorSyncMessage) parsedMsg);
+                }
+                case OPERATOR_CREATED, OPERATOR_UPDATED -> {
+                    parsedMsg = objectMapper.readValue(payloadString, C5OperatorEventMessage.class);
+                    C5OperatorEventMessage event = (C5OperatorEventMessage) parsedMsg;
+                    result = level5OperatorSyncService.processOperatorSnapshot(
+                            C5OperatorSyncMessage.builder()
+                                    .id(event.getOperatorId())
+                                    .code(event.getCode())
+                                    .name(event.getName())
+                                    .status(event.getStatus())
+                                    .build()
+                    );
+                }
+                default -> {
+                    log.warn("Ignored unsupported Level 5 operator routing key: {}", routingKey);
+                }
+            };
+            if (result != null) {
+                logResult(routingKey, result);
+                integrationExchangeLogService.logExchange("Level5", "INBOUND", routingKey, "SUCCESS", parsedMsg, result, null);
             }
-            default -> {
-                log.warn("Ignored unsupported Level 5 operator routing key: {}", routingKey);
-                yield null;
-            }
-        };
-        logResult(routingKey, result);
+        } catch (Exception e) {
+            log.error("Failed to process Level 5 operator sync message: {}", e.getMessage(), e);
+            integrationExchangeLogService.logExchange("Level5", "INBOUND", routingKey, "FAILED", payloadString, null, e.getMessage());
+        }
     }
 
-    private <T> T readPayload(Message message, Class<T> payloadType) throws IOException {
-        return objectMapper.readValue(message.getBody(), payloadType);
-    }
-
+    // Removed readPayload
     private void logResult(String routingKey, Level5BusinessSyncItemResult result) {
         if (result != null) {
             log.info("Processed Level 5 operator sync. routingKey={}, externalId={}, result={}, errorCode={}",

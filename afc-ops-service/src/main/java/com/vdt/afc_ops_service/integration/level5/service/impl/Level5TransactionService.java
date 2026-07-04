@@ -1,5 +1,7 @@
 package com.vdt.afc_ops_service.integration.level5.service.impl;
 
+import com.vdt.afc_ops_service.service.IIntegrationExchangeLogService;
+
 import com.vdt.afc_ops_service.entity.Batch;
 import com.vdt.afc_ops_service.entity.Transaction;
 import com.vdt.afc_ops_service.integration.level5.service.ILevel5TransactionService;
@@ -29,6 +31,7 @@ public class Level5TransactionService implements ILevel5TransactionService {
     RabbitTemplate rabbitTemplate;
     TopicExchange afcExchange;
     TransactionRepository transactionRepository;
+    IIntegrationExchangeLogService integrationExchangeLogService;
 
     @Override
     public void publishBatch(Batch batch) {
@@ -72,8 +75,10 @@ public class Level5TransactionService implements ILevel5TransactionService {
             rabbitTemplate.convertAndSend(afcExchange.getName(), TRANSACTION_BATCH_KEY, batchPayload);
             log.info("Published batch {} with {} transactions to Level 5 via routing key {}",
                     batch.getBatchCode(), transactions.size(), TRANSACTION_BATCH_KEY);
+            integrationExchangeLogService.logExchange("Level5", "OUTBOUND", afcExchange.getName() + "->" + TRANSACTION_BATCH_KEY, "SUCCESS", batchPayload, null, null);
         } catch (Exception e) {
             log.error("Failed to publish batch {} to Level 5", batch.getBatchCode(), e);
+            integrationExchangeLogService.logExchange("Level5", "OUTBOUND", afcExchange.getName() + "->" + TRANSACTION_BATCH_KEY, "FAILED", batchPayload, null, e.getMessage());
             throw new RuntimeException("Failed to publish batch to Level 5", e);
         }
     }

@@ -1,5 +1,7 @@
 package com.vdt.afc_ops_service.integration.level5.listener;
 
+import com.vdt.afc_ops_service.service.IIntegrationExchangeLogService;
+
 import com.vdt.afc_ops_service.integration.level5.dto.message.ticket.C5TicketMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.message.ticket.C5TicketSyncMessage;
 import com.vdt.afc_ops_service.integration.level5.dto.message.ticket.C5TicketUnlinkedMessage;
@@ -28,30 +30,43 @@ public class Level5TicketSyncListener {
 
     ILevel5TicketSyncService level5TicketSyncService;
     ObjectMapper objectMapper;
+    IIntegrationExchangeLogService integrationExchangeLogService;
 
     @RabbitListener(queues = "#{level5TicketSyncProperties.queue()}")
-    public void receiveTicketSync(Message message) throws IOException {
+    public void receiveTicketSync(Message message) {
+        String payloadString = new String(message.getBody());
         String routingKey = message.getMessageProperties().getReceivedRoutingKey();
-        Level5BusinessSyncItemResult result = switch (routingKey) {
-            case TICKET_CREATED -> level5TicketSyncService.processTicket(readPayload(message, C5TicketMessage.class));
-            case TICKET_UNLINKED -> level5TicketSyncService.processTicketUnlinked(
-                    readPayload(message, C5TicketUnlinkedMessage.class)
-            );
-            case SYNC_TICKET_ALL -> level5TicketSyncService.processTicketSnapshot(
-                    readPayload(message, C5TicketSyncMessage.class)
-            );
-            default -> {
-                log.warn("Ignored unsupported Level 5 ticket routing key: {}", routingKey);
-                yield null;
+        try {
+            Level5BusinessSyncItemResult result = null;
+            Object parsedMsg = null;
+            switch (routingKey) {
+                case TICKET_CREATED -> {
+                    parsedMsg = objectMapper.readValue(payloadString, C5TicketMessage.class);
+                    result = level5TicketSyncService.processTicket((C5TicketMessage) parsedMsg);
+                }
+                case TICKET_UNLINKED -> {
+                    parsedMsg = objectMapper.readValue(payloadString, C5TicketUnlinkedMessage.class);
+                    result = level5TicketSyncService.processTicketUnlinked((C5TicketUnlinkedMessage) parsedMsg);
+                }
+                case SYNC_TICKET_ALL -> {
+                    parsedMsg = objectMapper.readValue(payloadString, C5TicketSyncMessage.class);
+                    result = level5TicketSyncService.processTicketSnapshot((C5TicketSyncMessage) parsedMsg);
+                }
+                default -> {
+                    log.warn("Ignored unsupported Level 5 ticket routing key: {}", routingKey);
+                }
+            };
+            if (result != null) {
+                logResult(routingKey, result);
+                integrationExchangeLogService.logExchange("Level5", "INBOUND", routingKey, "SUCCESS", parsedMsg, result, null);
             }
-        };
-        logResult(routingKey, result);
+        } catch (Exception e) {
+            log.error("Failed to process Level 5 ticket sync message: {}", e.getMessage(), e);
+            integrationExchangeLogService.logExchange("Level5", "INBOUND", routingKey, "FAILED", payloadString, null, e.getMessage());
+        }
     }
 
-    private <T> T readPayload(Message message, Class<T> payloadType) throws IOException {
-        return objectMapper.readValue(message.getBody(), payloadType);
-    }
-
+    // Removed readPayload
     private void logResult(String routingKey, Level5BusinessSyncItemResult result) {
         if (result != null) {
             log.info("Processed Level 5 ticket sync. routingKey={}, externalId={}, result={}, errorCode={}",

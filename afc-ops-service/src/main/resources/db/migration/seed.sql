@@ -71,3 +71,17 @@ INSERT INTO stations (route_id, station_code, station_name, distance, station_or
                                                                                                                                                 ((SELECT id FROM routes WHERE route_code = 'HN_BUS_32'), 'BUS32_06', 'Phú Diễn',           13.800, 6, 'ACTIVE', 'system', NOW(), NOW()),
                                                                                                                                                 ((SELECT id FROM routes WHERE route_code = 'HN_BUS_32'), 'BUS32_07', 'Minh Khai',          15.900, 7, 'ACTIVE', 'system', NOW(), NOW()),
                                                                                                                                                 ((SELECT id FROM routes WHERE route_code = 'HN_BUS_32'), 'BUS32_08', 'Nhổn',               18.200, 8, 'ACTIVE', 'system', NOW(), NOW());
+
+-- ═══════════════════════════════════════════════════════════════
+-- SEED: DEVICES
+-- ═══════════════════════════════════════════════════════════════
+INSERT INTO devices (station_id, device_code, device_type, direction, status, firmware_version, device_secret, created_by_account_id, created_at, updated_at) VALUES
+((SELECT id FROM stations WHERE station_code = 'HN_2A_01'), 'DEV_HN2A01_ENT_01', 'QR_SCANNER_SIMULATOR', 'ENTRY', 'ACTIVE', 'v1.0.0', 'secret-key-1', 'system', NOW(), NOW()),
+((SELECT id FROM stations WHERE station_code = 'HN_2A_01'), 'DEV_HN2A01_EXT_01', 'QR_SCANNER_SIMULATOR', 'EXIT', 'ACTIVE', 'v1.0.0', 'secret-key-2', 'system', NOW(), NOW()),
+((SELECT id FROM stations WHERE station_code = 'HN_2A_02'), 'DEV_HN2A02_ENT_01', 'QR_SCANNER_SIMULATOR', 'ENTRY', 'ACTIVE', 'v1.0.0', 'secret-key-3', 'system', NOW(), NOW()),
+((SELECT id FROM stations WHERE station_code = 'HN_2A_02'), 'DEV_HN2A02_EXT_01', 'QR_SCANNER_SIMULATOR', 'EXIT', 'ACTIVE', 'v1.0.0', 'secret-key-4', 'system', NOW(), NOW()),
+((SELECT id FROM stations WHERE station_code = 'HN_2A_12'), 'DEV_HN2A12_ENT_01', 'QR_SCANNER_SIMULATOR', 'ENTRY', 'ACTIVE', 'v1.0.0', 'secret-key-5', 'system', NOW(), NOW()),
+((SELECT id FROM stations WHERE station_code = 'HN_2A_12'), 'DEV_HN2A12_EXT_01', 'QR_SCANNER_SIMULATOR', 'EXIT', 'ACTIVE', 'v1.0.0', 'secret-key-6', 'system', NOW(), NOW()),
+((SELECT id FROM stations WHERE station_code = 'BUS32_01'), 'DEV_BUS3201_BOTH_01', 'QR_SCANNER_SIMULATOR', 'BOTH', 'ACTIVE', 'v1.0.0', 'secret-key-7', 'system', NOW(), NOW()),
+((SELECT id FROM stations WHERE station_code = 'BRT01_10'), 'DEV_BRT0110_BOTH_01', 'QR_SCANNER_SIMULATOR', 'BOTH', 'ACTIVE', 'v1.0.0', 'secret-key-8', 'system', NOW(), NOW());
+
