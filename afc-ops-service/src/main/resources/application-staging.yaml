@@ -1,6 +1,7 @@
 spring:
   mongodb:
     uri: ${SPRING_MONGODB_URI}
+    uuid-representation: standard
 
 springdoc:
   swagger-ui:
