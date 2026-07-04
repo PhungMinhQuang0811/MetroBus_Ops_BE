@@ -153,7 +153,11 @@ public class Level5CardSyncService implements ILevel5CardSyncService {
         if (issuedAtStationRef != null) {
             card.setIssuedAtStationRef(issuedAtStationRef);
         }
-        card.setCardType(cardType);
+        if (cardType != null) {
+            card.setCardType(cardType);
+        } else if (card.getCardType() == null) {
+            card.setCardType(PredefinedLevel5BusinessSync.IDENTIFIED);
+        }
         card.setStatus(status);
         card.setStatusReason(statusReason);
         card.setSourceVersion(sourceVersion);
