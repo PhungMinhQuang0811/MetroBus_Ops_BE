@@ -1,5 +1,7 @@
 package com.vdt.afc_ops_service.service.Impl;
 
+import com.vdt.afc_ops_service.service.IIntegrationExchangeLogService;
+
 import com.vdt.afc_ops_service.common.exception.AppException;
 import com.vdt.afc_ops_service.common.exception.ErrorCode;
 import com.vdt.afc_ops_service.common.util.CryptoHashUtil;
@@ -67,6 +69,7 @@ public class TransactionService implements ITransactionService {
     DynamicQrSessionStore dynamicQrSessionStore;
     TransactionMapper transactionMapper;
     SecurityUtils securityUtils;
+    IIntegrationExchangeLogService integrationExchangeLogService;
 
     @NonFinal
     @Value("${app.security.qr-hmac-secret}")
@@ -202,12 +205,15 @@ public class TransactionService implements ITransactionService {
             }
         }
 
-        return SubmitBatchResponse.builder()
+        SubmitBatchResponse response = SubmitBatchResponse.builder()
                 .total(total)
                 .success(success)
                 .failed(failed)
                 .errors(errors)
                 .build();
+
+        integrationExchangeLogService.logExchange("Level2", "INBOUND", "/transaction/submit-batch", "SUCCESS", request, response, null);
+        return response;
     }
 
     @Override

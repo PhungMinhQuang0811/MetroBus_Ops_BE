@@ -159,7 +159,7 @@ C1 (QR Code trên App hành khách)
 | Chi tiết audit auth | `GET /auth/get-audit-log/{id}` | ✅ Hoàn thành |
 | Audit AFC (vận hành) | `GET /audit/search-audit-logs` | ✅ Hoàn thành |
 | Chi tiết audit AFC | `GET /audit/get-audit-log/{id}` | ✅ Hoàn thành |
-| Integration logs | Chưa có collection MongoDB | ⏳ Chưa làm |
+| Integration logs | Ghi log truyền nhận với C2 & C5 xuống MongoDB | ✅ Hoàn thành |
 
 **Ghi log tự động tại:** create/update route, station, device, control package, batch, login/logout
 
@@ -222,7 +222,7 @@ C1 (QR Code trên App hành khách)
 | Phân hệ | Mức độ ưu tiên | Ghi chú |
 |---------|---------------|---------|
 | **Ca kíp (Shift Management)** | Trung bình | Entity/Service/Controller check-in/check-out. Phục vụ demo quy trình vận hành nhân viên ga |
-| **UC21 - Tab Tích hợp hệ thống** | Thấp | Collection MongoDB `integration_exchange_logs` + API search. Debug request/response với C5 |
+| **UC21 - Tab Tích hợp hệ thống** | Trung bình | Đã hoàn thành (lưu MongoDB, thêm tab tra cứu UI cho ADMIN) |
 | **Offline Mode** | ❌ Không làm | C2 chỉ webcam laptop giả lập, không có thiết bị thật ngoại tuyến |
 
 ---
@@ -264,7 +264,7 @@ C1 (QR Code trên App hành khách)
 | `device_incidents` | Lịch sử incident thiết bị |
 | `control_package_payloads` | Payload chi tiết control package |
 | `ticket_usage_result_payloads` | Kết quả xác nhận ticket từ C5 |
-| `integration_exchange_logs` | ⏳ Chưa tạo |
+| `integration_exchange_logs` | Lưu log truyền nhận inbound/outbound giữa C4 với C2/C5 |
 
 ---
 
