@@ -1,5 +1,7 @@
 package com.vdt.afc_ops_service.messaging;
 
+import com.vdt.afc_ops_service.integration.level2.ControlPackagePublisher;
+import com.vdt.afc_ops_service.service.IIntegrationExchangeLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,11 +28,14 @@ class ControlPackagePublisherTest {
     @Mock
     RabbitTemplate rabbitTemplate;
 
+    @Mock
+    IIntegrationExchangeLogService integrationExchangeLogService;
+
     ControlPackagePublisher publisher;
 
     @BeforeEach
     void setUp() {
-        publisher = new ControlPackagePublisher(afcExchange, rabbitTemplate);
+        publisher = new ControlPackagePublisher(afcExchange, rabbitTemplate, integrationExchangeLogService);
         when(afcExchange.getName()).thenReturn("afc.exchange");
     }
 

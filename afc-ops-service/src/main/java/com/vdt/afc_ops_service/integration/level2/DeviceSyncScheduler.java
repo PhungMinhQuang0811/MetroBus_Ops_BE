@@ -93,6 +93,9 @@ public class DeviceSyncScheduler {
 
         Map<String, Object> result = new LinkedHashMap<>(payloadDoc.get().getPayload());
         result.put("version", sync.getControlPackage().getVersion());
+        if (sync.getId() != null) {
+            result.put("syncId", sync.getId());
+        }
         return result;
     }
 
