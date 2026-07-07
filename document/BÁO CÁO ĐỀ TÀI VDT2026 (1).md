@@ -46,17 +46,19 @@ Về kết quả, dự án đã hoàn thiện các giao diện Portal quản tr�
 
 [2.2. Giải pháp công nghệ lựa chọn	7](#2.2.-giải-pháp-công-nghệ-lựa-chọn)
 
-[2.3. Thiết kế kiến trúc và giải pháp chi tiết	8](#2.3.-thiết-kế-kiến-trúc-và-giải-pháp-chi-tiết)
+[2.3. Tiêu chuẩn kỹ thuật áp dụng theo Quyết định 3680/QĐ-UBND	8](#2.3.-tiêu-chuẩn-kỹ-thuật-áp-dụng)
 
-[2.3.1. Yêu cầu chức năng hệ thống	8](#2.3.1.-yêu-cầu-chức-năng-hệ-thống)
+[2.4. Thiết kế kiến trúc và giải pháp chi tiết	9](#2.4.-thiết-kế-kiến-trúc-và-giải-pháp-chi-tiết)
 
-[2.3.2. Yêu cầu phi chức năng hệ thống	11](#2.3.2.-yêu-cầu-phi-chức-năng-hệ-thống)
+[2.4.1. Yêu cầu chức năng hệ thống	9](#2.4.1.-yêu-cầu-chức-năng-hệ-thống)
 
-[2.3.3. Mô hình giao tiếp và kiến trúc kỹ thuật	12](#2.3.3.-mô-hình-giao-tiếp-và-kiến-trúc-kỹ-thuật)
+[2.4.2. Yêu cầu phi chức năng hệ thống	12](#2.4.2.-yêu-cầu-phi-chức-năng-hệ-thống)
 
-[2.3.4. Đặc tả các luồng nghiệp vụ trọng tâm	16](#2.3.4.-đặc-tả-các-luồng-nghiệp-vụ-trọng-tâm)
+[2.4.3. Mô hình giao tiếp và kiến trúc kỹ thuật	13](#2.4.3.-mô-hình-giao-tiếp-và-kiến-trúc-kỹ-thuật)
 
-[2.3.5. Thiết kế kỹ thuật chi tiết	19](#2.3.5.-thiết-kế-kỹ-thuật-chi-tiết)
+[2.4.4. Đặc tả các luồng nghiệp vụ trọng tâm	17](#2.4.4.-đặc-tả-các-luồng-nghiệp-vụ-trọng-tâm)
+
+[2.4.5. Thiết kế kỹ thuật chi tiết	20](#2.4.5.-thiết-kế-kỹ-thuật-chi-tiết)
 
 [**III. Kết quả thực hiện và đánh giá	27**](#iii.-kết-quả-thực-hiện-và-đánh-giá)
 
@@ -94,45 +96,45 @@ Về kết quả, dự án đã hoàn thiện các giao diện Portal quản tr�
 
 [**Tài liệu tham khảo	40**](#tài-liệu-tham-khảo)
 
-**Danh mục hình vẽ**
+**Danh mục hình ảnh**
 
-[Hình 1: Mô hình kiến trúc phân cấp hệ thống thẻ vé liên thông theo Quyết định 3680/QĐ-UBND.	5](#hình-1:-mô-hình-kiến-trúc-phân-cấp-hệ-thống-thẻ-vé-liên-thông-theo-quyết-định-3680/qđ-ubnd.)
+[Hình 1: Mô hình kiến trúc phân cấp hệ thống thẻ vé liên thông theo Quyết định 3680/QĐ-UBND](#hình-1:-mô-hình-kiến-trúc-phân-cấp-hệ-thống-thẻ-vé-liên-thông-theo-quyết-định-3680/qđ-ubnd.)
 
-[Hình 2: Mô hình giao tiếp giữa phân hệ cấp 3, cấp 4 với cấp 5, cấp 2 và ứng dụng hành khách.	13](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.oy1752iqn8i9) 
+[Hình 2: Mô hình giao tiếp giữa phân hệ cấp 3, cấp 4 với cấp 5, cấp 2 và ứng dụng hành khách.](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.oy1752iqn8i9)
 
-[Hình 3: Kiến trúc kỹ thuật hệ thống phân hệ cấp 3 và cấp 4\.	15](#hình-3:-kiến-trúc-kỹ-thuật-hệ-thống-phân-hệ-cấp-3-và-cấp-4.)
+[Hình 3: Kiến trúc kỹ thuật hệ thống phân hệ cấp 3 và cấp 4](#hình-3:-kiến-trúc-kỹ-thuật-hệ-thống-phân-hệ-cấp-3-và-cấp-4.)
 
-[Hình 4: Sơ đồ tuần tự tiến trình cấp phát cấu hình tự động và đồng bộ xuống thiết bị.	17](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.i3mn6vvrcmtw) 
+[Hình 4: Sơ đồ tuần tự tiến trình cấp phát cấu hình tự động và đồng bộ xuống thiết bị.](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.i3mn6vvrcmtw)
 
-[Hình 5: Sơ đồ tuần tự tiến trình khởi tạo, cấp phát trực tiếp và đồng bộ xuống thiết bị.	17](#hình-5:-sơ-đồ-tuần-tự-tiến-trình-khởi-tạo,-cấp-phát-trực-tiếp-và-đồng-bộ-xuống-thiết-bị.)
+[Hình 5: Sơ đồ tuần tự tiến trình khởi tạo, cấp phát trực tiếp và đồng bộ xuống thiết bị.](#hình-5:-sơ-đồ-tuần-tự-tiến-trình-khởi-tạo,-cấp-phát-trực-tiếp-và-đồng-bộ-xuống-thiết-bị.)
 
-[Hình 6: Sơ đồ tuần tự tiến trình kết chuyển tự động và đối soát.	19](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.hgabf01yf70w) 
+[Hình 6: Sơ đồ tuần tự tiến trình kết chuyển tự động và đối soát](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.hgabf01yf70w)
 
-[Hình 7: Sơ đồ tuần tự tiến trình kết chuyển trực tiếp và đối soát.	19](#hình-7:-sơ-đồ-tuần-tự-tiến-trình-kết-chuyển-trực-tiếp-và-đối-soát.)
+[Hình 7: Sơ đồ tuần tự tiến trình kết chuyển trực tiếp và đối soát](#hình-7:-sơ-đồ-tuần-tự-tiến-trình-kết-chuyển-trực-tiếp-và-đối-soát.)
 
-[Hình 8: Sơ đồ lớp các thành phần xử lý chu trình cấp phát cấu hình xuống thiết bị tại ga.	20](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.xokx943d7ozr) 
+[Hình 8: Sơ đồ lớp các thành phần xử lý chu trình cấp phát cấu hình xuống thiết bị tại ga](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.xokx943d7ozr)
 
-[Hình 9: Sơ đồ lớp các thành phần xử lý chu trình gom lô và đối soát với Cấp 5\.	21](#hình-9:-sơ-đồ-lớp-các-thành-phần-xử-lý-chu-trình-gom-lô-và-đối-soát-với-cấp-5.)
+[Hình 9: Sơ đồ lớp các thành phần xử lý chu trình gom lô và đối soát với Cấp 5\.](#hình-9:-sơ-đồ-lớp-các-thành-phần-xử-lý-chu-trình-gom-lô-và-đối-soát-với-cấp-5.)
 
-[Hình 10: Trạng thái triển khai trên giao diện Vercel.	27](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.lecax5hhmzn5)
+[Hình 10: Trạng thái triển khai trên giao diện Vercel](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.lecax5hhmzn5)
 
-[Hình 11: Các dịch vụ trên Railway Dashboard.	28](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.p8s0oex8f9a)
+[Hình 11: Các dịch vụ trên Railway Dashboard](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.p8s0oex8f9a)
 
-[Hình 12: Cookies trong DevTools hiển thị token được lưu dưới dạng HttpOnly cookie.	30](#hình-12:-cookies-trong-devtools-hiển-thị-token-được-lưu-dưới-dạng-httponly-cookie.)
+[Hình 12: Cookies trong DevTools hiển thị token được lưu dưới dạng HttpOnly cookie.](#hình-12:-cookies-trong-devtools-hiển-thị-token-được-lưu-dưới-dạng-httponly-cookie.)
 
-[B. Kịch bản 2: Cấp phát và đồng bộ tham số cấu hình xuống Ga (Config Sync)	30](#b.-kịch-bản-2:-cấp-phát-và-đồng-bộ-tham-số-cấu-hình-xuống-ga-\(config-sync\))
+[B. Kịch bản 2: Cấp phát và đồng bộ tham số cấu hình xuống Ga (Config Sync)](#b.-kịch-bản-2:-cấp-phát-và-đồng-bộ-tham-số-cấu-hình-xuống-ga-\(config-sync\))
 
-[Hình 13: Gói tin Combined Payload của ga HN\_2A\_01 được xếp hàng đợi thành công trên CloudAMQP.	31](#hình-13:-gói-tin-combined-payload-của-ga-hn_2a_01-được-xếp-hàng-đợi-thành-công-trên-cloudamqp.)
+[Hình 13: Gói tin Combined Payload của ga HN\_2A\_01 được xếp hàng đợi thành công trên CloudAMQP](#hình-13:-gói-tin-combined-payload-của-ga-hn_2a_01-được-xếp-hàng-đợi-thành-công-trên-cloudamqp.)
 
-[Hình 14: Kết quả gọi API kích hoạt gửi đối soát lô vé lên Cấp 5\.	33](#hình-14:-kết-quả-gọi-api-kích-hoạt-gửi-đối-soát-lô-vé-lên-cấp-5.)
+[Hình 14: Kết quả gọi API kích hoạt gửi đối soát lô vé lên Cấp 5](#hình-14:-kết-quả-gọi-api-kích-hoạt-gửi-đối-soát-lô-vé-lên-cấp-5.)
 
-[Hình 15: Cấu trúc gói tin Batch Payload ghi nhận trên hàng đợi RabbitMQ.	33](#hình-15:-cấu-trúc-gói-tin-batch-payload-ghi-nhận-trên-hàng-đợi-rabbitmq.)
+[Hình 15: Cấu trúc gói tin Batch Payload ghi nhận trên hàng đợi RabbitMQ](#hình-15:-cấu-trúc-gói-tin-batch-payload-ghi-nhận-trên-hàng-đợi-rabbitmq.)
 
-[Hình 16: Giao diện điều hành và quản trị nhật ký truy vết vận hành hệ thống.	34](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.4ic20hodv3kn)
+[Hình 16: Giao diện điều hành và quản trị nhật ký truy vết vận hành hệ thống](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.4ic20hodv3kn)
 
-[Hình 17: Chi tiết sự kiện nhật ký truy vết vận hành.	35](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.2p8m192741pf)
+[Hình 17: Chi tiết sự kiện nhật ký truy vết vận hành](https://docs.google.com/document/d/1opJ0ypOkosmnNbc6Bn3itWWSIyNjZnauL6Tyv01qHvQ/edit?tab=t.0#heading=h.2p8m192741pf)
 
-[Hình 18: Giao diện nhật ký tích hợp và truyền nhận hệ thống.	36](#hình-18:-giao-diện-nhật-ký-tích-hợp-và-truyền-nhận-hệ-thống.)
+[Hình 18: Giao diện nhật ký tích hợp và truyền nhận hệ thống](#hình-18:-giao-diện-nhật-ký-tích-hợp-và-truyền-nhận-hệ-thống.)
 
 # **I. Giới thiệu** {#i.-giới-thiệu}
 
@@ -140,7 +142,9 @@ Về kết quả, dự án đã hoàn thiện các giao diện Portal quản tr�
 
 Hệ thống thu soát vé tự động (AFC \- Automatic Fare Collection) đóng vai trò lõi trong kiến trúc công nghệ thông tin phục vụ quản lý và vận hành đường sắt đô thị (metro) và xe buýt. Khi lưu lượng hành khách tham gia giao thông công cộng ngày một lớn, các nhà vận hành tuyến đối mặt với thách thức nghiêm trọng về tốc độ thu thập giao dịch tại cổng kiểm soát, tính chính xác khi tổng hợp dữ liệu vĩ mô, và việc quản lý cấu hình thiết bị phân tán.
 
-Để giải quyết bài toán hạ tầng kỹ thuật đồng bộ này, ngày 16 tháng 7 năm 2024, Ủy ban nhân dân Thành phố Hà Nội đã ban hành **Quyết định số 3680/QĐ-UBND** quy định về việc quản lý và hướng dẫn áp dụng các tiêu chuẩn kỹ thuật cho hệ thống AFC liên thông. Theo **Điều 4** của Quy định này, kiến trúc hệ thống AFC liên thông được triển khai xây dựng theo mô hình phân cấp gồm 05 cấp rõ ràng, tạo thành một chu trình truyền nhận thông tin khép kín.
+Tại thành phố Hà Nội, việc triển khai song song nhiều tuyến đường sắt đô thị (như Tuyến số 2A Cát Linh \- Hà Đông, Tuyến số 3 Nhổn \- Ga Hà Nội) cùng hệ thống xe buýt nhanh BRT và mạng lưới xe buýt thường do các đơn vị khác nhau vận hành dẫn đến nguy cơ phân mảnh hạ tầng công nghệ. Nếu mỗi nhà vận hành sử dụng một giải pháp thẻ vé khép kín (Closed-Loop) riêng biệt, hành khách sẽ phải duy trì nhiều loại thẻ/vé khác nhau, gây lãng phí chi phí đầu tư công và cản trở mục tiêu tối ưu hóa giao thông công cộng. Do đó, việc xây dựng một hệ thống AFC liên thông có khả năng kết nối và thanh toán tích hợp là nhiệm vụ vô cùng cấp thiết.
+
+Để giải quyết bài toán hạ tầng kỹ thuật đồng bộ này, ngày 16 tháng 7 năm 2024, Ủy ban nhân dân Thành phố Hà Nội đã ban hành Quyết định số 3680/QĐ-UBND quy định về việc quản lý và hướng dẫn áp dụng các tiêu chuẩn kỹ thuật cho hệ thống AFC liên thông. Theo Điều 4 của Quy định này, kiến trúc hệ thống AFC liên thông được triển khai xây dựng theo mô hình phân cấp gồm 05 cấp rõ ràng, tạo thành một chu trình truyền nhận thông tin khép kín nhằm bảo đảm dữ liệu giao dịch từ mọi nhà ga và thiết bị đầu cuối đều được kết chuyển tập trung lên Trung tâm thanh toán bù trừ FMC.
 
 ![][image2]
 
@@ -148,11 +152,13 @@ Hệ thống thu soát vé tự động (AFC \- Automatic Fare Collection) đón
 
 Dựa trên cấu trúc hình cây của sơ đồ phân cấp hệ thống ở Hình 1, chức năng và nhiệm vụ kỹ thuật của từng cấp được quy định cụ thể như sau:
 
-* **Cấp 1 (Vé và dạng thức thanh toán)**: Gồm thẻ vé điện tử, thẻ ngân hàng, mã QR, nhận dạng sinh trắc học, … được khách hàng sử dụng và lưu trữ, có giá trị thanh toán dịch vụ vận tải hành khách công cộng trên địa bàn thành phố Hà Nội. Vé và dạng thức thanh toán phải đảm bảo tính liên thông, tức là đều được chấp nhận tương đương bởi các hệ thống vé riêng.  
+* **Cấp 1 (Vé và dạng thức thanh toán)**: Gồm thẻ vé điện tử, thẻ ngân hàng, mã QR, nhận dạng sinh trắc học, … được khách hàng sử dụng và lưu trữ, có giá trị thanh toán dịch vụ vận tải hành khách công cộng.   
 * **Cấp 2 (Thiết bị đầu cuối của hệ thống AFC)**: Bao gồm tất cả các thiết bị đầu cuối như máy bán vé đặt tại phòng soát vé, các máy bán vé cá nhân, các máy bán vé tự động hoặc máy bán vé nạp tiền tự động, cổng soát vé tự động, thiết bị xác thực vé trên phương tiện.  
-* **Cấp 3 (Hệ thống tại Ga/Đề-pô/Trạm/Tuyến)**: Có nhiệm vụ quản lý và thu thập dữ liệu giao dịch từ thiết bị của hệ thống AFC; thu thập dữ liệu từ các Ga/Đề-pô/Trạm; tổng hợp và chuyển tiếp dữ liệu; truyền các dữ liệu quản lý từ cấp trên (Cấp 4\) xuống thiết bị của hệ thống AFC và các chức năng giao tiếp khác. Cấp này không thực hiện xử lý dữ liệu của hệ thống AFC.  
-* **Cấp 4 (Hệ thống tại công ty vận hành)**: Có nhiệm vụ quản lý, giám sát hệ thống AFC trực thuộc; nhận thông tin/dữ liệu trao đổi giữa các cấp liền kề thông qua API chung để thực hiện các nghiệp vụ của hệ thống.  
+* **Cấp 3 (Hệ thống tại Ga/Đề-pô/Trạm/Tuyến)**: Đóng vai trò là cổng kết nối phần cứng đầu cuối và bộ đệm dữ liệu tại ga. Phân hệ Cấp 3 có nhiệm vụ quản lý, thu thập dữ liệu giao dịch từ Cấp 2 và trung chuyển lên Cấp 4; đồng thời truyền các gói cấu hình (Control Package) từ Cấp 4 xuống các thiết bị Cấp 2\. Cấp này không thực hiện xử lý nghiệp vụ hay tính toán dữ liệu của hệ thống AFC nhằm tối ưu hóa hiệu năng truyền tải cục bộ.  
+* **Cấp 4 (Hệ thống tại công ty vận hành)**: Đóng vai trò là bộ não vận hành và xử lý nghiệp vụ của đơn vị vận tải. Cấp 4 chịu trách nhiệm quản trị Master Data (ga/tuyến/thiết bị), quản trị phân quyền vận hành, khởi tạo các gói cấu hình thiết bị, đồng thời tự động gom lô dữ liệu giao dịch để đối soát với Cấp 5 qua API chung tuân thủ tiêu chuẩn ISO/IEC 24014-1.  
 * **Cấp 5 (Hệ thống tại trung tâm thanh toán bù trừ)**: Có nhiệm vụ quản lý tập trung toàn bộ dữ liệu của hệ thống AFC liên thông; thực hiện thanh toán bù trừ; thực hiện quản lý dạng thức; đảm bảo an toàn thông tin; quản lý bộ quy tắc chung; quản lý vận hành và bảo trì thiết bị.
+
+Có thể thấy mọi giao dịch giữa Cấp 1 (vé của hành khách) với Cấp 2 (thiết bị đầu cuối) bắt buộc phải truyền nhận thông qua Cấp 3 và Cấp 4 trước khi đến Cấp 5\. Mặc dù Cấp 5 (FMC) là hạt nhân quyết toán vĩ mô và Cấp 2 là nơi tiếp xúc trực tiếp với người dùng, sự kết nối của cả hệ thống lại hoàn toàn phụ thuộc vào Cấp 3 và Cấp 4\.
 
 ## **1.2. Mục tiêu** {#1.2.-mục-tiêu}
 
@@ -167,6 +173,33 @@ Trình bày kết quả phân tích thiết kế và xây dựng giải pháp ch
 * **Luồng dữ liệu:** Giới hạn trao đổi khép kín giữa Cấp 3, Cấp 4 và hệ thống Cấp 5 (Trung tâm thanh toán bù trừ FMC) thông qua giao thức REST API và Message Broker (RabbitMQ) theo phân cấp kỹ thuật.  
 * **Giả lập thiết bị:** Cấu phần phần cứng kiểm soát đầu cuối Cấp 2 được giả lập qua webcam máy tính để thực hiện thu nhận giao dịch quét mã QR từ ứng dụng hành khách (Passenger App).  
 * **Đối tượng vận hành:** Hệ thống tập trung vận hành xoay quanh 3 Actor nội bộ và các hệ thống kết nối liên quan.
+
+## **1.4. Cơ chế phối hợp phát triển và tích hợp hệ thống trong nhóm**
+
+Đề tài được triển khai dựa trên mô hình làm việc nhóm kết hợp. Trong đó, các thành viên trong nhóm phát triển độc lập trên các kho mã nguồn (Repository) riêng biệt và phối hợp chặt chẽ ở mức kiến trúc tích hợp hệ thống bằng việc thống nhất quy ước dữ liệu (Data Contracts) và các giao thức truyền nhận liên thông giữa các cấp:
+
+### **1.4.1. Phân định phạm vi phát triển độc lập**
+
+Công tác nghiên cứu và thực thi mã nguồn được bóc tách thành các cấu phần độc lập, bám sát theo mô hình phân tầng kiến trúc 5 cấp đã đề ra:
+
+* **Phân hệ Ứng dụng khách hàng và Thiết bị đầu cuối (Cấp 1 & Cấp 2):** Cấu phần này do các thành viên cộng tác chịu trách nhiệm xây dựng, bao gồm ứng dụng di động phục vụ hành khách giao dịch và sinh mã QR động (Cấp 1), cùng giải pháp mô phỏng Gate Simulator (Cấp 2\) thực thi kiểm tra chữ ký mật mã ngoại tuyến và ghi nhận dữ liệu quẹt thẻ.  
+* **Phân hệ Quản lý và Điều hành trung tâm (Cấp 3 & Cấp 4 \- Do em trực tiếp phát triển):** Em đảm nhiệm quy trình thiết kế kiến trúc, xây dựng hệ quản trị dữ liệu và hiện thực hóa mã nguồn cho hệ thống Backend cùng giao diện Portal điều hành:  
+  * Thiết lập hệ thống Portal Next.js nhằm giám sát trạng thái thiết bị và quản trị danh mục hạ tầng.  
+  * Phát triển hệ sinh thái API nghiệp vụ gồm afc-ops-service và auth-ops-service trên nền tảng Spring Boot.  
+  * Vận hành mô hình lưu trữ hỗn hợp: PostgreSQL quản trị Master Data và MongoDB lưu trữ kho nhật ký kiểm vết.  
+  * Xây dựng các tiến trình lập lịch (Schedulers) phục vụ tự động hóa đóng gói gói cấu hình (Control Package) và gom lô giao dịch đối soát.  
+* **Phân hệ Trung tâm thanh toán bù trừ FMC (Cấp 5):** Được vận hành bởi thành viên thứ ba, đóng vai trò tập trung tiếp nhận lô giao dịch từ Cấp 4, thực hiện quyết toán tài chính và phản hồi danh sách đen (Blacklist) xuống hạ tầng.
+
+### **1.4.2. Cơ chế tích hợp dữ liệu (System Integration)**
+
+Sự tương tác giữa các phân hệ được duy trì thông qua hai trục truyền tải chủ đạo, đảm bảo tính bền vững và an toàn cho dòng dữ liệu nghiệp vụ:
+
+* **Tích hợp qua kiến trúc REST API (Giao tiếp đồng bộ):**  
+  * **Giám sát trạng thái (Heartbeat):** Thiết bị Cấp 2 phát tín hiệu vận hành định kỳ về trung tâm qua giao thức REST để cập nhật trạng thái trực tuyến trên Dashboard.  
+  * **Đẩy dữ liệu giao dịch (Transaction Upload):** Mọi sự kiện quẹt mã thành công tại ga được gửi trực tiếp về Backend Cấp 4 dưới dạng bản tin giao dịch thô nhằm ghi nhận lịch sử tức thời.  
+* **Tích hợp qua Message Broker (Giao tiếp bất đồng bộ):**  
+  * **Đồng bộ cấu hình tham số:** Khi phát hành các bộ tham số hoặc Blacklist, hệ thống đẩy dữ liệu vào RabbitMQ qua routing key định danh ga, hỗ trợ các thiết bị tại hiện trường tự động cập nhật ngoại tuyến.  
+  * **Đối soát lô giao dịch tập trung:** Cuối ngày, tiến trình Batch Job gom dữ liệu đẩy vào hàng đợi batch.queue của Cấp 5; kết quả quyết toán sau đó được phản hồi ngược lại qua settlement.queue để hoàn tất chu trình đối soát tài chính.
 
 # **II. Nội dung và phương pháp** {#ii.-nội-dung-và-phương-pháp}
 
@@ -188,9 +221,37 @@ Hệ thống được thiết kế theo kiến trúc phân tán, đảm bảo t�
   * **Redis***:* Caching session tạm thời cho mã QR động, kiểm soát thời gian sống (TTL) trong vòng 30 giây để ngăn chặn các cuộc tấn công lặp lại (Replay Attack).  
   * **RabbitMQ (Message Broker)***:*\* Đảm bảo truyền nhận dữ liệu an toàn, bất đồng bộ giữa các tầng kiến trúc. Các gói dữ liệu lô (Batch Job) gửi đối soát lên Cấp 5 hoặc Control Package gửi xuống thiết bị được xếp hàng đợi, tránh mất mát dữ liệu khi hệ thống quá tải hoặc mất kết nối tạm thời.
 
-## **2.3. Thiết kế kiến trúc và giải pháp chi tiết** {#2.3.-thiết-kế-kiến-trúc-và-giải-pháp-chi-tiết}
+## **2.3. Tiêu chuẩn kỹ thuật áp dụng theo Quyết định 3680/QĐ-UBND**
 
-### **2.3.1. Yêu cầu chức năng hệ thống**  {#2.3.1.-yêu-cầu-chức-năng-hệ-thống}
+Quy trình thiết kế và phát triển kiến trúc hệ thống được thực hiện dựa trên sự tuân thủ nghiêm cẩn các định mức kỹ thuật được quy định tại Quyết định số 3680/QĐ-UBND của Ủy ban nhân dân Thành phố Hà Nội, cụ thể như sau:
+
+**Tiêu chuẩn kiến trúc phân cấp (Điều 4):**
+
+* Cấu phần Cấp 4 (Hệ thống tại công ty vận hành) được chuẩn hóa theo mô hình hệ thống thẻ vé liên thông quốc tế ISO/IEC 24014-1.  
+* Phân hệ Cấp 3 (Hệ thống tại ga) đóng vai trò là lớp đệm trung chuyển dữ liệu từ Cấp 2 lên Cấp 4; đảm bảo nguyên tắc không thực hiện các tác vụ xử lý nghiệp vụ AFC trực tiếp nhằm tối ưu hóa năng lực phân tán tải tại hiện trường.
+
+**Tiêu chuẩn định dạng dữ liệu trao đổi (Điều 7 & Điều 9):**
+
+* Ngôn ngữ đặc tả dữ liệu ứng dụng tiêu chuẩn XML (bộ ký tự UTF-8) và định dạng JSON linh hoạt theo quy định tại Điều 7\.  
+* Mã hóa định danh quốc gia và địa phương áp chuẩn ISO 3166\.  
+* Hệ thống phần tử dữ liệu vận tải được đồng bộ hóa dựa trên các tiêu chuẩn EN 1545-1 và 1545-2.
+
+**Tiêu chuẩn giao thức mạng và truyền dữ liệu (Điều 7.3, Điều 8 & Điều 11):**
+
+* Hạ tầng kết nối vận hành trên bộ giao thức TCP/IP kết hợp cùng cơ chế bảo mật HTTPS xuyên suốt.  
+* Giao tiếp dịch vụ hỗ trợ các tiêu chuẩn SOAP, WSDL và ưu tiên phát triển theo kiến trúc REST API hiện đại.  
+* Đối với luồng dữ liệu thời gian thực, hệ thống ứng dụng giải pháp hàng đợi thông điệp RabbitMQ (Message Queue) và mô hình *Pub/Sub* tuân thủ Điều 8\.  
+* Tích hợp truyền nhận tệp tin an toàn qua giao thức SFTP, bám sát tiêu chuẩn APTA IT-UTFS-S-003-07 về giao diện hệ thống trung tâm.
+
+**Tiêu chuẩn an toàn thông tin và bảo mật (Điều 10 & Điều 12):**
+
+* Đảm bảo an toàn hệ thống thông tin Cấp độ 3 theo TCVN 11930:2017 và thực thi quản lý theo tiêu chuẩn TCVN ISO/IEC 27002:2020.  
+* Kiểm soát truy cập dựa trên vai trò (RBAC) và vận hành an toàn tuân thủ các quy tắc thực hành của ISO/IEC 27002\.  
+* Hoạt động quản lý rủi ro an toàn thông tin được định hướng theo tiêu chuẩn ISO/IEC 27005:2018.
+
+## **2.4. Thiết kế kiến trúc và giải pháp chi tiết** {#2.4.-thiết-kế-kiến-trúc-và-giải-pháp-chi-tiết}
+
+### **2.4.1. Yêu cầu chức năng hệ thống**  {#2.4.1.-yêu-cầu-chức-năng-hệ-thống}
 
 Hệ thống được thiết kế nhằm đáp ứng các yêu cầu chức năng trong trục tác nghiệp và điều hành phân tầng giữa **phân hệ tại Ga (Cấp 3\)** và **hệ thống xử lý tập trung tại Công ty vận hành (Cấp 4\)**. Các yêu cầu chức năng được phân định rõ ràng theo từng phân hệ và đối tượng sử dụng (Actor) kỹ thuật như sau: 
 
@@ -219,7 +280,7 @@ Hệ thống vận hành tập trung tại trụ sở trung tâm, phục vụ ch
 |  | Ghi nhận giao dịch thô | Tiếp nhận các gói dữ liệu giao dịch soát vé thô trung chuyển từ máy chủ **Cấp 3** lên, thực hiện phân tích, kiểm tra tính toàn vẹn và lưu vào kho cơ sở dữ liệu lịch sử tập trung tại **Cấp 4**. |
 |  | Tổng hợp lô giao dịch (Batch Job) | Định kỳ cuối ngày (hoặc ngay khi nhận được lệnh kích hoạt lại từ Operator Manager), hệ thống tự động khởi chạy tiến trình **quét dữ liệu từ kho giao dịch lịch sử tập trung tại Cấp 4**, đóng gói theo lô (Batch) và đẩy qua trục truyền tin bất đồng bộ lên **Trung tâm Cấp 5** để phục vụ đối soát liên thông. |
 
-### **2.3.2. Yêu cầu phi chức năng hệ thống** {#2.3.2.-yêu-cầu-phi-chức-năng-hệ-thống}
+### **2.4.2. Yêu cầu phi chức năng hệ thống** {#2.4.2.-yêu-cầu-phi-chức-năng-hệ-thống}
 
 Để hỗ trợ các chức năng vận hành ổn định, hệ thống đặt ra các tiêu chuẩn kỹ thuật trọng tâm sau: 
 
@@ -239,7 +300,7 @@ Hệ thống vận hành tập trung tại trụ sở trung tâm, phục vụ ch
 * **Mở rộng độc lập theo dịch vụ:** Hệ thống tại Cấp 4 được thiết kế theo kiến trúc microservices (`auth-ops` và `afc-ops`), cho phép nâng cấp hoặc mở rộng tài nguyên phần cứng (CPU, RAM) độc lập cho từng dịch vụ tùy theo tải thực tế mà không bắt buộc phải nâng cấp toàn bộ hệ thống.  
 * **Cô lập vùng ảnh hưởng:** Khi phân hệ `afc-ops` bị quá tải do tần suất yêu cầu cấp phát mã QR động tăng cao đột biến từ Cấp 1, phân hệ quản trị tài khoản và phân quyền `auth-ops` vẫn hoạt động ổn định bình thường, đảm bảo không gây tê liệt chéo các chức năng quản trị hệ thống của doanh nghiệp.
 
-### **2.3.3. Mô hình giao tiếp và kiến trúc kỹ thuật** {#2.3.3.-mô-hình-giao-tiếp-và-kiến-trúc-kỹ-thuật}
+### **2.4.3. Mô hình giao tiếp và kiến trúc kỹ thuật** {#2.4.3.-mô-hình-giao-tiếp-và-kiến-trúc-kỹ-thuật}
 
 Hệ thống được thiết kế dựa trên nguyên lý phân tán kết hợp xử lý dữ liệu phân tầng nhằm tối ưu hóa hiệu năng, đảm bảo tính toàn vẹn dữ liệu giữa nhà ga và trung tâm điều hành.
 
@@ -277,7 +338,7 @@ Từ tầng ứng dụng, mã nguồn được bóc tách thành hai dịch vụ
   * *Ghi nhận nhật ký:* Hệ thống tích hợp kho lưu trữ phi quan hệ **`MongoDB`** để ghi nhận nhật ký tập trung dưới dạng Document, giúp giảm tải cho các cơ sở dữ liệu quan hệ chính.  
   * *Truyền tin bất đồng bộ:* Đối với luồng trao đổi dữ liệu nội bộ (đồng bộ `Permission` từ dịch vụ xác thực sang dịch vụ điều hành) và các luồng liên thông ngoại vi (kết nối với **`Validator Gateway Service`** và **`FMC Service`**), hệ thống kết nối với **`Message Broker (RabbitMQ)`** thông qua giao thức **`AMQP`** để truyền phát dữ liệu bất đồng bộ an toàn.
 
-### **2.3.4. Đặc tả các luồng nghiệp vụ trọng tâm**  {#2.3.4.-đặc-tả-các-luồng-nghiệp-vụ-trọng-tâm}
+### **2.4.4. Đặc tả các luồng nghiệp vụ trọng tâm**  {#2.4.4.-đặc-tả-các-luồng-nghiệp-vụ-trọng-tâm}
 
 #### **A. Luồng Cấp phát cấu hình xuống thiết bị tại Ga (Cấp 2\)**
 
@@ -325,7 +386,7 @@ Dữ liệu soát vé tại các cổng ga sau khi được phân hệ Cấp 2 t
 
 #### **Hình 7: Sơ đồ tuần tự tiến trình kết chuyển trực tiếp và đối soát.** {#hình-7:-sơ-đồ-tuần-tự-tiến-trình-kết-chuyển-trực-tiếp-và-đối-soát.}
 
-### **2.3.5. Thiết kế kỹ thuật chi tiết** {#2.3.5.-thiết-kế-kỹ-thuật-chi-tiết}
+### **2.4.5. Thiết kế kỹ thuật chi tiết** {#2.4.5.-thiết-kế-kỹ-thuật-chi-tiết}
 
 Nhằm hiện thực hóa mô hình **kiến trúc microservices**, đảm bảo năng lực vận hành linh hoạt và tối ưu hiệu suất cho các tiến trình **Batch Processing**, hệ thống điều hành trung tâm được thiết kế đồng bộ từ các phân lớp trong mã nguồn đến cấu trúc lưu trữ cơ sở dữ liệu. 
 
@@ -406,6 +467,7 @@ Ví dụ:
 
 ```json
 {
+  "syncId": 500,
   "publishedAt": "2026-07-04T00:00:00Z",
   "deviceConfig": {
     "version": 1,
@@ -540,7 +602,7 @@ Quy trình thực hiện:
 2. Duyệt phát hành gói qua API POST **/control-package/publish/{packageId}**, sinh bản ghi đồng bộ trạng thái PENDING cho ga HN\_2A\_01.  
 3. Kích hoạt đồng bộ thủ công: Center Manager gọi API POST **/control-package/trigger-device-sync?stationCode=HN\_2A\_01**. Lớp **DeviceSyncService** lập tức được kích hoạt, thực hiện kết hợp các gói cấu hình PENDING/APPLIED của ga, đóng gói thành bản tin Combined Payload và gửi lên CloudAMQP qua routing key **device.HN\_2A\_01**.
 
-Kết quả:
+**Kết quả**:
 
 * Trục CloudAMQP ghi nhận bản tin được định tuyến thành công vào Queue thiết bị của ga HN\_2A\_01.
 
@@ -592,7 +654,7 @@ Nhằm đảm bảo năng lực quản trị rủi ro và kiểm soát các sự
 
 ### **3.3.2. Nhật ký Tích hợp và Truyền nhận Hệ thống (System Integration & Transmission Logs)** {#3.3.2.-nhật-ký-tích-hợp-và-truyền-nhận-hệ-thống-(system-integration-&-transmission-logs)}
 
-Nhằm phục vụ công tác giám sát luồng dữ liệu liên thông và hỗ trợ chẩn đoán sự cố truyền nhận kỹ thuật giữa **Cấp 4 (Back Office)** với các **thiết bị Cấp 2 (Devices)** và **hệ thống đối soát Cấp 5 (Clearing House)**, hệ thống cung cấp phân hệ Nhật ký Tích hợp:
+Nhằm phục vụ công tác giám sát luồng dữ liệu liên thông và hỗ trợ chẩn đoán sự cố truyền nhận kỹ thuật giữa **Cấp 4** với các **thiết bị Cấp 2 (Devices)** và **hệ thống đối soát Cấp 5 (FMC)**, hệ thống cung cấp phân hệ Nhật ký Tích hợp:
 
 * **Cơ chế giám sát truyền nhận hai chiều (Inbound & Outbound Tracking):** Ghi nhận chi tiết lịch sử toàn bộ các thông điệp đồng bộ danh sách thẻ, vé, blacklist và nhân sự từ Cấp 5 gửi xuống, các gói tin lô giao dịch (Submit Batch) được thiết bị Cấp 2 đẩy lên định kỳ hàng đêm (Inbound), cũng như các gói cấu hình gửi xuống thiết bị Cấp 2 và lô giao dịch đối soát gửi lên Cấp 5 (Outbound).  
 * **Tra cứu và phân tích gói tin kỹ thuật:** Hỗ trợ bộ lọc thông minh theo khoảng thời gian, hệ thống liên kết (*Level 2/Level 5*), chiều giao dịch và trạng thái. Người vận hành có thể truy xuất trực tiếp cấu trúc **`JSON`** thô (*raw request/response payload*) của mỗi gói tin ngay trên giao diện để đối soát kỹ thuật khi cần.
