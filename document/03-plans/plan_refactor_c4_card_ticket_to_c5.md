@@ -5,7 +5,7 @@ Tài liệu này mô tả kế hoạch refactor C4 để đồng bộ `Card` và
 Nguồn tham khảo:
 - Mã nguồn C5 (`Afc-system`): entity `Card.java`, `Ticket.java` (domain model)
 - `document/api-docs.yaml`: OpenAPI của C5
-- `document/Draft Schema auth_db và afc_ops_db.md`: schema hiện tại của C4
+- `../02-design/Draft Schema auth_db và afc_ops_db.md`: schema hiện tại của C4
 
 ---
 

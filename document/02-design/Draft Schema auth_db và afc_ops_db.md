@@ -2,9 +2,9 @@
 
 Tài liệu này là bản nháp schema tạm thời, được suy ra từ:
 
-- `document/Tổng hợp Chức năng Hệ thống AFC - Cấp 3 và Cấp 4 V2.md`
-- `document/Breakdown Chức năng AFC Cấp 3 và Cấp 4.md`
-- `document/Use Case Spec AFC Cấp 3 và Cấp 4.md`
+- `../01-requirements/Tổng hợp Chức năng Hệ thống AFC - Cấp 3 và Cấp 4 V2.md`
+- `../01-requirements/Breakdown Chức năng AFC Cấp 3 và Cấp 4.md`
+- `../01-requirements/Use Case Spec AFC Cấp 3 và Cấp 4.md`
 
 Schema chưa phải bản migration cuối cùng. Mục tiêu là xác định các entity và quan hệ tối thiểu trước khi triển khai code.
 

@@ -423,7 +423,7 @@ C1 (QR Code trên App hành khách)
 | Lô dữ liệu đối soát | OPERATOR_MANAGER | UC19-20 |
 | Audit | OPERATOR_ADMIN | UC21 |
 
-Chi tiết: `document/wireframe_design_workspace_afc_ops.md`
+Chi tiết: `../02-design/wireframe_design_workspace_afc_ops.md`
 
 ---
 

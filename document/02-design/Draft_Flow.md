@@ -9,7 +9,7 @@ Ghi chú:
 
 ## 1. Vai Trò Tổng Quan
 
-![img.png](img/overview.png)
+![img.png](../02-design/diagrams/img/overview.png)
 
 
 
@@ -27,7 +27,7 @@ C5 xử lý vé, trạng thái sử dụng và clearing
 
 ## 2. App, C1 Và Card Ảo
 
-![img.png](img/overview_c1.png)
+![img.png](../02-design/diagrams/img/overview_c1.png)
 
 
 
@@ -42,7 +42,7 @@ QR động là payload ngắn hạn do C4 sinh từ card/ticket/entitlement.
 
 ## 3. Card, Ticket Và Entitlement Là Gì?
 
-![img.png](img/define.png)
+![img.png](../02-design/diagrams/img/define.png)
 
 
 
@@ -76,7 +76,7 @@ Ví dụ:
 
 ## 4. Dữ Liệu Mỗi Tầng Giữ
 
-![img.png](img/data_overview.png)
+![img.png](../02-design/diagrams/img/data_overview.png)
 
 
 
@@ -92,7 +92,7 @@ C4 lưu read model card/ticket/entitlement.
 C3/C2 nhận rule cần thiết để vận hành.
 ```
 
-![img.png](img/sequence_1.png)
+![img.png](../02-design/diagrams/img/sequence_1.png)
 
 ## 6. Luồng 2 - Đăng Ký Card/Vé Ban Đầu
 
@@ -123,7 +123,7 @@ METRO:
 Không làm vé ngày để giảm scope sau khi bổ sung vé lượt.
 ```
 
-![img.png](img/sequence_2.png)
+![img.png](../02-design/diagrams/img/sequence_2.png)
 
 ## 7. Luồng 3 - App Lấy QR Động
 
@@ -150,7 +150,7 @@ QR chỉ là payload hiển thị ngắn hạn.
 C4 sinh QR payload tự động, không cần operator manager bấm cấp.
 ```
 
-![img.png](img/sequence_3.png)
+![img.png](../02-design/diagrams/img/sequence_3.png)
 
 ## 8. Luồng 4 - C2 Scan QR Và Verify Theo Đúng Tầng
 
@@ -166,11 +166,11 @@ C4 -> C3 -> C2: OPEN/DENY
 C4 -> C5: transaction/batch
 ```
 
-![img.png](img/sequence_4.png)
+![img.png](../02-design/diagrams/img/sequence_4.png)
 
 ## 9. Luồng 5 - Chuyển Card Vật Lý Sang Card Ảo
 
-![img.png](img/sequence_5.png)
+![img.png](../02-design/diagrams/img/sequence_5.png)
 
 
 
@@ -204,7 +204,7 @@ C4 chỉ lưu read model entitlement đã được cập nhật và sinh QR payl
 App không tự gia hạn vé; App chỉ gửi yêu cầu lên C5 và hiển thị kết quả.
 ```
 
-![img.png](img/sequence_6.png)
+![img.png](../02-design/diagrams/img/sequence_6.png)
 
 ## 11. Luồng 7 - Card Status Và Blacklist
 
@@ -216,11 +216,11 @@ status = BLACKLISTED/CANCELLED/INACTIVE: card bị từ chối.
 status_reason: lý do như LOST_CARD, FRAUD, CANCELLED.
 ```
 
-![img.png](img/sequence_7.png)
+![img.png](../02-design/diagrams/img/sequence_7.png)
 
 ## 12. Luồng 8 - Lịch Sử Và Quyết Toán
 
-![img.png](img/sequence_8.png)
+![img.png](../02-design/diagrams/img/sequence_8.png)
 
 Ý chính:
 
@@ -261,7 +261,7 @@ TAP/CHECK:
 - Nếu hết hạn, sai tuyến/phạm vi hoặc card bị chặn thì DENY.
 ```
 
-![img.png](img/sequence_10.png)
+![img.png](../02-design/diagrams/img/sequence_10.png)
 
 Dữ liệu C3/C4 cần có để hỗ trợ vé tháng:
 
@@ -305,7 +305,7 @@ TAP_OUT:
 
 Trong luồng chính không dùng cơ chế ghi nợ. Cách chống quỵt là vé phải được thanh toán trước khi C5 phát hành `ticket`. Nếu ticket không tồn tại, hết hạn, đã dùng hoặc sai phạm vi tuyến thì C4 trả `DENY`.
 
-![img.png](img/sequence_9.png)
+![img.png](../02-design/diagrams/img/sequence_9.png)
 
 Dữ liệu C3/C4 cần có để hỗ trợ vé lượt:
 

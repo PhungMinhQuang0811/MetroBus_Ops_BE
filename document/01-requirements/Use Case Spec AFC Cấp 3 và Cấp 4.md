@@ -4,8 +4,8 @@ Tài liệu này đặc tả use case theo từng nghiệp vụ cụ thể cho M
 
 Nguồn đầu vào:
 
-- `document/Tổng hợp Chức năng Hệ thống AFC - Cấp 3 và Cấp 4 V2.md`
-- `document/Breakdown Chức năng AFC Cấp 3 và Cấp 4.md`
+- `../01-requirements/Tổng hợp Chức năng Hệ thống AFC - Cấp 3 và Cấp 4 V2.md`
+- `../01-requirements/Breakdown Chức năng AFC Cấp 3 và Cấp 4.md`
 
 ## 1. Actor
 

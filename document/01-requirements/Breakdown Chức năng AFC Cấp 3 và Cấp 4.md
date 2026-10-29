@@ -1,6 +1,6 @@
 # Breakdown Chức Năng AFC Cấp 3 Và Cấp 4
 
-Tài liệu này break nhỏ chức năng từ `document/Tổng hợp Chức năng Hệ thống AFC - Cấp 3 và Cấp 4 V2.md`.
+Tài liệu này break nhỏ chức năng từ `../01-requirements/Tổng hợp Chức năng Hệ thống AFC - Cấp 3 và Cấp 4 V2.md`.
 
 Mục tiêu hiện tại là liệt kê chức năng ở mức có thể triển khai dần. Chưa chốt schema chi tiết.
 

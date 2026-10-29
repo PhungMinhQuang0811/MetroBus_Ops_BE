@@ -1,6 +1,6 @@
 # Wireframe Design Workspace - AFC Cấp 3/Cấp 4
 
-Nguồn: `document\Use Case Spec AFC Cấp 3 và Cấp 4.md`.
+Nguồn: `../01-requirements/Use Case Spec AFC Cấp 3 và Cấp 4.md`.
 
 Mục tiêu của file này là phác thảo đủ giao diện hoặc điểm tương tác cho UC01-UC22 trước khi review tổng thể. Các wireframe chỉ thể hiện cấu trúc, dữ liệu và hành động; chưa chốt màu sắc hay visual design.
 

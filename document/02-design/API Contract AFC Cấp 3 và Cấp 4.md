@@ -2,8 +2,8 @@
 
 Tài liệu này mô tả API contract tạm chốt cho scope AFC Cấp 3/Cấp 4, bám theo:
 
-- `document/Use Case Spec AFC Cấp 3 và Cấp 4.md`
-- `document/Draft Schema auth_db và afc_ops_db.md`
+- `../01-requirements/Use Case Spec AFC Cấp 3 và Cấp 4.md`
+- `../02-design/Draft Schema auth_db và afc_ops_db.md`
 
 Mục tiêu là đủ rõ để triển khai `auth-ops-service`, `afc-ops-service`, FE vận hành, mock Cấp 2 và mock Cấp 5.
 
